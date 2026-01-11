@@ -237,8 +237,8 @@ shark-fin/
 
 ### Docker Compose (Recommended)
 ```bash
-git clone https://github.com/your-org/shark-fin.git
-cd shark-fin
+git clone https://github.com/willgillen/sharkfin.git
+cd sharkfin
 cp .env.example .env
 # Edit .env with your settings
 docker-compose up -d

@@ -63,11 +63,11 @@ Don't hesitate to ask questions in the issue comments or discussions!
 
 ```bash
 # Fork the repository on GitHub, then:
-git clone https://github.com/YOUR_USERNAME/shark-fin.git
-cd shark-fin
+git clone https://github.com/YOUR_USERNAME/sharkfin.git
+cd sharkfin
 
 # Add upstream remote
-git remote add upstream https://github.com/ORIGINAL_OWNER/shark-fin.git
+git remote add upstream https://github.com/willgillen/sharkfin.git
 ```
 
 ### 2. Create Development Environment
@@ -517,7 +517,7 @@ Mockups, examples from other apps, etc.
 Understanding the project structure helps with contributions:
 
 ```
-shark-fin/
+sharkfin/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/v1/         # API endpoints
