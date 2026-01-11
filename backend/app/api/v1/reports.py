@@ -1,0 +1,311 @@
+from typing import Optional
+from decimal import Decimal
+from datetime import date, datetime
+from dateutil.relativedelta import relativedelta
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_
+
+from app.core.database import get_db
+from app.api.deps import get_current_active_user
+from app.models.user import User as UserModel
+from app.models.account import Account as AccountModel, AccountType
+from app.models.transaction import Transaction as TransactionModel, TransactionType
+from app.models.category import Category as CategoryModel, CategoryType
+from app.models.budget import Budget as BudgetModel
+from app.schemas.dashboard import (
+    DashboardSummary,
+    AccountSummary,
+    IncomeVsExpenses,
+    IncomeVsExpensesResponse,
+    MonthlyTrend,
+    SpendingByCategoryResponse,
+    CategorySpending,
+    BudgetStatus
+)
+
+router = APIRouter()
+
+
+@router.get("/dashboard", response_model=DashboardSummary)
+def get_dashboard_summary(
+    start_date: Optional[date] = Query(None, description="Start date for period (defaults to current month)"),
+    end_date: Optional[date] = Query(None, description="End date for period (defaults to today)"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get complete dashboard summary with all key metrics."""
+
+    # Default to current month if dates not provided
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = date(end_date.year, end_date.month, 1)
+
+    # Account Summary
+    accounts = db.query(AccountModel).filter(AccountModel.user_id == current_user.id).all()
+
+    total_assets = Decimal("0.00")
+    total_liabilities = Decimal("0.00")
+
+    for account in accounts:
+        if account.type in [AccountType.CHECKING, AccountType.SAVINGS, AccountType.INVESTMENT, AccountType.CASH]:
+            total_assets += account.current_balance
+        elif account.type in [AccountType.CREDIT_CARD, AccountType.LOAN]:
+            total_liabilities += abs(account.current_balance)
+
+    net_worth = total_assets - total_liabilities
+
+    account_summary = AccountSummary(
+        total_assets=total_assets,
+        total_liabilities=total_liabilities,
+        net_worth=net_worth
+    )
+
+    # Income vs Expenses for current period
+    income_query = db.query(func.sum(TransactionModel.amount)).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.CREDIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    )
+    total_income = income_query.scalar() or Decimal("0.00")
+
+    expense_query = db.query(func.sum(TransactionModel.amount)).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    )
+    total_expenses = expense_query.scalar() or Decimal("0.00")
+
+    net = total_income - total_expenses
+    savings_rate = (net / total_income * 100) if total_income > 0 else Decimal("0.00")
+
+    income_vs_expenses = IncomeVsExpenses(
+        total_income=total_income,
+        total_expenses=total_expenses,
+        net=net,
+        savings_rate=savings_rate
+    )
+
+    # Budget Status
+    budgets = db.query(BudgetModel).filter(
+        BudgetModel.user_id == current_user.id,
+        BudgetModel.start_date <= end_date,
+        or_(BudgetModel.end_date.is_(None), BudgetModel.end_date >= start_date)
+    ).all()
+
+    budget_status_list = []
+    for budget in budgets:
+        # Calculate spent for budget period
+        budget_start = max(budget.start_date, start_date)
+        budget_end = min(budget.end_date, end_date) if budget.end_date else end_date
+
+        spent_query = db.query(func.sum(TransactionModel.amount)).filter(
+            TransactionModel.user_id == current_user.id,
+            TransactionModel.category_id == budget.category_id,
+            TransactionModel.type == TransactionType.DEBIT,
+            TransactionModel.date >= budget_start,
+            TransactionModel.date <= budget_end
+        )
+        spent = spent_query.scalar() or Decimal("0.00")
+
+        remaining = budget.amount - spent
+        percentage = (spent / budget.amount * 100) if budget.amount > 0 else Decimal("0.00")
+        is_over_budget = spent > budget.amount
+
+        category = db.query(CategoryModel).filter(CategoryModel.id == budget.category_id).first()
+
+        budget_status_list.append(BudgetStatus(
+            budget_id=budget.id,
+            budget_name=budget.name,
+            category_name=category.name if category else "Unknown",
+            amount=budget.amount,
+            spent=spent,
+            remaining=remaining,
+            percentage=percentage,
+            is_over_budget=is_over_budget,
+            alert_threshold=budget.alert_threshold
+        ))
+
+    # Top Spending Categories (top 5)
+    category_spending = db.query(
+        CategoryModel.id,
+        CategoryModel.name,
+        func.sum(TransactionModel.amount).label("total"),
+        func.count(TransactionModel.id).label("count")
+    ).join(
+        TransactionModel,
+        TransactionModel.category_id == CategoryModel.id
+    ).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).group_by(
+        CategoryModel.id,
+        CategoryModel.name
+    ).order_by(
+        func.sum(TransactionModel.amount).desc()
+    ).limit(5).all()
+
+    top_spending = []
+    for cat_id, cat_name, total, count in category_spending:
+        percentage = (total / total_expenses * 100) if total_expenses > 0 else Decimal("0.00")
+        top_spending.append(CategorySpending(
+            category_id=cat_id,
+            category_name=cat_name,
+            amount=total,
+            percentage=percentage,
+            transaction_count=count
+        ))
+
+    return DashboardSummary(
+        account_summary=account_summary,
+        income_vs_expenses=income_vs_expenses,
+        budget_status=budget_status_list,
+        top_spending_categories=top_spending,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
+@router.get("/spending-by-category", response_model=SpendingByCategoryResponse)
+def get_spending_by_category(
+    start_date: Optional[date] = Query(None, description="Start date (defaults to current month)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get spending breakdown by category."""
+
+    # Default to current month if dates not provided
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = date(end_date.year, end_date.month, 1)
+
+    # Get total spending
+    total_query = db.query(func.sum(TransactionModel.amount)).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    )
+    total_spending = total_query.scalar() or Decimal("0.00")
+
+    # Get spending by category
+    category_spending = db.query(
+        CategoryModel.id,
+        CategoryModel.name,
+        func.sum(TransactionModel.amount).label("total"),
+        func.count(TransactionModel.id).label("count")
+    ).join(
+        TransactionModel,
+        TransactionModel.category_id == CategoryModel.id
+    ).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).group_by(
+        CategoryModel.id,
+        CategoryModel.name
+    ).order_by(
+        func.sum(TransactionModel.amount).desc()
+    ).all()
+
+    categories = []
+    for cat_id, cat_name, total, count in category_spending:
+        percentage = (total / total_spending * 100) if total_spending > 0 else Decimal("0.00")
+        categories.append(CategorySpending(
+            category_id=cat_id,
+            category_name=cat_name,
+            amount=total,
+            percentage=percentage,
+            transaction_count=count
+        ))
+
+    return SpendingByCategoryResponse(
+        total_spending=total_spending,
+        categories=categories,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
+@router.get("/income-vs-expenses", response_model=IncomeVsExpensesResponse)
+def get_income_vs_expenses(
+    months: int = Query(6, ge=1, le=24, description="Number of months to include"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get income vs expenses with monthly trends."""
+
+    end_date = date.today()
+    start_date = end_date - relativedelta(months=months)
+
+    # Current period totals
+    income_query = db.query(func.sum(TransactionModel.amount)).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.CREDIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    )
+    total_income = income_query.scalar() or Decimal("0.00")
+
+    expense_query = db.query(func.sum(TransactionModel.amount)).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    )
+    total_expenses = expense_query.scalar() or Decimal("0.00")
+
+    net = total_income - total_expenses
+    savings_rate = (net / total_income * 100) if total_income > 0 else Decimal("0.00")
+
+    current_period = IncomeVsExpenses(
+        total_income=total_income,
+        total_expenses=total_expenses,
+        net=net,
+        savings_rate=savings_rate
+    )
+
+    # Monthly trends
+    monthly_trends = []
+    for i in range(months):
+        month_start = end_date - relativedelta(months=i)
+        month_start = date(month_start.year, month_start.month, 1)
+        month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
+
+        month_income = db.query(func.sum(TransactionModel.amount)).filter(
+            TransactionModel.user_id == current_user.id,
+            TransactionModel.type == TransactionType.CREDIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).scalar() or Decimal("0.00")
+
+        month_expenses = db.query(func.sum(TransactionModel.amount)).filter(
+            TransactionModel.user_id == current_user.id,
+            TransactionModel.type == TransactionType.DEBIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).scalar() or Decimal("0.00")
+
+        month_net = month_income - month_expenses
+
+        monthly_trends.insert(0, MonthlyTrend(
+            month=month_start.strftime("%Y-%m"),
+            income=month_income,
+            expenses=month_expenses,
+            net=month_net
+        ))
+
+    return IncomeVsExpensesResponse(
+        current_period=current_period,
+        monthly_trends=monthly_trends,
+        period_start=start_date,
+        period_end=end_date
+    )
