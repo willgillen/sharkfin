@@ -151,7 +151,7 @@ shark-fin/
 - [x] Account CRUD operations
 - [x] Transaction management
 - [x] Basic categorization
-- [ ] Budget creation and tracking
+- [x] Budget creation and tracking
 - [ ] Dashboard with charts
 - [ ] CSV import
 - [ ] Basic reports
@@ -347,28 +347,39 @@ Manual installation guide with:
 - Support for payees, descriptions, and notes
 - 15 comprehensive tests
 
+#### Budgets
+- Full budget CRUD operations
+- Four period types (weekly, monthly, quarterly, yearly)
+- Category-based budget limits
+- Time-bound budgets with start/end dates
+- Rollover functionality for unused amounts
+- Alert system with configurable thresholds
+- Budget progress tracking with spent/remaining calculations
+- Over-budget detection
+- 14 comprehensive tests
+
 #### Infrastructure
 - Docker Compose multi-service setup
 - PostgreSQL 15 database with Alembic migrations
 - Redis 7 for caching/sessions
-- Comprehensive test suite (39 tests, 96% coverage)
+- Comprehensive test suite (53 tests, 90% coverage)
 - Seed data script with realistic demo data
 - SQLite for isolated test execution
 
 ### 🔄 Next Priorities
 
 #### Immediate (Next Sprint)
-1. [ ] Budget creation and tracking system
-2. [ ] Dashboard API with key financial metrics
-3. [ ] Basic reporting endpoints (spending by category, income vs expenses)
-4. [ ] Frontend foundation (Next.js setup)
+1. [ ] Dashboard API with key financial metrics
+2. [ ] Basic reporting endpoints (spending by category, income vs expenses)
+3. [ ] Frontend foundation (Next.js setup)
+4. [ ] CSV import functionality
 
 #### This Month
-1. [ ] CSV import functionality
-2. [ ] Advanced budget features (rollover, alerts)
-3. [ ] Frontend dashboard and charts
-4. [ ] User documentation
-5. [ ] Set up CI/CD with GitHub Actions
+1. [ ] Advanced reporting (trends, forecasting)
+2. [ ] Frontend dashboard and charts
+3. [ ] User documentation
+4. [ ] Set up CI/CD with GitHub Actions
+5. [ ] Mobile-responsive design
 
 ## Resources and References
 
@@ -405,9 +416,9 @@ Manual installation guide with:
 
 ---
 
-**Project Status**: MVP Development - Core Features Complete ✅
-**Current Phase**: Backend Implementation (Accounts, Categories, Transactions ✅)
-**Next Phase**: Budgeting System & Dashboard APIs
+**Project Status**: MVP Development - Core Backend Complete ✅
+**Current Phase**: Backend APIs (Accounts, Categories, Transactions, Budgets ✅)
+**Next Phase**: Dashboard APIs & Basic Reporting
 **Last Updated**: January 11, 2026
 
 ### Recent Progress
@@ -415,7 +426,8 @@ Manual installation guide with:
 - ✅ Account management (7 account types)
 - ✅ Category system (hierarchical with subcategories)
 - ✅ Transaction management (debits, credits, transfers)
-- ✅ 96% test coverage (39 tests passing)
-- ✅ Seed data with realistic demo scenarios
+- ✅ **Budget system with progress tracking** ← Latest!
+- ✅ 90% test coverage (53 tests passing)
+- ✅ Comprehensive seed data with 6 budgets
 
 Let's build something amazing together! 🚀
