@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { reportsAPI } from "@/lib/api";
-import { DashboardSummary } from "@/types";
+import { DashboardSummary, IncomeVsExpensesResponse } from "@/types";
 import { formatCurrency, formatPercentage } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import CategorySpendingChart from "@/components/charts/CategorySpendingChart";
+import IncomeTrendChart from "@/components/charts/IncomeTrendChart";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
+  const [trends, setTrends] = useState<IncomeVsExpensesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -24,6 +27,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadDashboard();
+      loadTrends();
     }
   }, [isAuthenticated]);
 
@@ -36,6 +40,15 @@ export default function DashboardPage() {
       setError(err.response?.data?.detail || "Failed to load dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTrends = async () => {
+    try {
+      const data = await reportsAPI.getIncomeVsExpenses(6);
+      setTrends(data);
+    } catch (err: any) {
+      console.error("Failed to load trends:", err);
     }
   };
 
@@ -188,7 +201,30 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Top Spending Categories */}
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Spending by Category Chart */}
+              {dashboard.top_spending_categories.length > 0 && (
+                <div className="bg-white shadow rounded-lg p-6">
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">
+                    Spending by Category
+                  </h2>
+                  <CategorySpendingChart data={dashboard.top_spending_categories} />
+                </div>
+              )}
+
+              {/* Income vs Expenses Trend */}
+              {trends && trends.monthly_trends.length > 0 && (
+                <div className="bg-white shadow rounded-lg p-6">
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">
+                    6-Month Trend
+                  </h2>
+                  <IncomeTrendChart data={trends.monthly_trends} />
+                </div>
+              )}
+            </div>
+
+            {/* Top Spending Categories List */}
             {dashboard.top_spending_categories.length > 0 && (
               <div className="bg-white shadow rounded-lg p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
