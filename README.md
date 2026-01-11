@@ -2,9 +2,11 @@
 
 > An open-source, self-hosted financial planning, budgeting, and management application
 
+[![Backend Tests](https://github.com/willgillen/sharkfin/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/willgillen/sharkfin/actions/workflows/backend-tests.yml)
 [![License](https://img.shields.io/badge/license-TBD-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen.svg)](https://github.com/willgillen/sharkfin)
 
 ## Overview
 
