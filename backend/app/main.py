@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1 import auth, users
 
 app = FastAPI(
     title="Shark Fin API",
@@ -10,11 +11,15 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API v1 routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
 @app.get("/")
 async def root():
