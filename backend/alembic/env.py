@@ -14,6 +14,7 @@ from app.models.user import User  # noqa: F401
 from app.models.account import Account  # noqa: F401
 from app.models.category import Category  # noqa: F401
 from app.models.transaction import Transaction  # noqa: F401
+from app.models.budget import Budget  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

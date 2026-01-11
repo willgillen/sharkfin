@@ -416,6 +416,91 @@ def seed_database(db: Session):
     db.commit()
     print(f"Created {len(transactions)} transactions")
 
+    # Create budgets for current month
+    from app.models.budget import Budget, BudgetPeriod
+
+    budgets = []
+
+    # Grocery budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=food_groceries.id,
+        name="Monthly Grocery Budget",
+        amount=Decimal("400.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        rollover=False,
+        alert_enabled=True,
+        alert_threshold=Decimal("85.0"),
+        notes="Budget for grocery shopping"
+    ))
+
+    # Restaurant budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=food_restaurants.id,
+        name="Dining Out Budget",
+        amount=Decimal("200.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        alert_enabled=True,
+        alert_threshold=Decimal("90.0")
+    ))
+
+    # Coffee budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=food_coffee.id,
+        name="Coffee & Cafes",
+        amount=Decimal("75.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        alert_enabled=True,
+        alert_threshold=Decimal("80.0")
+    ))
+
+    # Gas budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=transport_gas.id,
+        name="Gas & Fuel Budget",
+        amount=Decimal("150.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        alert_enabled=True,
+        alert_threshold=Decimal("90.0")
+    ))
+
+    # Entertainment budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=expense_entertainment.id,
+        name="Entertainment Budget",
+        amount=Decimal("100.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        rollover=True,  # Allow unused amount to carry forward
+        alert_enabled=True,
+        alert_threshold=Decimal("85.0"),
+        notes="Movies, streaming services, etc."
+    ))
+
+    # Utilities budget
+    budgets.append(Budget(
+        user_id=demo_user.id,
+        category_id=expense_utilities.id,
+        name="Utilities Budget",
+        amount=Decimal("150.00"),
+        period=BudgetPeriod.MONTHLY,
+        start_date=date(today.year, today.month, 1),
+        alert_enabled=True,
+        alert_threshold=Decimal("75.0")
+    ))
+
+    db.add_all(budgets)
+    db.commit()
+    print(f"Created {len(budgets)} budgets")
+
     print("✅ Database seeded successfully!")
     print(f"\nDemo user credentials:")
     print(f"  Email: demo@sharkfin.com")
