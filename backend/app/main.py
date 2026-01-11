@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, users
+from app.api.v1 import auth, users, accounts
 
 app = FastAPI(
     title="Shark Fin API",
@@ -20,6 +20,7 @@ app.add_middleware(
 # Include API v1 routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["accounts"])
 
 @app.get("/")
 async def root():
