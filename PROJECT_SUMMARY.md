@@ -1,0 +1,380 @@
+# Shark Fin - Project Summary
+
+## Overview
+
+**Shark Fin** is an open-source, self-hosted financial planning, budgeting, and management application designed to give users complete control over their financial data while providing feature parity with commercial applications like Mint and Firefly III.
+
+## Project Goals
+
+1. **Privacy First**: Self-hosted solution with complete data ownership
+2. **Feature Complete**: Comprehensive financial management capabilities
+3. **Modern Architecture**: Built with Next.js, FastAPI, and PostgreSQL
+4. **Open Source**: Community-driven development under permissive license
+5. **Easy Deployment**: Docker Compose for simple self-hosting
+
+## Technology Decisions
+
+### Frontend: Next.js + TypeScript
+**Why?**
+- Modern React framework with excellent developer experience
+- Server-side rendering for better performance
+- Built-in API routes and optimization
+- Strong TypeScript support
+- Large ecosystem and community
+
+### Backend: FastAPI + Python
+**Why?**
+- High performance async framework
+- Automatic API documentation (OpenAPI/Swagger)
+- Excellent data validation with Pydantic
+- Type hints for better code quality
+- Easy to learn and maintain
+- Strong data processing ecosystem
+
+### Database: PostgreSQL
+**Why?**
+- Robust, mature relational database
+- Strong data integrity and ACID compliance
+- Advanced features (JSON, full-text search, etc.)
+- Excellent performance for financial data
+- Wide deployment support
+
+### Deployment: Docker Compose
+**Why?**
+- Simple single-command deployment
+- Consistent environments (dev, staging, production)
+- Easy updates and rollbacks
+- Portable across platforms
+- Industry standard for self-hosted applications
+
+## Key Features
+
+### Phase 1 (MVP - 8 weeks)
+✅ User authentication and authorization
+✅ Account management (checking, savings, credit cards, loans)
+✅ Manual transaction entry and management
+✅ Transaction categorization and tagging
+✅ Basic budgeting system
+✅ CSV import for transactions
+✅ Dashboard with key metrics
+✅ Basic reports (spending by category, income vs expenses)
+
+### Phase 2 (Advanced - 16 weeks total)
+✅ Automated categorization rules
+✅ Recurring transactions
+✅ Savings goals and debt tracking
+✅ Bill tracking and reminders
+✅ Advanced reporting (cash flow, net worth trends)
+✅ OFX/QFX import support
+✅ Full data backup and restore
+
+### Phase 3 (Premium - 24 weeks total)
+✅ Bank account aggregation (via Plaid)
+✅ Investment portfolio tracking
+✅ Credit score monitoring
+✅ ML-powered spending insights
+✅ Predictive budgeting
+✅ Advanced analytics
+
+### Phase 4 (Future)
+📱 React Native mobile app
+👥 Multi-user and shared budgets
+🔐 Two-factor authentication
+🌍 Multi-language support
+
+## Core User Personas
+
+1. **Privacy-Conscious Self-Hoster**: Wants complete data control, no cloud sync
+2. **Budget-Focused Saver**: Needs detailed expense tracking and budgeting
+3. **Debt-Payoff Motivated**: Tracking multiple debts and payoff progress
+4. **Investment Tracker**: Monitoring portfolio and net worth
+5. **Small Business Owner**: Separating business/personal finances
+
+## Competitive Advantages
+
+### vs Mint (Discontinued)
+- ✅ Still exists and actively maintained
+- ✅ Self-hosted with complete privacy
+- ✅ No ads or upselling
+- ✅ Open source and customizable
+- ✅ Free forever
+
+### vs Firefly III
+- ✅ Modern tech stack (Next.js vs Laravel Blade)
+- ✅ Better mobile-responsive design
+- ✅ Simpler, more intuitive UI
+- ✅ Built-in bank aggregation support
+- ✅ Advanced analytics and ML insights
+
+### vs YNAB/PocketGuard/Monarch
+- ✅ No subscription fees
+- ✅ Complete data ownership
+- ✅ Self-hosted (no external servers)
+- ✅ Open source (inspect all code)
+- ✅ Unlimited users and accounts
+
+## Project Structure
+
+```
+shark-fin/
+├── frontend/              # Next.js application
+│   ├── app/              # App router (pages)
+│   ├── components/       # React components
+│   ├── lib/             # Utilities and API client
+│   └── types/           # TypeScript definitions
+│
+├── backend/              # FastAPI application
+│   ├── app/
+│   │   ├── api/v1/      # API endpoints
+│   │   ├── models/      # Database models
+│   │   ├── schemas/     # Pydantic schemas
+│   │   ├── services/    # Business logic
+│   │   └── tests/       # Test suite
+│   └── alembic/         # Database migrations
+│
+├── docker-compose.yml    # Multi-service orchestration
+├── .env.example         # Environment template
+└── docs/                # Documentation
+```
+
+## Development Roadmap
+
+### Immediate (Week 1-2)
+- [x] Research features and create plan
+- [ ] Initialize Git repository
+- [ ] Set up Docker Compose environment
+- [ ] Create project structure
+- [ ] Implement authentication system
+- [ ] Set up CI/CD with GitHub Actions
+
+### Short Term (Week 3-8)
+- [ ] Account CRUD operations
+- [ ] Transaction management
+- [ ] Basic categorization
+- [ ] Budget creation and tracking
+- [ ] Dashboard with charts
+- [ ] CSV import
+- [ ] Basic reports
+
+### Medium Term (Week 9-16)
+- [ ] Rules engine for auto-categorization
+- [ ] Recurring transactions
+- [ ] Goals and savings tracking
+- [ ] Bill tracking
+- [ ] Advanced reporting
+- [ ] OFX/QFX import
+
+### Long Term (Week 17-24)
+- [ ] Plaid integration for bank sync
+- [ ] Investment tracking
+- [ ] ML-powered insights
+- [ ] Credit score monitoring
+- [ ] Mobile app (React Native)
+
+## Architecture Highlights
+
+### API-First Design
+- Complete REST API for all operations
+- Auto-generated OpenAPI documentation
+- Versioned API (v1, v2, etc.)
+- Standardized response formats
+
+### Security
+- JWT token authentication
+- Bcrypt password hashing
+- Rate limiting on endpoints
+- CORS protection
+- SQL injection prevention (ORM)
+- HTTPS in production
+
+### Performance
+- Database indexing on key fields
+- Redis caching for sessions
+- Pagination for large datasets
+- Connection pooling
+- Optimized queries (avoid N+1)
+- Next.js optimizations (ISR, code splitting)
+
+### Testing
+- Backend: Pytest with >80% coverage
+- Frontend: Jest + React Testing Library
+- E2E: Playwright/Cypress
+- CI/CD automated testing
+
+### Documentation
+- Comprehensive README
+- API documentation (auto-generated)
+- User guides for self-hosting
+- Developer contribution guide
+- Architecture decision records
+
+## Database Schema (Core Tables)
+
+1. **users**: User accounts and authentication
+2. **accounts**: Financial accounts (checking, savings, etc.)
+3. **transactions**: All financial transactions
+4. **categories**: Transaction categories (hierarchical)
+5. **budgets**: Budget definitions and limits
+6. **tags**: Transaction tags for organization
+7. **goals**: Savings and debt payoff goals
+8. **recurring_rules**: Recurring transaction definitions
+9. **rules**: Auto-categorization rules
+10. **attachments**: Receipt and document storage
+
+## API Endpoints (Key Routes)
+
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+- `GET /api/v1/accounts` - List accounts
+- `POST /api/v1/accounts` - Create account
+- `GET /api/v1/transactions` - List transactions (paginated)
+- `POST /api/v1/transactions` - Create transaction
+- `GET /api/v1/budgets` - List budgets
+- `GET /api/v1/reports/dashboard` - Dashboard summary
+- `GET /api/v1/reports/spending-by-category` - Spending breakdown
+
+## Deployment Options
+
+### Docker Compose (Recommended)
+```bash
+git clone https://github.com/your-org/shark-fin.git
+cd shark-fin
+cp .env.example .env
+# Edit .env with your settings
+docker-compose up -d
+```
+
+### Kubernetes (Advanced)
+Helm charts provided for K8s deployment with:
+- Horizontal pod autoscaling
+- Persistent volume claims
+- Ingress configuration
+- Secret management
+
+### Traditional VPS
+Manual installation guide with:
+- Systemd service files
+- Nginx reverse proxy config
+- SSL/TLS setup (Let's Encrypt)
+- Backup automation
+
+## Success Metrics
+
+### Technical
+- API response time <200ms (95th percentile)
+- Frontend Time to Interactive <3 seconds
+- >80% test coverage
+- Zero critical security vulnerabilities
+- Docker image <500MB total
+
+### User Experience
+- Complete onboarding in <5 minutes
+- Successful CSV import on first try
+- Budget creation in <2 minutes
+- Intuitive UI (minimal support questions)
+
+## Open Source Strategy
+
+### License
+**To Be Determined**: AGPL-3.0 or MIT
+- AGPL-3.0: Like Firefly III, ensures modifications stay open
+- MIT: More permissive, allows commercial use
+
+### Community Building
+1. Clear contribution guidelines
+2. Good first issues for new contributors
+3. Responsive to issues and PRs
+4. Regular releases with changelogs
+5. Active discussions and Q&A
+6. Recognition for contributors
+
+### Documentation Focus
+- User documentation for self-hosting
+- Developer documentation for contributing
+- API documentation for integrations
+- Video tutorials and guides
+- FAQ and troubleshooting
+
+## Risks and Mitigations
+
+### Risk: Feature Creep
+**Mitigation**: Strict MVP definition, phased roadmap, user feedback prioritization
+
+### Risk: Security Vulnerabilities
+**Mitigation**: Regular dependency updates, security audits, automated scanning, responsible disclosure process
+
+### Risk: Adoption Challenges
+**Mitigation**: Excellent documentation, Docker simplicity, active community support
+
+### Risk: Plaid/API Costs
+**Mitigation**: Make bank aggregation optional, support manual imports, provide cost transparency
+
+### Risk: Maintainer Burnout
+**Mitigation**: Build active maintainer team, clear contribution process, community involvement
+
+## Next Steps (Action Items)
+
+### Today
+1. ✅ Complete feature research
+2. ✅ Create development plan
+3. [ ] Generate secure secrets for .env
+4. [ ] Initialize Git repository
+5. [ ] Test Docker Compose setup
+
+### This Week
+1. [ ] Create GitHub repository
+2. [ ] Set up CI/CD (GitHub Actions)
+3. [ ] Implement user authentication
+4. [ ] Create account models and API
+5. [ ] Build basic frontend structure
+
+### This Month
+1. [ ] Complete MVP feature set
+2. [ ] Write comprehensive tests
+3. [ ] Create user documentation
+4. [ ] Set up demo instance
+5. [ ] Launch public beta
+
+## Resources and References
+
+### Research Sources
+- [Mint Features](https://mint.intuit.com/)
+- [Firefly III Documentation](https://docs.firefly-iii.org/)
+- [Personal Finance App Comparison](https://www.nerdwallet.com/finance/learn/best-budget-apps)
+- [Next.js + FastAPI Tutorial](https://www.travisluong.com/how-to-develop-a-full-stack-next-js-fastapi-postgresql-app-using-docker/)
+
+### Technical Documentation
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+### Community Examples
+- [Firefly III GitHub](https://github.com/firefly-iii/firefly-iii)
+- [FastAPI-NextJS Template](https://github.com/Nneji123/fastapi-nextjs)
+- [Actual Budget](https://actualbudget.org/) - Another open-source alternative
+
+## Project Documents
+
+1. **[DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)** - Comprehensive development roadmap
+2. **[FEATURE_RESEARCH.md](FEATURE_RESEARCH.md)** - Detailed feature analysis
+3. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup and development guide
+4. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+5. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - This document
+
+## Contact and Support
+
+- **GitHub**: [Repository URL to be created]
+- **Issues**: GitHub Issues for bugs and features
+- **Discussions**: GitHub Discussions for Q&A
+- **Email**: [To be determined]
+- **Discord**: [To be set up]
+
+---
+
+**Project Status**: Planning Phase Complete ✅
+**Next Phase**: Development Setup and MVP Implementation
+**Target MVP Date**: March 2026 (8 weeks from start)
+**Target v1.0 Date**: May 2026 (16 weeks from start)
+
+Let's build something amazing together! 🚀
