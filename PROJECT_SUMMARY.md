@@ -148,16 +148,19 @@ shark-fin/
 - [x] Set up CI/CD with GitHub Actions
 
 ### Short Term (Week 3-8) 🔄 IN PROGRESS
-- [x] Account CRUD operations
-- [x] Transaction management
-- [x] Basic categorization
-- [x] Budget creation and tracking
-- [x] Dashboard with summary metrics
-- [x] Basic reports (spending by category, income vs expenses)
+- [x] Account CRUD operations (Backend)
+- [x] Transaction management (Backend)
+- [x] Basic categorization (Backend)
+- [x] Budget creation and tracking (Backend)
+- [x] Dashboard with summary metrics (Backend)
+- [x] Basic reports (spending by category, income vs expenses) (Backend)
 - [x] Frontend foundation with authentication
-- [ ] Dashboard charts and visualizations
+- [x] Dashboard charts and visualizations
+- [x] Accounts page (view, create, edit, delete)
+- [x] Transactions page (view, create, edit, delete, filter)
+- [ ] Budgets page (view, create, edit, delete)
+- [ ] Categories management page
 - [ ] CSV import
-- [ ] Additional frontend pages (Accounts, Transactions, Budgets)
 
 ### Medium Term (Week 9-16)
 - [ ] Rules engine for auto-categorization
@@ -375,10 +378,26 @@ Manual installation guide with:
 - Next.js 14 with TypeScript and Tailwind CSS
 - Complete API client with automatic JWT token management
 - Authentication system (login, registration)
-- Dashboard page with real-time financial metrics
+- Dashboard page with real-time financial metrics and interactive charts
+  - Category spending pie chart with Recharts
+  - 6-month income vs expenses trend line chart
+  - Account summary cards (assets, liabilities, net worth)
+  - Budget status with progress bars
+  - Top spending categories
+- Accounts management (full CRUD interface)
+  - List view with sortable table
+  - Create, edit, delete operations
+  - 7 account types with color-coded badges
+  - Balance tracking and currency formatting
+- Transactions management (full CRUD with filtering)
+  - Comprehensive transaction list
+  - Filter by account, category, and type
+  - Color-coded transaction types
+  - Date, payee, and description tracking
 - Responsive layout with navigation
 - Type-safe API integration
 - Currency and date formatting utilities
+- Reusable form components
 - Running in Docker on http://localhost:3001
 
 #### Infrastructure
@@ -394,17 +413,18 @@ Manual installation guide with:
 ### 🔄 Next Priorities
 
 #### Immediate (Next Sprint)
-1. [ ] Add charts to dashboard (recharts integration)
-2. [ ] Accounts page (view, create, edit accounts)
-3. [ ] Transactions page (view, create, edit, filter transactions)
+1. [x] Add charts to dashboard (recharts integration) ✅
+2. [x] Accounts page (view, create, edit accounts) ✅
+3. [x] Transactions page (view, create, edit, filter transactions) ✅
 4. [ ] Budgets page (view, create, edit budgets)
-5. [ ] CSV import functionality
+5. [ ] Categories management page
+6. [ ] CSV import functionality
 
 #### This Month
-1. [ ] Categories management page
-2. [ ] Advanced filtering and search
-3. [ ] Reports page with downloadable exports
-4. [ ] User settings and profile management
+1. [ ] Reports page with downloadable exports
+2. [ ] User settings and profile management
+3. [ ] Advanced date range filtering
+4. [ ] Transaction search functionality
 5. [ ] Mobile-responsive improvements
 
 ## Resources and References
@@ -442,17 +462,19 @@ Manual installation guide with:
 
 ---
 
-**Project Status**: MVP Development - Frontend Foundation Complete ✅
-**Current Phase**: Building Frontend Pages & User Interface
-**Next Phase**: CSV Import, Charts, and Advanced Features
+**Project Status**: MVP Development - Core Features Complete ✅
+**Current Phase**: Completing Budgets & Categories Management
+**Next Phase**: CSV Import and Advanced Features
 **Last Updated**: January 11, 2026
 
 ### Recent Progress
 - ✅ Complete backend API (Auth, Accounts, Categories, Transactions, Budgets, Reports)
 - ✅ Dashboard & Reports API with financial analytics
-- ✅ **Frontend foundation with Next.js 14** ← Latest!
-- ✅ **Authentication flow (login/register)** ← Latest!
-- ✅ **Dashboard page with financial summary** ← Latest!
+- ✅ Frontend foundation with Next.js 14
+- ✅ Authentication flow (login/register)
+- ✅ **Dashboard with interactive charts (pie chart, line chart)** ← Latest!
+- ✅ **Accounts management (full CRUD)** ← Latest!
+- ✅ **Transactions management (full CRUD with filtering)** ← Latest!
 - ✅ GitHub Actions CI/CD for automated testing
 - ✅ 91% test coverage (61 tests passing)
 - ✅ Demo user with realistic financial data
