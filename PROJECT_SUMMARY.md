@@ -158,9 +158,9 @@ shark-fin/
 - [x] Dashboard charts and visualizations
 - [x] Accounts page (view, create, edit, delete)
 - [x] Transactions page (view, create, edit, delete, filter)
-- [ ] Budgets page (view, create, edit, delete)
-- [ ] Categories management page
-- [ ] CSV import
+- [x] Budgets page (view, create, edit, delete)
+- [x] Categories management page
+- [ ] Transaction import system (CSV + Plaid foundation)
 
 ### Medium Term (Week 9-16)
 - [ ] Rules engine for auto-categorization
@@ -394,6 +394,18 @@ Manual installation guide with:
   - Filter by account, category, and type
   - Color-coded transaction types
   - Date, payee, and description tracking
+- Budgets management (full CRUD with progress tracking)
+  - Card-based budget display
+  - Color-coded progress bars (green/yellow/red)
+  - Period types (weekly, monthly, quarterly, yearly)
+  - Alert thresholds and rollover support
+  - Real-time spending vs budget calculations
+- Categories management (full CRUD with hierarchy)
+  - Table view with type filtering
+  - Hierarchical parent/subcategory support
+  - Color picker with hex validation
+  - Icon support for emojis
+  - System category protection
 - Responsive layout with navigation
 - Type-safe API integration
 - Currency and date formatting utilities
@@ -416,16 +428,22 @@ Manual installation guide with:
 1. [x] Add charts to dashboard (recharts integration) ✅
 2. [x] Accounts page (view, create, edit accounts) ✅
 3. [x] Transactions page (view, create, edit, filter transactions) ✅
-4. [ ] Budgets page (view, create, edit budgets)
-5. [ ] Categories management page
-6. [ ] CSV import functionality
+4. [x] Budgets page (view, create, edit budgets) ✅
+5. [x] Categories management page ✅
+6. [ ] Transaction Import System
+   - [ ] Backend: CSV file upload and parsing endpoint
+   - [ ] Backend: Plaid integration foundation (Link token, item exchange)
+   - [ ] Backend: Connected accounts storage and management
+   - [ ] Frontend: CSV upload interface with column mapping
+   - [ ] Frontend: Plaid Link integration component
+   - [ ] Frontend: Import history and status tracking
 
 #### This Month
 1. [ ] Reports page with downloadable exports
 2. [ ] User settings and profile management
-3. [ ] Advanced date range filtering
-4. [ ] Transaction search functionality
-5. [ ] Mobile-responsive improvements
+3. [ ] Transaction syncing from Plaid-connected accounts
+4. [ ] Auto-categorization rules engine
+5. [ ] Recurring transactions management
 
 ## Resources and References
 
@@ -462,19 +480,21 @@ Manual installation guide with:
 
 ---
 
-**Project Status**: MVP Development - Core Features Complete ✅
-**Current Phase**: Completing Budgets & Categories Management
-**Next Phase**: CSV Import and Advanced Features
-**Last Updated**: January 11, 2026
+**Project Status**: MVP Development - Core CRUD Complete ✅
+**Current Phase**: Transaction Import System (CSV + Plaid)
+**Next Phase**: Reports, Settings, and Advanced Features
+**Last Updated**: January 12, 2026
 
 ### Recent Progress
 - ✅ Complete backend API (Auth, Accounts, Categories, Transactions, Budgets, Reports)
 - ✅ Dashboard & Reports API with financial analytics
 - ✅ Frontend foundation with Next.js 14
 - ✅ Authentication flow (login/register)
-- ✅ **Dashboard with interactive charts (pie chart, line chart)** ← Latest!
-- ✅ **Accounts management (full CRUD)** ← Latest!
-- ✅ **Transactions management (full CRUD with filtering)** ← Latest!
+- ✅ Dashboard with interactive charts (pie chart, line chart)
+- ✅ Accounts management (full CRUD)
+- ✅ Transactions management (full CRUD with filtering)
+- ✅ **Budgets management (full CRUD with progress tracking)** ← Latest!
+- ✅ **Categories management (hierarchical with color/icon support)** ← Latest!
 - ✅ GitHub Actions CI/CD for automated testing
 - ✅ 91% test coverage (61 tests passing)
 - ✅ Demo user with realistic financial data
