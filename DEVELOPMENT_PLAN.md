@@ -10,6 +10,161 @@ A self-hosted, open-source financial planning, budgeting, and management applica
 
 This application aims to provide feature parity with applications like Mint (now discontinued) and Firefly III, offering users complete control over their financial data through self-hosting.
 
+## Development Progress Checklist
+
+**Last Updated**: January 13, 2026
+**Current Phase**: Phase 2 - Advanced Features (Rules Engine & Recurring Transactions)
+
+### Phase 1: MVP Foundation ✅ COMPLETED
+
+#### Week 1-2: Project Setup ✅
+- [x] Initialize Next.js and FastAPI projects
+- [x] Configure Docker Compose environment
+- [x] Set up PostgreSQL database with Alembic migrations
+- [x] Implement authentication system (JWT)
+- [x] Create basic user registration/login
+- [x] Set up GitHub Actions CI/CD
+
+#### Week 3-4: Account & Transaction Management ✅
+- [x] Build account CRUD operations (Backend + Frontend)
+- [x] Implement transaction creation and listing (Backend + Frontend)
+- [x] Add basic categorization system (Backend + Frontend)
+- [x] Create transaction import from CSV
+- [x] Create transaction import from OFX/QFX
+- [x] Build simple dashboard view
+
+#### Week 5-6: Budgeting System ✅
+- [x] Implement budget creation and management (Backend + Frontend)
+- [x] Add budget tracking and alerts
+- [x] Create budget vs actual reports
+- [x] Build category management UI (hierarchical with color/icon support)
+- [x] Add tags functionality (Backend)
+
+#### Week 7-8: Reporting & Polish ✅
+- [x] Create dashboard with key metrics
+- [x] Build basic reports (spending by category, income vs expenses)
+- [x] Add date range filters
+- [x] Implement data export (CSV)
+- [x] Add interactive charts (Recharts - pie chart, line chart)
+- [x] Write comprehensive README and deployment docs
+
+#### Import System Enhancements ✅
+- [x] Smart CSV format detection (Mint, Chase, BofA, Wells Fargo)
+- [x] Column mapping interface for custom CSV files
+- [x] OFX/QFX import with FITID tracking
+- [x] Fuzzy duplicate detection with confidence scoring
+- [x] Import history page with rollback capability
+- [x] Multi-step import wizard UI
+- [x] Drag-and-drop file upload interface
+
+**Phase 1 Status**: ✅ Complete - All MVP features delivered
+
+### Phase 2: Advanced Features 🔄 IN PROGRESS
+
+#### Week 9-10: Rules Engine ⏳ NEXT
+- [ ] Backend: Rule model (if/then conditions)
+- [ ] Backend: Rule execution engine
+- [ ] Backend: Pattern matching for transactions
+  - [ ] Payee contains/matches text
+  - [ ] Amount greater/less than
+  - [ ] Description patterns
+- [ ] Backend: Rule priority system
+- [ ] Backend: Bulk rule application to historical transactions
+- [ ] Frontend: Rules management page
+- [ ] Frontend: Rule creation/editing interface
+- [ ] Frontend: Rule testing interface
+- [ ] Tests: Comprehensive rule engine test coverage
+
+#### Week 11-12: Goals & Advanced Reporting ⏳
+- [ ] Backend: Savings goals model and API
+- [ ] Backend: Debt tracking with payoff calculations
+- [ ] Backend: Net worth tracking over time
+- [ ] Backend: Cash flow forecasting
+- [ ] Frontend: Goals management page
+- [ ] Frontend: Goal progress visualization
+- [ ] Frontend: Net worth trend chart
+- [ ] Frontend: Cash flow forecast view
+- [ ] Tests: Goals and advanced reports tests
+
+#### Week 13-14: Bill Tracking & Recurring Transactions ⏳
+- [ ] Backend: Recurring transaction templates
+- [ ] Backend: Automated transaction generation engine
+- [ ] Backend: Schedule management (daily, weekly, monthly, yearly)
+- [ ] Backend: Bill reminders system
+- [ ] Frontend: Recurring transactions page
+- [ ] Frontend: Template creation and editing
+- [ ] Frontend: Calendar view of upcoming bills
+- [ ] Frontend: Subscription detection interface
+- [ ] Tests: Recurring transactions test coverage
+
+#### Week 15-16: Data Management & Backup ⏳
+- [ ] Backend: Full data backup export
+- [ ] Backend: Data restore functionality
+- [ ] Backend: Import history tracking improvements
+- [ ] Backend: Data migration tools
+- [ ] Frontend: Backup/restore interface
+- [ ] Frontend: Import history enhancements
+- [ ] Tests: Backup and restore tests
+
+**Phase 2 Status**: 🔄 In Progress - Starting with Rules Engine
+
+### Phase 3: Premium Features ⏳ PLANNED
+
+#### Week 17-20: Investment Tracking
+- [ ] Backend: Investment account type support
+- [ ] Backend: Portfolio holdings tracking
+- [ ] Backend: Performance metrics (ROI, gains/losses)
+- [ ] Backend: Dividend tracking
+- [ ] Backend: Asset allocation calculations
+- [ ] Frontend: Portfolio management page
+- [ ] Frontend: Investment performance charts
+- [ ] Frontend: Asset allocation visualization
+- [ ] Tests: Investment tracking test coverage
+
+#### Week 21-22: Analytics & ML Features
+- [ ] Backend: Spending pattern detection
+- [ ] Backend: Anomaly detection algorithms
+- [ ] Backend: Predictive budgeting engine
+- [ ] Backend: Spending insights generation
+- [ ] Frontend: Insights dashboard
+- [ ] Frontend: Spending pattern visualization
+- [ ] Frontend: Predictive budget suggestions
+- [ ] Tests: Analytics and ML tests
+
+#### Week 23-24: Advanced Features
+- [ ] Backend: Credit score integration (API)
+- [ ] Backend: Tax report generation
+- [ ] Backend: Custom report builder engine
+- [ ] Frontend: Credit score monitoring page
+- [ ] Frontend: Tax reports interface
+- [ ] Frontend: Custom report builder UI
+- [ ] Tests: Advanced features test coverage
+
+**Phase 3 Status**: ⏳ Planned
+
+### Phase 4: Mobile & Collaboration ⏳ FUTURE
+
+#### Mobile Application
+- [ ] React Native project setup
+- [ ] Mobile UI components
+- [ ] Quick transaction entry
+- [ ] Receipt capture with OCR
+- [ ] Push notifications
+- [ ] Biometric authentication
+- [ ] Offline mode support
+
+#### Collaboration Features
+- [ ] Shared budgets support
+- [ ] Multi-user accounts
+- [ ] Permission levels (view/edit)
+- [ ] Activity log/audit trail
+- [ ] Comments on transactions
+- [ ] User invitations system
+
+**Phase 4 Status**: ⏳ Future development
+
+---
+
 ## Technology Stack
 
 ### Frontend
