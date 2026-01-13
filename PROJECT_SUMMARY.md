@@ -56,25 +56,25 @@
 ✅ Transaction categorization and tagging
 ✅ Basic budgeting system
 ✅ CSV import for transactions
+✅ OFX/QFX import for transactions
 ✅ Dashboard with key metrics
 ✅ Basic reports (spending by category, income vs expenses)
 
 ### Phase 2 (Advanced - 16 weeks total)
-✅ Automated categorization rules
-✅ Recurring transactions
-✅ Savings goals and debt tracking
-✅ Bill tracking and reminders
-✅ Advanced reporting (cash flow, net worth trends)
-✅ OFX/QFX import support
-✅ Full data backup and restore
+⏳ Automated categorization rules
+⏳ Recurring transactions
+⏳ Savings goals and debt tracking
+⏳ Bill tracking and reminders
+⏳ Advanced reporting (cash flow, net worth trends)
+⏳ Full data backup and restore
 
 ### Phase 3 (Premium - 24 weeks total)
-✅ Bank account aggregation (via Plaid)
-✅ Investment portfolio tracking
-✅ Credit score monitoring
-✅ ML-powered spending insights
-✅ Predictive budgeting
-✅ Advanced analytics
+❌ Bank account aggregation (via Plaid) - Replaced with OFX/QFX for privacy
+⏳ Investment portfolio tracking
+⏳ Credit score monitoring
+⏳ ML-powered spending insights
+⏳ Predictive budgeting
+⏳ Advanced analytics
 
 ### Phase 4 (Future)
 📱 React Native mobile app
@@ -147,7 +147,7 @@ shark-fin/
 - [x] Implement authentication system
 - [x] Set up CI/CD with GitHub Actions
 
-### Short Term (Week 3-8) 🔄 IN PROGRESS
+### Short Term (Week 3-8) ✅ COMPLETED
 - [x] Account CRUD operations (Backend)
 - [x] Transaction management (Backend)
 - [x] Basic categorization (Backend)
@@ -160,22 +160,22 @@ shark-fin/
 - [x] Transactions page (view, create, edit, delete, filter)
 - [x] Budgets page (view, create, edit, delete)
 - [x] Categories management page
-- [ ] Transaction import system (CSV + Plaid foundation)
+- [x] Transaction import system (CSV + OFX/QFX with duplicate detection)
 
-### Medium Term (Week 9-16)
+### Medium Term (Week 9-16) 🔄 IN PROGRESS
 - [ ] Rules engine for auto-categorization
 - [ ] Recurring transactions
 - [ ] Goals and savings tracking
 - [ ] Bill tracking
 - [ ] Advanced reporting
-- [ ] OFX/QFX import
+- [ ] Full data backup and restore
 
 ### Long Term (Week 17-24)
-- [ ] Plaid integration for bank sync
 - [ ] Investment tracking
 - [ ] ML-powered insights
 - [ ] Credit score monitoring
 - [ ] Mobile app (React Native)
+- [ ] Multi-user and shared budgets
 
 ## Architecture Highlights
 
@@ -374,6 +374,29 @@ Manual installation guide with:
 - Spending by category breakdown
 - 8 comprehensive dashboard/reports tests
 
+#### Transaction Import System
+- Complete CSV import with smart format detection
+  - Auto-detect Mint, Chase, BofA, Wells Fargo formats
+  - Column mapping interface for custom CSV files
+  - Sample data preview before import
+- OFX/QFX file import support
+  - Quicken-compatible bank downloads
+  - FITID tracking for deduplication
+  - Account and transaction parsing
+- Fuzzy duplicate detection
+  - Multi-layered matching (date ±2 days, exact amount, description similarity)
+  - Levenshtein distance algorithm with 70% threshold
+  - Confidence scoring (High, Medium, Very High)
+  - Side-by-side comparison review
+- Import history and management
+  - Track all imports with status and counts
+  - Rollback capability for completed imports
+  - Import statistics (imported, duplicates, errors)
+  - File type and account tracking
+- 8 backend API endpoints with full test coverage
+- Multi-step wizard UI with progress indicator
+- Drag-and-drop file upload interface
+
 #### Frontend Application
 - Next.js 14 with TypeScript and Tailwind CSS
 - Complete API client with automatic JWT token management
@@ -406,6 +429,13 @@ Manual installation guide with:
   - Color picker with hex validation
   - Icon support for emojis
   - System category protection
+- Import wizard with multi-step flow
+  - File upload (CSV/OFX/QFX)
+  - Column mapping (CSV only)
+  - Transaction preview
+  - Duplicate review and selection
+  - Import results summary
+- Import history page with rollback capability
 - Responsive layout with navigation
 - Type-safe API integration
 - Currency and date formatting utilities
@@ -425,25 +455,25 @@ Manual installation guide with:
 ### 🔄 Next Priorities
 
 #### Immediate (Next Sprint)
-1. [x] Add charts to dashboard (recharts integration) ✅
-2. [x] Accounts page (view, create, edit accounts) ✅
-3. [x] Transactions page (view, create, edit, filter transactions) ✅
-4. [x] Budgets page (view, create, edit budgets) ✅
-5. [x] Categories management page ✅
-6. [ ] Transaction Import System
-   - [ ] Backend: CSV file upload and parsing endpoint
-   - [ ] Backend: Plaid integration foundation (Link token, item exchange)
-   - [ ] Backend: Connected accounts storage and management
-   - [ ] Frontend: CSV upload interface with column mapping
-   - [ ] Frontend: Plaid Link integration component
-   - [ ] Frontend: Import history and status tracking
+1. [ ] Rules engine for auto-categorization
+   - Backend: Rule model (if/then conditions)
+   - Backend: Rule execution engine
+   - Backend: Pattern matching for transactions
+   - Frontend: Rules management page
+   - Frontend: Rule testing interface
+2. [ ] Recurring transactions
+   - Backend: Recurring transaction templates
+   - Backend: Automated transaction generation
+   - Backend: Schedule management (daily, weekly, monthly, yearly)
+   - Frontend: Recurring transactions page
+   - Frontend: Template creation and editing
 
 #### This Month
-1. [ ] Reports page with downloadable exports
-2. [ ] User settings and profile management
-3. [ ] Transaction syncing from Plaid-connected accounts
-4. [ ] Auto-categorization rules engine
-5. [ ] Recurring transactions management
+1. [ ] Goals and savings tracking
+2. [ ] Bill tracking and reminders
+3. [ ] Advanced reporting (cash flow, net worth trends)
+4. [ ] User settings and profile management
+5. [ ] Full data backup and restore
 
 ## Resources and References
 
@@ -480,10 +510,10 @@ Manual installation guide with:
 
 ---
 
-**Project Status**: MVP Development - Core CRUD Complete ✅
-**Current Phase**: Transaction Import System (CSV + Plaid)
-**Next Phase**: Reports, Settings, and Advanced Features
-**Last Updated**: January 12, 2026
+**Project Status**: MVP Development - Phase 1 Complete ✅
+**Current Phase**: Advanced Features (Phase 2 - Rules & Recurring Transactions)
+**Next Phase**: Goals, Bill Tracking, and Advanced Reporting
+**Last Updated**: January 13, 2026
 
 ### Recent Progress
 - ✅ Complete backend API (Auth, Accounts, Categories, Transactions, Budgets, Reports)
@@ -493,8 +523,10 @@ Manual installation guide with:
 - ✅ Dashboard with interactive charts (pie chart, line chart)
 - ✅ Accounts management (full CRUD)
 - ✅ Transactions management (full CRUD with filtering)
-- ✅ **Budgets management (full CRUD with progress tracking)** ← Latest!
-- ✅ **Categories management (hierarchical with color/icon support)** ← Latest!
+- ✅ Budgets management (full CRUD with progress tracking)
+- ✅ Categories management (hierarchical with color/icon support)
+- ✅ **Transaction Import System (CSV + OFX/QFX with duplicate detection)** ← Latest!
+- ✅ **Import History with rollback capability** ← Latest!
 - ✅ GitHub Actions CI/CD for automated testing
 - ✅ 91% test coverage (61 tests passing)
 - ✅ Demo user with realistic financial data
