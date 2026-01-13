@@ -25,4 +25,21 @@ export const transactionsAPI = {
   async delete(id: number): Promise<void> {
     await apiClient.delete(`/api/v1/transactions/${id}`);
   },
+
+  async getPayeeSuggestions(query?: string): Promise<string[]> {
+    const { data } = await apiClient.get<string[]>("/api/v1/transactions/suggestions/payees", {
+      params: { q: query, limit: 10 },
+    });
+    return data;
+  },
+
+  async getCategorySuggestion(payee: string): Promise<{ category_id: number | null }> {
+    const { data } = await apiClient.get<{ category_id: number | null }>(
+      "/api/v1/transactions/suggestions/category",
+      {
+        params: { payee },
+      }
+    );
+    return data;
+  },
 };

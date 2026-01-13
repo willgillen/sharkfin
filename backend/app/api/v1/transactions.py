@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
@@ -123,3 +124,55 @@ def delete_transaction(
     db.delete(transaction)
     db.commit()
     return None
+
+
+@router.get("/suggestions/payees", response_model=List[str])
+def get_payee_suggestions(
+    q: Optional[str] = Query(None, min_length=1),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get payee suggestions for autocomplete based on transaction history."""
+    query = db.query(TransactionModel.payee).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.payee.isnot(None),
+        TransactionModel.payee != ""
+    )
+
+    # Filter by search query if provided
+    if q:
+        query = query.filter(TransactionModel.payee.ilike(f"%{q}%"))
+
+    # Group by payee and order by frequency (most used first)
+    payees = query.group_by(TransactionModel.payee)\
+        .order_by(desc(func.count(TransactionModel.payee)))\
+        .limit(limit)\
+        .all()
+
+    return [payee[0] for payee in payees]
+
+
+@router.get("/suggestions/category", response_model=Dict[str, Optional[int]])
+def get_category_suggestion(
+    payee: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get suggested category for a payee based on transaction history."""
+    # Find the most frequently used category for this payee
+    result = db.query(
+        TransactionModel.category_id,
+        func.count(TransactionModel.category_id).label('count')
+    ).filter(
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.payee.ilike(f"%{payee}%"),
+        TransactionModel.category_id.isnot(None)
+    ).group_by(TransactionModel.category_id)\
+     .order_by(desc('count'))\
+     .first()
+
+    if result:
+        return {"category_id": result[0]}
+
+    return {"category_id": None}

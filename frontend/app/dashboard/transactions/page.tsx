@@ -7,6 +7,7 @@ import { transactionsAPI, accountsAPI, categoriesAPI } from "@/lib/api";
 import { Transaction, Account, Category, TransactionType } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import QuickAddBar from "@/components/transactions/QuickAddBar";
 
 export default function TransactionsPage() {
   const router = useRouter();
@@ -126,6 +127,9 @@ export default function TransactionsPage() {
             <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
+
+        {/* Quick Add Bar */}
+        <QuickAddBar onTransactionAdded={loadData} />
 
         {/* Filters */}
         <div className="mb-6 bg-white shadow rounded-lg p-4">
