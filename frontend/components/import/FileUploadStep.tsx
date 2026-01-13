@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { accountsAPI, importsAPI } from "@/lib/api";
 import { Account } from "@/types";
@@ -17,23 +17,23 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
   const [loadingAccounts, setLoadingAccounts] = useState(true);
 
   // Load accounts on mount
-  useState(() => {
-    loadAccounts();
-  });
-
-  const loadAccounts = async () => {
-    try {
-      const data = await accountsAPI.getAll();
-      setAccounts(data);
-      if (data.length > 0) {
-        setSelectedAccountId(data[0].id);
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const data = await accountsAPI.getAll();
+        setAccounts(data);
+        if (data.length > 0) {
+          setSelectedAccountId(data[0].id);
+        }
+      } catch (err) {
+        onError("Failed to load accounts");
+      } finally {
+        setLoadingAccounts(false);
       }
-    } catch (err) {
-      onError("Failed to load accounts");
-    } finally {
-      setLoadingAccounts(false);
-    }
-  };
+    };
+
+    loadAccounts();
+  }, [onError]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
