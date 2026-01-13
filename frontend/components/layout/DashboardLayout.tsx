@@ -15,6 +15,7 @@ const navigation = [
   { name: "Transactions", href: "/dashboard/transactions" },
   { name: "Budgets", href: "/dashboard/budgets" },
   { name: "Reports", href: "/dashboard/reports" },
+  { name: "Import", href: "/dashboard/import" },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
