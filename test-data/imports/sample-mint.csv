@@ -1,0 +1,11 @@
+Date,Description,Original Description,Amount,Transaction Type,Category,Account Name,Labels,Notes
+01/15/2024,Amazon Purchase,AMAZON.COM*ABCDEF123,45.99,debit,Shopping,Chase Checking,,
+01/16/2024,Grocery Store,WHOLE FOODS MARKET #456,127.34,debit,Groceries,Chase Checking,,Weekly groceries
+01/17/2024,Salary Deposit,ACME CORP PAYROLL,3500.00,credit,Income,Chase Checking,,Bi-weekly paycheck
+01/18/2024,Gas Station,SHELL OIL 78912345,52.00,debit,Gas & Fuel,Chase Checking,,
+01/19/2024,Restaurant,OLIVE GARDEN #1234,78.50,debit,Restaurants,Chase Checking,,Dinner with family
+01/20/2024,Electric Bill,ELECTRIC CO AUTO PAY,145.23,debit,Utilities,Chase Checking,,Monthly electric
+01/22/2024,Coffee Shop,STARBUCKS STORE 9876,5.75,debit,Coffee Shops,Chase Checking,,
+01/23/2024,Online Subscription,NETFLIX.COM,15.99,debit,Entertainment,Chase Checking,,Monthly subscription
+01/24/2024,Pharmacy,WALGREENS #5432,28.99,debit,Health & Fitness,Chase Checking,,Prescription refill
+01/25/2024,Rent Payment,PROPERTY MGT CO,1850.00,debit,Rent,Chase Checking,,January rent

@@ -288,3 +288,73 @@ export interface IncomeVsExpensesResponse {
 export interface APIError {
   detail: string | { msg: string; type: string }[];
 }
+
+// Import types
+export interface CSVColumnMapping {
+  date: string;
+  amount: string;
+  description?: string;
+  payee?: string;
+  category?: string;
+  notes?: string;
+}
+
+export interface CSVPreviewResponse {
+  columns: string[];
+  sample_rows: Record<string, any>[];
+  detected_format?: string;
+  suggested_mapping?: CSVColumnMapping;
+  row_count: number;
+}
+
+export interface OFXPreviewResponse {
+  account_name: string;
+  account_type: string;
+  account_number?: string;
+  bank_name?: string;
+  start_date?: string;
+  end_date?: string;
+  transaction_count: number;
+  sample_transactions: any[];
+}
+
+export interface PotentialDuplicate {
+  existing_transaction_id: number;
+  existing_date: string;
+  existing_amount: string;
+  existing_description?: string;
+  new_transaction: Record<string, any>;
+  confidence_score: number;
+}
+
+export interface DuplicatesResponse {
+  duplicates: PotentialDuplicate[];
+  total_new_transactions: number;
+  total_duplicates: number;
+}
+
+export interface ImportExecuteResponse {
+  import_id: number;
+  status: string;
+  total_rows: number;
+  imported_count: number;
+  duplicate_count: number;
+  error_count: number;
+  message: string;
+}
+
+export interface ImportHistoryResponse {
+  id: number;
+  import_type: "csv" | "ofx" | "qfx";
+  filename: string;
+  account_id?: number;
+  account_name?: string;
+  total_rows: number;
+  imported_count: number;
+  duplicate_count: number;
+  error_count: number;
+  status: "pending" | "completed" | "failed" | "cancelled";
+  started_at: string;
+  completed_at?: string;
+  can_rollback: boolean;
+}

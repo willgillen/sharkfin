@@ -1,0 +1,463 @@
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from app.api.deps import get_current_active_user, get_db
+from app.models.user import User
+from app.models.account import Account
+from app.models.transaction import Transaction, TransactionType
+from app.models.import_history import ImportHistory, ImportedTransaction
+from app.schemas.imports import (
+    CSVPreviewResponse,
+    OFXPreviewResponse,
+    DuplicatesResponse,
+    ImportExecuteResponse,
+    ImportHistoryResponse,
+    CSVColumnMapping,
+    ImportStatus,
+)
+from app.services.import_service import ImportService
+from app.services.ofx_service import OFXService
+from app.services.duplicate_detection_service import DuplicateDetectionService
+import json
+
+router = APIRouter()
+
+
+@router.post("/csv/preview", response_model=CSVPreviewResponse)
+async def preview_csv(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Upload CSV and get preview with suggested column mapping"""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be CSV format")
+
+    contents = await file.read()
+
+    try:
+        service = ImportService(db)
+        df = service.parse_csv(contents)
+
+        # Detect format and suggest mapping
+        format_type = service.detect_csv_format(df)
+        suggested_mapping = service.get_suggested_mapping(df, format_type)
+
+        return CSVPreviewResponse(
+            columns=df.columns.tolist(),
+            sample_rows=df.head(5).fillna('').to_dict('records'),
+            detected_format=format_type,
+            suggested_mapping=suggested_mapping,
+            row_count=len(df)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse CSV file: {str(e)}"
+        )
+
+
+@router.post("/ofx/preview", response_model=OFXPreviewResponse)
+async def preview_ofx(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Upload OFX/QFX and get preview"""
+    if not (file.filename.endswith('.ofx') or file.filename.endswith('.qfx')):
+        raise HTTPException(status_code=400, detail="File must be OFX or QFX format")
+
+    contents = await file.read()
+
+    try:
+        result = OFXService.parse_ofx(contents)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse OFX file: {str(e)}")
+
+    return OFXPreviewResponse(
+        account_name=result['account_name'],
+        account_type=result['account_type'],
+        account_number=result.get('account_number'),
+        bank_name=result.get('bank_name'),
+        start_date=result.get('start_date'),
+        end_date=result.get('end_date'),
+        transaction_count=len(result['transactions']),
+        sample_transactions=result['transactions'][:5]
+    )
+
+
+@router.post("/csv/detect-duplicates", response_model=DuplicatesResponse)
+async def detect_csv_duplicates(
+    file: UploadFile = File(...),
+    account_id: int = Form(...),
+    column_mapping: str = Form(...),  # JSON string
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Check for duplicate transactions before importing CSV"""
+    # Verify account ownership
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == current_user.id
+    ).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    contents = await file.read()
+
+    try:
+        # Parse column mapping from JSON string
+        mapping_dict = json.loads(column_mapping)
+        column_map = CSVColumnMapping(**mapping_dict)
+
+        service = ImportService(db)
+        df = service.parse_csv(contents)
+
+        # Map CSV to transactions
+        mapped_transactions = service.map_csv_to_transactions(df, column_map)
+
+        # Find duplicates
+        duplicates = service.duplicate_detector.find_duplicates(
+            current_user.id,
+            account_id,
+            mapped_transactions
+        )
+
+        return DuplicatesResponse(
+            duplicates=duplicates,
+            total_new_transactions=len(mapped_transactions),
+            total_duplicates=len(duplicates)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to detect duplicates: {str(e)}"
+        )
+
+
+@router.post("/ofx/detect-duplicates", response_model=DuplicatesResponse)
+async def detect_ofx_duplicates(
+    file: UploadFile = File(...),
+    account_id: int = Form(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Check for duplicate transactions before importing OFX"""
+    # Verify account ownership
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == current_user.id
+    ).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    contents = await file.read()
+
+    try:
+        ofx_service = OFXService()
+        parsed = ofx_service.parse_ofx(contents)
+        transactions = parsed['transactions']
+
+        # Find duplicates
+        service = ImportService(db)
+        duplicates = service.duplicate_detector.find_duplicates(
+            current_user.id,
+            account_id,
+            transactions
+        )
+
+        return DuplicatesResponse(
+            duplicates=duplicates,
+            total_new_transactions=len(transactions),
+            total_duplicates=len(duplicates)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to detect duplicates: {str(e)}"
+        )
+
+
+@router.post("/csv/execute", response_model=ImportExecuteResponse)
+async def execute_csv_import(
+    file: UploadFile = File(...),
+    account_id: int = Form(...),
+    column_mapping: str = Form(...),  # JSON string
+    skip_rows: str = Form(default="[]"),  # JSON array of row numbers to skip
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Execute CSV import after user confirmation"""
+    # Verify account ownership
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == current_user.id
+    ).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    contents = await file.read()
+
+    try:
+        # Parse parameters
+        mapping_dict = json.loads(column_mapping)
+        column_map = CSVColumnMapping(**mapping_dict)
+        skip_row_list = json.loads(skip_rows)
+
+        service = ImportService(db)
+        df = service.parse_csv(contents)
+
+        # Create import record
+        import_record = service.create_import_record(
+            user_id=current_user.id,
+            account_id=account_id,
+            filename=file.filename,
+            import_type="csv",
+            total_rows=len(df),
+            file_size=len(contents)
+        )
+
+        # Map and import transactions
+        mapped_transactions = service.map_csv_to_transactions(df, column_map, skip_row_list)
+
+        imported_count = 0
+        error_count = 0
+
+        for trans_data in mapped_transactions:
+            try:
+                # Create transaction
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    account_id=account_id,
+                    amount=trans_data['amount'],
+                    type=TransactionType[trans_data['type']],
+                    date=trans_data['date'],
+                    description=trans_data.get('description'),
+                    payee=trans_data.get('payee'),
+                    notes=trans_data.get('notes'),
+                )
+                db.add(transaction)
+                db.flush()  # Get transaction ID
+
+                # Link to import
+                imported_txn = ImportedTransaction(
+                    import_id=import_record.id,
+                    transaction_id=transaction.id,
+                    row_number=trans_data.get('row')
+                )
+                db.add(imported_txn)
+                imported_count += 1
+
+            except Exception as e:
+                error_count += 1
+                print(f"Error importing transaction: {e}")
+
+        # Commit all transactions
+        db.commit()
+
+        # Update import record
+        service.complete_import_record(
+            import_id=import_record.id,
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count
+        )
+
+        return ImportExecuteResponse(
+            import_id=import_record.id,
+            status=ImportStatus.COMPLETED,
+            total_rows=len(df),
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count,
+            message=f"Successfully imported {imported_count} transactions"
+        )
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to import transactions: {str(e)}"
+        )
+
+
+@router.post("/ofx/execute", response_model=ImportExecuteResponse)
+async def execute_ofx_import(
+    file: UploadFile = File(...),
+    account_id: int = Form(...),
+    skip_rows: str = Form(default="[]"),  # JSON array of row numbers to skip
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Execute OFX/QFX import after user confirmation"""
+    # Verify account ownership
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == current_user.id
+    ).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    contents = await file.read()
+
+    try:
+        skip_row_list = json.loads(skip_rows)
+
+        ofx_service = OFXService()
+        parsed = ofx_service.parse_ofx(contents)
+        transactions = parsed['transactions']
+
+        service = ImportService(db)
+
+        # Create import record
+        import_type = "qfx" if file.filename.endswith('.qfx') else "ofx"
+        import_record = service.create_import_record(
+            user_id=current_user.id,
+            account_id=account_id,
+            filename=file.filename,
+            import_type=import_type,
+            total_rows=len(transactions),
+            file_size=len(contents)
+        )
+
+        imported_count = 0
+        error_count = 0
+
+        for idx, trans_data in enumerate(transactions):
+            if idx in skip_row_list:
+                continue
+
+            try:
+                # Create transaction
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    account_id=account_id,
+                    amount=trans_data['amount'],
+                    type=TransactionType[trans_data['type']],
+                    date=trans_data['date'],
+                    description=trans_data.get('description'),
+                    payee=trans_data.get('payee'),
+                    notes=f"FITID:{trans_data.get('fitid')}" if trans_data.get('fitid') else None,
+                )
+                db.add(transaction)
+                db.flush()
+
+                # Link to import
+                imported_txn = ImportedTransaction(
+                    import_id=import_record.id,
+                    transaction_id=transaction.id,
+                    row_number=idx
+                )
+                db.add(imported_txn)
+                imported_count += 1
+
+            except Exception as e:
+                error_count += 1
+                print(f"Error importing transaction: {e}")
+
+        db.commit()
+
+        # Update import record
+        service.complete_import_record(
+            import_id=import_record.id,
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count
+        )
+
+        return ImportExecuteResponse(
+            import_id=import_record.id,
+            status=ImportStatus.COMPLETED,
+            total_rows=len(transactions),
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count,
+            message=f"Successfully imported {imported_count} transactions"
+        )
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to import transactions: {str(e)}"
+        )
+
+
+@router.get("/history", response_model=List[ImportHistoryResponse])
+async def get_import_history(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 50
+):
+    """Get user's import history"""
+    imports = db.query(ImportHistory).filter(
+        ImportHistory.user_id == current_user.id
+    ).order_by(ImportHistory.started_at.desc()).offset(skip).limit(limit).all()
+
+    # Enrich with account names
+    result = []
+    for imp in imports:
+        account_name = None
+        if imp.account_id:
+            account = db.query(Account).filter(Account.id == imp.account_id).first()
+            if account:
+                account_name = account.name
+
+        result.append(ImportHistoryResponse(
+            id=imp.id,
+            import_type=imp.import_type,
+            filename=imp.filename,
+            account_id=imp.account_id,
+            account_name=account_name,
+            total_rows=imp.total_rows,
+            imported_count=imp.imported_count,
+            duplicate_count=imp.duplicate_count,
+            error_count=imp.error_count,
+            status=imp.status,
+            started_at=imp.started_at,
+            completed_at=imp.completed_at,
+            can_rollback=imp.can_rollback
+        ))
+
+    return result
+
+
+@router.delete("/history/{import_id}")
+async def rollback_import(
+    import_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Rollback an import (delete all imported transactions)"""
+    import_record = db.query(ImportHistory).filter(
+        ImportHistory.id == import_id,
+        ImportHistory.user_id == current_user.id,
+        ImportHistory.can_rollback == True
+    ).first()
+
+    if not import_record:
+        raise HTTPException(status_code=404, detail="Import not found or cannot be rolled back")
+
+    try:
+        # Delete all transactions from this import
+        deleted_count = 0
+        for imported_txn in import_record.imported_transactions:
+            if imported_txn.transaction:
+                db.delete(imported_txn.transaction)
+                deleted_count += 1
+
+        import_record.status = "cancelled"
+        import_record.can_rollback = False
+        import_record.completed_at = import_record.completed_at or db.func.now()
+        db.commit()
+
+        return {
+            "message": f"Import rolled back successfully. Deleted {deleted_count} transactions.",
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to rollback import: {str(e)}"
+        )
