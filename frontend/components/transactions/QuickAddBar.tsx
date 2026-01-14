@@ -130,7 +130,23 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
       // Notify parent to refresh transaction list
       onTransactionAdded();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to add transaction");
+      // Properly handle FastAPI validation errors
+      let errorMessage = "Failed to add transaction";
+
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+
+        // Check if it's a validation error array
+        if (Array.isArray(detail)) {
+          errorMessage = detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ");
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (typeof detail === 'object') {
+          errorMessage = JSON.stringify(detail);
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +170,14 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
     }
   };
 
-  const expenseCategories = categories.filter((c) => c.type === "EXPENSE");
+  // Filter categories based on transaction type (lowercase values from backend)
+  const filteredCategories = categories.filter((c) => {
+    if (transactionType === "DEBIT") {
+      return c.type === "expense";
+    } else {
+      return c.type === "income";
+    }
+  });
 
   return (
     <div className="bg-white shadow rounded-lg p-4 mb-6">
@@ -162,7 +185,11 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
         <h3 className="text-sm font-medium text-gray-700">Quick Add Transaction</h3>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setTransactionType("DEBIT")}
+            onClick={() => {
+              setTransactionType("DEBIT");
+              // Clear category when switching types since different categories apply
+              setCategoryId(null);
+            }}
             className={`px-3 py-1 text-xs rounded ${
               transactionType === "DEBIT"
                 ? "bg-red-600 text-white"
@@ -172,7 +199,11 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             Expense
           </button>
           <button
-            onClick={() => setTransactionType("CREDIT")}
+            onClick={() => {
+              setTransactionType("CREDIT");
+              // Clear category when switching types since different categories apply
+              setCategoryId(null);
+            }}
             className={`px-3 py-1 text-xs rounded ${
               transactionType === "CREDIT"
                 ? "bg-green-600 text-white"
@@ -254,7 +285,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select...</option>
-            {expenseCategories.map((category) => (
+            {filteredCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
