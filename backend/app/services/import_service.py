@@ -98,12 +98,26 @@ class ImportService:
                 mapping['date'] = col
                 break
 
-        # Look for amount column
-        amount_keywords = ['amount', 'value', 'total', 'sum', 'debit', 'credit']
+        # Look for amount column - check for split debit/credit first
+        debit_col = None
+        credit_col = None
         for col in columns:
-            if any(kw in col.lower() for kw in amount_keywords):
-                mapping['amount'] = col
-                break
+            col_lower = col.lower()
+            if ('withdrawal' in col_lower or 'debit' in col_lower) and 'card' not in col_lower:
+                debit_col = col
+            elif ('deposit' in col_lower or 'credit' in col_lower) and 'card' not in col_lower:
+                credit_col = col
+
+        # If we have separate debit/credit columns, combine them with pipe separator
+        if debit_col and credit_col:
+            mapping['amount'] = f"{debit_col}|{credit_col}"
+        else:
+            # Look for single amount column
+            amount_keywords = ['amount', 'value', 'total', 'sum']
+            for col in columns:
+                if any(kw in col.lower() for kw in amount_keywords):
+                    mapping['amount'] = col
+                    break
 
         # Look for description
         desc_keywords = ['description', 'memo', 'details', 'name', 'transaction']
@@ -120,9 +134,10 @@ class ImportService:
                 break
 
         # Look for category
-        category_keywords = ['category', 'type']
+        category_keywords = ['category']
         for col in columns:
-            if any(kw in col.lower() for kw in category_keywords):
+            col_lower = col.lower()
+            if any(kw in col_lower for kw in category_keywords):
                 mapping['category'] = col
                 break
 
@@ -165,17 +180,36 @@ class ImportService:
             # Extract fields based on mapping
             try:
                 date_str = str(row[column_mapping.date]).strip()
-                amount_str = str(row[column_mapping.amount]).strip()
+
+                # Handle amount - check if it's split debit/credit columns
+                if '|' in column_mapping.amount:
+                    # Split column format: "Withdrawal|Deposit"
+                    debit_col, credit_col = column_mapping.amount.split('|')
+                    debit_val = str(row[debit_col]).strip() if debit_col in row.index else ''
+                    credit_val = str(row[credit_col]).strip() if credit_col in row.index else ''
+
+                    # Parse both values
+                    debit_amount = self._parse_amount(debit_val) if debit_val and debit_val.lower() not in ['nan', 'none', ''] else 0
+                    credit_amount = self._parse_amount(credit_val) if credit_val and credit_val.lower() not in ['nan', 'none', ''] else 0
+
+                    # Determine net amount and type
+                    if debit_amount and debit_amount > 0:
+                        amount = -abs(debit_amount)  # Withdrawal is negative
+                    elif credit_amount and credit_amount > 0:
+                        amount = abs(credit_amount)  # Deposit is positive
+                    else:
+                        continue  # Skip if both are empty/zero
+                else:
+                    # Single amount column
+                    amount_str = str(row[column_mapping.amount]).strip()
+                    amount = self._parse_amount(amount_str)
+                    if amount is None:
+                        continue  # Skip invalid amounts
 
                 # Parse date
                 trans_date = self._parse_date(date_str)
                 if not trans_date:
                     continue  # Skip invalid dates
-
-                # Parse amount
-                amount = self._parse_amount(amount_str)
-                if amount is None:
-                    continue  # Skip invalid amounts
 
                 transaction = {
                     'date': trans_date.strftime('%Y-%m-%d'),
