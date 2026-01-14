@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { transactionsAPI, accountsAPI, categoriesAPI } from "@/lib/api";
-import { Account, Category } from "@/types";
+import { Account, Category, TransactionType } from "@/types";
 
 interface QuickAddBarProps {
   onTransactionAdded: () => void;
@@ -14,7 +14,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [accountId, setAccountId] = useState<number | null>(null);
-  const [transactionType, setTransactionType] = useState<"DEBIT" | "CREDIT">("DEBIT");
+  const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.DEBIT);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -108,10 +108,10 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
       await transactionsAPI.create({
         date,
         payee,
-        amount: Math.abs(parsedAmount),
+        amount: Math.abs(parsedAmount).toString(),
         account_id: accountId,
         category_id: categoryId,
-        transaction_type: transactionType,
+        type: transactionType,
         description: "",
       });
 
@@ -170,9 +170,9 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
     }
   };
 
-  // Filter categories based on transaction type (lowercase values from backend)
+  // Filter categories based on transaction type
   const filteredCategories = categories.filter((c) => {
-    if (transactionType === "DEBIT") {
+    if (transactionType === TransactionType.DEBIT) {
       return c.type === "expense";
     } else {
       return c.type === "income";
@@ -186,12 +186,12 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
-              setTransactionType("DEBIT");
+              setTransactionType(TransactionType.DEBIT);
               // Clear category when switching types since different categories apply
               setCategoryId(null);
             }}
             className={`px-3 py-1 text-xs rounded ${
-              transactionType === "DEBIT"
+              transactionType === TransactionType.DEBIT
                 ? "bg-red-600 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
@@ -200,12 +200,12 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
           </button>
           <button
             onClick={() => {
-              setTransactionType("CREDIT");
+              setTransactionType(TransactionType.CREDIT);
               // Clear category when switching types since different categories apply
               setCategoryId(null);
             }}
             className={`px-3 py-1 text-xs rounded ${
-              transactionType === "CREDIT"
+              transactionType === TransactionType.CREDIT
                 ? "bg-green-600 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
