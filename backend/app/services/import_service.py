@@ -188,17 +188,17 @@ class ImportService:
                     debit_val = str(row[debit_col]).strip() if debit_col in row.index else ''
                     credit_val = str(row[credit_col]).strip() if credit_col in row.index else ''
 
-                    # Parse both values
-                    debit_amount = self._parse_amount(debit_val) if debit_val and debit_val.lower() not in ['nan', 'none', ''] else 0
-                    credit_amount = self._parse_amount(credit_val) if credit_val and credit_val.lower() not in ['nan', 'none', ''] else 0
+                    # Parse both values - _parse_amount now returns None for invalid/NaN values
+                    debit_amount = self._parse_amount(debit_val) if debit_val and debit_val.lower() not in ['nan', 'none', ''] else None
+                    credit_amount = self._parse_amount(credit_val) if credit_val and credit_val.lower() not in ['nan', 'none', ''] else None
 
                     # Determine net amount and type
-                    if debit_amount and debit_amount > 0:
+                    if debit_amount is not None and debit_amount > 0:
                         amount = -abs(debit_amount)  # Withdrawal is negative
-                    elif credit_amount and credit_amount > 0:
+                    elif credit_amount is not None and credit_amount > 0:
                         amount = abs(credit_amount)  # Deposit is positive
                     else:
-                        continue  # Skip if both are empty/zero
+                        continue  # Skip if both are empty/zero/invalid
                 else:
                     # Single amount column
                     amount_str = str(row[column_mapping.amount]).strip()
@@ -268,11 +268,22 @@ class ImportService:
             # Remove common currency symbols and whitespace
             cleaned = amount_str.replace('$', '').replace(',', '').replace(' ', '').strip()
 
+            # Return None for empty strings
+            if not cleaned or cleaned.lower() in ['nan', 'none', '', 'null']:
+                return None
+
             # Handle parentheses for negative amounts
             if cleaned.startswith('(') and cleaned.endswith(')'):
                 cleaned = '-' + cleaned[1:-1]
 
-            return float(cleaned)
+            result = float(cleaned)
+
+            # Explicitly check for NaN and infinity
+            import math
+            if math.isnan(result) or math.isinf(result):
+                return None
+
+            return result
         except (ValueError, AttributeError):
             return None
 
