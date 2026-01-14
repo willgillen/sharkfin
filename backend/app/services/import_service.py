@@ -211,6 +211,11 @@ class ImportService:
                 if not trans_date:
                     continue  # Skip invalid dates
 
+                # Final safety check: ensure amount is a valid finite number
+                import math
+                if not isinstance(amount, (int, float)) or math.isnan(amount) or math.isinf(amount):
+                    continue  # Skip if amount is somehow invalid
+
                 transaction = {
                     'date': trans_date.strftime('%Y-%m-%d'),
                     'amount': abs(amount),  # Store as positive
@@ -231,8 +236,9 @@ class ImportService:
                 transactions.append(transaction)
 
             except Exception as e:
-                # Skip rows with errors
+                # Skip rows with errors - log details for debugging
                 print(f"Error parsing row {idx}: {e}")
+                print(f"  Row data: {row.to_dict() if hasattr(row, 'to_dict') else row}")
                 continue
 
         return transactions
