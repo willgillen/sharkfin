@@ -32,23 +32,52 @@ def create_transaction(
 
 @router.get("", response_model=List[Transaction])
 def get_transactions(
-    account_id: Optional[int] = Query(None),
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    account_id: Optional[int] = Query(None, description="Filter by account ID"),
+    category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    start_date: Optional[date] = Query(None, description="Filter transactions on or after this date"),
+    end_date: Optional[date] = Query(None, description="Filter transactions on or before this date"),
+    skip: int = Query(0, ge=0, description="Number of records to skip for pagination"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    sort_by: str = Query("date", description="Field to sort by (date, amount, payee)"),
+    sort_order: str = Query("desc", description="Sort order (asc or desc)"),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """Get all transactions for the authenticated user with optional filters."""
+    """Get transactions for the authenticated user with filtering, sorting, and pagination.
+
+    Default behavior: Returns up to 100 most recent transactions sorted by date (newest first).
+    """
     query = db.query(TransactionModel).filter(TransactionModel.user_id == current_user.id)
 
+    # Apply filters
     if account_id:
         query = query.filter(TransactionModel.account_id == account_id)
+
+    if category_id:
+        query = query.filter(TransactionModel.category_id == category_id)
 
     if start_date:
         query = query.filter(TransactionModel.date >= start_date)
 
     if end_date:
         query = query.filter(TransactionModel.date <= end_date)
+
+    # Apply sorting
+    sort_column = TransactionModel.date  # Default
+    if sort_by == "amount":
+        sort_column = TransactionModel.amount
+    elif sort_by == "payee":
+        sort_column = TransactionModel.payee
+    elif sort_by == "date":
+        sort_column = TransactionModel.date
+
+    if sort_order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    # Apply pagination
+    query = query.offset(skip).limit(limit)
 
     return query.all()
 

@@ -16,12 +16,17 @@ export default function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [hasMore, setHasMore] = useState(true);
 
   // Filters
   const [accountFilter, setAccountFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+
+  // Pagination
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -35,22 +40,57 @@ export default function TransactionsPage() {
     }
   }, [isAuthenticated]);
 
-  const loadData = async () => {
+  // Reload when filters change
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      loadData(true);
+    }
+  }, [accountFilter, categoryFilter, typeFilter]);
+
+  const loadData = async (reset: boolean = true) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setTransactions([]);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const params = {
+        skip: reset ? 0 : transactions.length,
+        limit: PAGE_SIZE,
+        sort_by: "date",
+        sort_order: "desc",
+        ...(accountFilter && { account_id: parseInt(accountFilter) }),
+        ...(categoryFilter && { category_id: parseInt(categoryFilter) }),
+        ...(typeFilter && { type: typeFilter }),
+      };
+
       const [txns, accts, cats] = await Promise.all([
-        transactionsAPI.getAll(),
-        accountsAPI.getAll(),
-        categoriesAPI.getAll(),
+        transactionsAPI.getAll(params),
+        reset ? accountsAPI.getAll() : Promise.resolve(accounts),
+        reset ? categoriesAPI.getAll() : Promise.resolve(categories),
       ]);
-      setTransactions(txns);
-      setAccounts(accts);
-      setCategories(cats);
+
+      setTransactions(reset ? txns : [...transactions, ...txns]);
+      if (reset) {
+        setAccounts(accts);
+        setCategories(cats);
+      }
+      setHasMore(txns.length === PAGE_SIZE);
       setError("");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load data");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      loadData(false);
     }
   };
 
@@ -93,13 +133,6 @@ export default function TransactionsPage() {
     };
     return labels[type];
   };
-
-  const filteredTransactions = transactions.filter((txn) => {
-    if (accountFilter && txn.account_id !== parseInt(accountFilter)) return false;
-    if (categoryFilter && txn.category_id !== parseInt(categoryFilter)) return false;
-    if (typeFilter && txn.type !== typeFilter) return false;
-    return true;
-  });
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -207,102 +240,139 @@ export default function TransactionsPage() {
           <div className="text-center py-12">
             <p className="text-gray-600">Loading transactions...</p>
           </div>
-        ) : filteredTransactions.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Account
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(transaction.date)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {transaction.description}
-                      </div>
-                      {transaction.payee && (
-                        <div className="text-sm text-gray-500">{transaction.payee}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getAccountName(transaction.account_id)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getCategoryName(transaction.category_id)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={getTransactionTypeColor(transaction.type)}>
-                        {getTransactionTypeLabel(transaction.type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                      <span className={getTransactionTypeColor(transaction.type)}>
-                        {transaction.type === TransactionType.DEBIT && "-"}
-                        {transaction.type === TransactionType.CREDIT && "+"}
-                        {formatCurrency(transaction.amount)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() =>
-                          router.push(`/dashboard/transactions/${transaction.id}`)
-                        }
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(transaction.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
+        ) : transactions.length > 0 ? (
+          <>
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Account
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(transaction.date)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {transaction.description}
+                        </div>
+                        {transaction.payee && (
+                          <div className="text-sm text-gray-500">{transaction.payee}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {getAccountName(transaction.account_id)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {getCategoryName(transaction.category_id)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={getTransactionTypeColor(transaction.type)}>
+                          {getTransactionTypeLabel(transaction.type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                        <span className={getTransactionTypeColor(transaction.type)}>
+                          {transaction.type === TransactionType.DEBIT && "-"}
+                          {transaction.type === TransactionType.CREDIT && "+"}
+                          {formatCurrency(transaction.amount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() =>
+                            router.push(`/dashboard/transactions/${transaction.id}`)
+                          }
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(transaction.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Loading...
+                    </>
+                  ) : (
+                    <>Load More Transactions</>
+                  )}
+                </button>
+                <p className="mt-2 text-sm text-gray-500">
+                  Showing {transactions.length} transactions
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">
-              {transactions.length === 0
-                ? "No transactions yet"
-                : "No transactions match your filters"}
-            </p>
-            {transactions.length === 0 && (
-              <button
-                onClick={() => router.push("/dashboard/transactions/new")}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                + Add Your First Transaction
-              </button>
-            )}
+            <p className="text-gray-600 mb-4">No transactions yet</p>
+            <button
+              onClick={() => router.push("/dashboard/transactions/new")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              + Add Your First Transaction
+            </button>
           </div>
         )}
       </div>

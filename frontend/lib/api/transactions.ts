@@ -2,8 +2,17 @@ import apiClient from "./client";
 import { Transaction, TransactionCreate, TransactionUpdate } from "@/types";
 
 export const transactionsAPI = {
-  async getAll(): Promise<Transaction[]> {
-    const { data } = await apiClient.get<Transaction[]>("/api/v1/transactions");
+  async getAll(params?: {
+    account_id?: number;
+    category_id?: number;
+    start_date?: string;
+    end_date?: string;
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<Transaction[]> {
+    const { data } = await apiClient.get<Transaction[]>("/api/v1/transactions", { params });
     return data;
   },
 
