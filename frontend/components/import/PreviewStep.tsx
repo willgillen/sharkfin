@@ -183,7 +183,29 @@ export default function PreviewStep({
                   date = txn[columnMapping.date];
                   description = columnMapping.description ? txn[columnMapping.description] : "";
                   payee = columnMapping.payee ? txn[columnMapping.payee] : "";
-                  amount = txn[columnMapping.amount];
+
+                  // Handle split withdrawal/deposit columns
+                  if (columnMapping.amount.includes('|')) {
+                    const [debitCol, creditCol] = columnMapping.amount.split('|');
+                    const debitVal = txn[debitCol];
+                    const creditVal = txn[creditCol];
+
+                    // Parse and clean the values
+                    const parseAmount = (val: any): number | null => {
+                      if (!val || val === '' || String(val).toLowerCase() === 'nan') return null;
+                      const cleaned = String(val).replace(/[$,\s]/g, '');
+                      const num = parseFloat(cleaned);
+                      return isNaN(num) ? null : num;
+                    };
+
+                    const debit = parseAmount(debitVal);
+                    const credit = parseAmount(creditVal);
+
+                    // Use whichever value is present
+                    amount = debit !== null ? debit : (credit !== null ? credit : 0);
+                  } else {
+                    amount = txn[columnMapping.amount];
+                  }
                 } else {
                   // OFX format
                   date = txn.date;
