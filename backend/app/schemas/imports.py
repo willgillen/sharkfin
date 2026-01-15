@@ -103,3 +103,29 @@ class ImportHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Smart Rule Suggestions during Import
+class SmartRuleSuggestionResponse(BaseModel):
+    """Smart rule suggestion detected during import analysis."""
+    suggested_name: str
+    payee_pattern: str
+    payee_match_type: str
+    matching_row_indices: List[int]
+    sample_descriptions: List[str]
+    confidence: float
+    detected_merchant: Optional[str] = None
+
+
+class AnalyzeImportForRulesRequest(BaseModel):
+    """Request to analyze import data for smart rule suggestions."""
+    transactions: List[Dict[str, Any]]
+    min_occurrences: int = Field(default=2, ge=1, description="Minimum times pattern must appear")
+    min_confidence: float = Field(default=0.6, ge=0.0, le=1.0, description="Minimum confidence score")
+
+
+class AnalyzeImportForRulesResponse(BaseModel):
+    """Response with smart rule suggestions."""
+    suggestions: List[SmartRuleSuggestionResponse]
+    total_transactions_analyzed: int
+    total_suggestions: int

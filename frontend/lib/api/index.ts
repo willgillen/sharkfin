@@ -6,3 +6,4 @@ export { transactionsAPI } from "./transactions";
 export { budgetsAPI } from "./budgets";
 export { reportsAPI } from "./reports";
 export { importsAPI } from "./imports";
+export { rulesAPI } from "./rules";

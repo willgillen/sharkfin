@@ -15,6 +15,7 @@ const navigation = [
   { name: "Transactions", href: "/dashboard/transactions" },
   { name: "Categories", href: "/dashboard/categories" },
   { name: "Budgets", href: "/dashboard/budgets" },
+  { name: "Rules", href: "/dashboard/rules" },
   { name: "Reports", href: "/dashboard/reports" },
   { name: "Import", href: "/dashboard/import" },
   { name: "History", href: "/dashboard/import/history" },

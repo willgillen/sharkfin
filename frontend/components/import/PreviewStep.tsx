@@ -67,32 +67,8 @@ export default function PreviewStep({
   };
 
   const handleContinue = async () => {
-    if (duplicates.length > 0) {
-      // Go to duplicate review step
-      onComplete("preview", { duplicates });
-    } else {
-      // No duplicates, proceed directly to import
-      setIsChecking(true);
-      setError(null);
-
-      try {
-        let result;
-
-        if (fileType === "csv" && columnMapping) {
-          result = await importsAPI.executeCSVImport(file, accountId, columnMapping, []);
-        } else {
-          result = await importsAPI.executeOFXImport(file, accountId, []);
-        }
-
-        onComplete("preview", { duplicates: [], result });
-      } catch (err: any) {
-        const errorMsg = err.response?.data?.detail || "Failed to import transactions";
-        setError(errorMsg);
-        onError(errorMsg);
-      } finally {
-        setIsChecking(false);
-      }
-    }
+    // Always proceed to smart suggestions step
+    onComplete("preview", {});
   };
 
   const formatAmount = (amount: string | number) => {
@@ -246,7 +222,7 @@ export default function PreviewStep({
           disabled={isChecking}
           className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isChecking ? "Checking..." : duplicates.length > 0 ? "Review Duplicates" : "Import Transactions"}
+          {isChecking ? "Checking..." : "Continue"}
         </button>
       </div>
     </div>

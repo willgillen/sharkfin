@@ -14,10 +14,14 @@ from app.schemas.imports import (
     ImportHistoryResponse,
     CSVColumnMapping,
     ImportStatus,
+    AnalyzeImportForRulesRequest,
+    AnalyzeImportForRulesResponse,
+    SmartRuleSuggestionResponse,
 )
 from app.services.import_service import ImportService
 from app.services.ofx_service import OFXService
 from app.services.duplicate_detection_service import DuplicateDetectionService
+from app.services.smart_rule_suggestion_service import SmartRuleSuggestionService
 import json
 
 router = APIRouter()
@@ -461,3 +465,80 @@ async def rollback_import(
             status_code=500,
             detail=f"Failed to rollback import: {str(e)}"
         )
+
+
+@router.post("/analyze-for-rules", response_model=AnalyzeImportForRulesResponse)
+async def analyze_import_for_rules(
+    request: AnalyzeImportForRulesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze import transaction data and suggest smart categorization rules.
+
+    This endpoint examines the transactions being imported and uses pattern
+    recognition and merchant detection to suggest useful rules that can be
+    created before completing the import.
+
+    IMPORTANT: Filters out suggestions that match existing user rules to avoid
+    suggesting duplicate rules.
+    """
+    from app.models.categorization_rule import CategorizationRule
+
+    smart_suggestion_service = SmartRuleSuggestionService()
+
+    suggestions = smart_suggestion_service.analyze_import_data(
+        transactions=request.transactions,
+        min_occurrences=request.min_occurrences,
+        min_confidence=request.min_confidence
+    )
+
+    # Get existing user rules to filter out duplicates
+    existing_rules = db.query(CategorizationRule).filter(
+        CategorizationRule.user_id == current_user.id,
+        CategorizationRule.enabled == True
+    ).all()
+
+    # Create a set of existing patterns (case-insensitive)
+    existing_patterns = set()
+    for rule in existing_rules:
+        if rule.payee_pattern:
+            existing_patterns.add(rule.payee_pattern.upper())
+
+    # Filter out suggestions that match existing rules
+    filtered_suggestions = []
+    for s in suggestions:
+        pattern_upper = s.payee_pattern.upper()
+
+        # Check if this pattern is already covered by an existing rule
+        pattern_exists = False
+        for existing_pattern in existing_patterns:
+            # Check if patterns overlap significantly
+            if (pattern_upper in existing_pattern or
+                existing_pattern in pattern_upper or
+                pattern_upper == existing_pattern):
+                pattern_exists = True
+                break
+
+        if not pattern_exists:
+            filtered_suggestions.append(s)
+
+    # Convert to response format
+    suggestion_responses = [
+        SmartRuleSuggestionResponse(
+            suggested_name=s.suggested_name,
+            payee_pattern=s.payee_pattern,
+            payee_match_type=s.payee_match_type,
+            matching_row_indices=s.matching_rows,
+            sample_descriptions=s.sample_descriptions,
+            confidence=s.confidence,
+            detected_merchant=s.detected_merchant
+        )
+        for s in filtered_suggestions
+    ]
+
+    return AnalyzeImportForRulesResponse(
+        suggestions=suggestion_responses,
+        total_transactions_analyzed=len(request.transactions),
+        total_suggestions=len(suggestion_responses)
+    )

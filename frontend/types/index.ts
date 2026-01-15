@@ -358,3 +358,159 @@ export interface ImportHistoryResponse {
   completed_at?: string;
   can_rollback: boolean;
 }
+
+// Smart Rule Suggestions during Import
+export interface SmartRuleSuggestionResponse {
+  suggested_name: string;
+  payee_pattern: string;
+  payee_match_type: string;
+  matching_row_indices: number[];
+  sample_descriptions: string[];
+  confidence: number;
+  detected_merchant?: string;
+}
+
+export interface AnalyzeImportForRulesRequest {
+  transactions: Record<string, any>[];
+  min_occurrences?: number;
+  min_confidence?: number;
+}
+
+export interface AnalyzeImportForRulesResponse {
+  suggestions: SmartRuleSuggestionResponse[];
+  total_transactions_analyzed: number;
+  total_suggestions: number;
+}
+
+// Categorization Rule types
+export enum MatchType {
+  CONTAINS = "contains",
+  STARTS_WITH = "starts_with",
+  ENDS_WITH = "ends_with",
+  EXACT = "exact",
+  REGEX = "regex",
+}
+
+export enum TransactionTypeFilter {
+  DEBIT = "DEBIT",
+  CREDIT = "CREDIT",
+  TRANSFER = "TRANSFER",
+}
+
+export interface CategorizationRule {
+  id: number;
+  user_id: number;
+  name: string;
+  priority: number;
+  enabled: boolean;
+  payee_pattern?: string;
+  payee_match_type?: MatchType;
+  description_pattern?: string;
+  description_match_type?: MatchType;
+  amount_min?: string;
+  amount_max?: string;
+  transaction_type?: TransactionTypeFilter;
+  category_id?: number;
+  new_payee?: string;
+  notes_append?: string;
+  created_at: string;
+  updated_at: string;
+  last_matched_at?: string;
+  match_count: number;
+  auto_created: boolean;
+  confidence_score?: string;
+}
+
+export interface CategorizationRuleCreate {
+  name: string;
+  priority?: number;
+  enabled?: boolean;
+  payee_pattern?: string;
+  payee_match_type?: MatchType;
+  description_pattern?: string;
+  description_match_type?: MatchType;
+  amount_min?: string;
+  amount_max?: string;
+  transaction_type?: TransactionTypeFilter;
+  category_id?: number;
+  new_payee?: string;
+  notes_append?: string;
+}
+
+export interface CategorizationRuleUpdate {
+  name?: string;
+  priority?: number;
+  enabled?: boolean;
+  payee_pattern?: string;
+  payee_match_type?: MatchType;
+  description_pattern?: string;
+  description_match_type?: MatchType;
+  amount_min?: string;
+  amount_max?: string;
+  transaction_type?: TransactionTypeFilter;
+  category_id?: number;
+  new_payee?: string;
+  notes_append?: string;
+}
+
+export interface RuleTestRequest {
+  payee?: string;
+  description?: string;
+  amount: string;
+  transaction_type: TransactionTypeFilter;
+}
+
+export interface RuleTestResponse {
+  matches: boolean;
+  matched_conditions: string[];
+  actions_to_apply: Record<string, any>;
+}
+
+export interface BulkApplyRulesRequest {
+  transaction_ids?: number[];
+  rule_ids?: number[];
+  overwrite_existing?: boolean;
+}
+
+export interface BulkApplyRulesResponse {
+  total_processed: number;
+  categorized_count: number;
+  skipped_count: number;
+  rules_used: number;
+  transactions_updated: number[];
+}
+
+export interface RuleSuggestion {
+  suggested_rule_name: string;
+  payee_pattern?: string;
+  payee_match_type?: MatchType;
+  description_pattern?: string;
+  description_match_type?: MatchType;
+  amount_min?: string;
+  amount_max?: string;
+  transaction_type?: TransactionTypeFilter;
+  category_id: number;
+  category_name: string;
+  confidence_score: number;
+  match_count: number;
+  sample_transactions: number[];
+}
+
+export interface SuggestRulesRequest {
+  min_occurrences?: number;
+  min_confidence?: number;
+}
+
+export interface AcceptSuggestionRequest {
+  suggested_rule_name: string;
+  payee_pattern?: string;
+  payee_match_type?: MatchType;
+  description_pattern?: string;
+  description_match_type?: MatchType;
+  amount_min?: string;
+  amount_max?: string;
+  transaction_type?: TransactionTypeFilter;
+  category_id: number;
+  priority?: number;
+  enabled?: boolean;
+}

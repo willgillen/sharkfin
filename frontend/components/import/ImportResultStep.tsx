@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImportExecuteResponse } from "@/types";
+import { rulesAPI } from "@/lib/api";
 
 interface ImportResultStepProps {
   result: ImportExecuteResponse;
@@ -11,6 +13,9 @@ interface ImportResultStepProps {
 
 export default function ImportResultStep({ result, onStartOver, onViewTransactions }: ImportResultStepProps) {
   const router = useRouter();
+  const [applyingRules, setApplyingRules] = useState(false);
+  const [rulesApplied, setRulesApplied] = useState(false);
+  const [ruleStats, setRuleStats] = useState<{ categorized: number; rulesUsed: number } | null>(null);
 
   const hasErrors = result.error_count > 0;
   const hasSkipped = result.duplicate_count > 0;
@@ -18,6 +23,25 @@ export default function ImportResultStep({ result, onStartOver, onViewTransactio
 
   const handleViewHistory = () => {
     router.push("/dashboard/import/history");
+  };
+
+  const handleApplyRules = async () => {
+    try {
+      setApplyingRules(true);
+      // Apply rules to all uncategorized transactions
+      const response = await rulesAPI.applyRules({
+        overwrite_existing: false, // Only apply to uncategorized
+      });
+      setRuleStats({
+        categorized: response.categorized_count,
+        rulesUsed: response.rules_used,
+      });
+      setRulesApplied(true);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to apply rules");
+    } finally {
+      setApplyingRules(false);
+    }
   };
 
   return (
@@ -136,6 +160,53 @@ export default function ImportResultStep({ result, onStartOver, onViewTransactio
               <p className="text-sm text-blue-700">
                 {result.duplicate_count} transaction{result.duplicate_count !== 1 ? "s were" : " was"} skipped because {result.duplicate_count !== 1 ? "they" : "it"} appeared to be duplicate{result.duplicate_count !== 1 ? "s" : ""}.
                 You can view your import history to see all skipped transactions.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Categorization */}
+      {isSuccess && !rulesApplied && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/>
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-purple-900">Auto-Categorize with Rules</h3>
+                <p className="mt-1 text-sm text-purple-700">
+                  Apply your categorization rules to automatically categorize the imported transactions.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleApplyRules}
+              disabled={applyingRules}
+              className="ml-4 px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap"
+            >
+              {applyingRules ? "Applying..." : "Apply Rules"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Applied Success */}
+      {rulesApplied && ruleStats && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-green-900">Rules Applied Successfully!</h3>
+              <p className="mt-1 text-sm text-green-700">
+                Categorized {ruleStats.categorized} transaction{ruleStats.categorized !== 1 ? "s" : ""} using {ruleStats.rulesUsed} rule{ruleStats.rulesUsed !== 1 ? "s" : ""}.
               </p>
             </div>
           </div>

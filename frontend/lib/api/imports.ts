@@ -6,6 +6,8 @@ import {
   ImportExecuteResponse,
   ImportHistoryResponse,
   CSVColumnMapping,
+  AnalyzeImportForRulesRequest,
+  AnalyzeImportForRulesResponse,
 } from "@/types";
 
 export const importsAPI = {
@@ -126,5 +128,13 @@ export const importsAPI = {
 
   async rollback(importId: number): Promise<void> {
     await apiClient.delete(`/api/v1/imports/history/${importId}`);
+  },
+
+  async analyzeForRules(request: AnalyzeImportForRulesRequest): Promise<AnalyzeImportForRulesResponse> {
+    const { data } = await apiClient.post<AnalyzeImportForRulesResponse>(
+      "/api/v1/imports/analyze-for-rules",
+      request
+    );
+    return data;
   }
 };

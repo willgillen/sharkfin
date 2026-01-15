@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import FileUploadStep from "@/components/import/FileUploadStep";
 import ColumnMappingStep from "@/components/import/ColumnMappingStep";
 import PreviewStep from "@/components/import/PreviewStep";
+import SmartRuleSuggestionsStep from "@/components/import/SmartRuleSuggestionsStep";
 import DuplicateReviewStep from "@/components/import/DuplicateReviewStep";
 import ImportResultStep from "@/components/import/ImportResultStep";
 import {
@@ -14,10 +15,11 @@ import {
   OFXPreviewResponse,
   CSVColumnMapping,
   PotentialDuplicate,
-  ImportExecuteResponse
+  ImportExecuteResponse,
+  CategorizationRule
 } from "@/types";
 
-type ImportStep = "upload" | "mapping" | "preview" | "duplicates" | "result";
+type ImportStep = "upload" | "mapping" | "preview" | "smart-suggestions" | "duplicates" | "result";
 
 export default function ImportPage() {
   const router = useRouter();
@@ -75,6 +77,12 @@ export default function ImportPage() {
         break;
 
       case "preview":
+        // After preview, go to smart suggestions
+        setCurrentStep("smart-suggestions");
+        break;
+
+      case "smart-suggestions":
+        // After smart suggestions, check for duplicates
         setDuplicates(data.duplicates);
         setSkipRows(data.skipRows || []);
 
@@ -109,8 +117,11 @@ export default function ImportPage() {
           setCurrentStep("upload");
         }
         break;
-      case "duplicates":
+      case "smart-suggestions":
         setCurrentStep("preview");
+        break;
+      case "duplicates":
+        setCurrentStep("smart-suggestions");
         break;
       case "result":
         // Reset and start over
@@ -167,14 +178,16 @@ export default function ImportPage() {
                 { id: "upload", name: "Upload File" },
                 { id: "mapping", name: fileType === "csv" ? "Map Columns" : "Preview", disabled: fileType !== "csv" },
                 { id: "preview", name: "Review" },
+                { id: "smart-suggestions", name: "Smart Rules" },
                 { id: "duplicates", name: "Duplicates", disabled: duplicates.length === 0 },
                 { id: "result", name: "Complete" },
               ].map((step, idx) => {
                 const isCurrent = currentStep === step.id;
                 const isComplete =
-                  (step.id === "upload" && currentStep !== "upload") ||
-                  (step.id === "mapping" && ["preview", "duplicates", "result"].includes(currentStep)) ||
-                  (step.id === "preview" && ["duplicates", "result"].includes(currentStep)) ||
+                  (step.id === "upload" && !["upload"].includes(currentStep)) ||
+                  (step.id === "mapping" && ["preview", "smart-suggestions", "duplicates", "result"].includes(currentStep)) ||
+                  (step.id === "preview" && ["smart-suggestions", "duplicates", "result"].includes(currentStep)) ||
+                  (step.id === "smart-suggestions" && ["duplicates", "result"].includes(currentStep)) ||
                   (step.id === "duplicates" && currentStep === "result");
 
                 if (step.disabled) return null;
@@ -257,6 +270,20 @@ export default function ImportPage() {
 
           {currentStep === "preview" && (
             <PreviewStep
+              file={file!}
+              fileType={fileType!}
+              accountId={accountId}
+              csvPreview={csvPreview}
+              ofxPreview={ofxPreview}
+              columnMapping={columnMapping}
+              onComplete={handleStepComplete}
+              onBack={handleBack}
+              onError={setError}
+            />
+          )}
+
+          {currentStep === "smart-suggestions" && (
+            <SmartRuleSuggestionsStep
               file={file!}
               fileType={fileType!}
               accountId={accountId}

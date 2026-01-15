@@ -150,13 +150,37 @@ class BulkApplyRulesResponse(BaseModel):
 
 class RuleSuggestion(BaseModel):
     """Suggested rule based on user behavior"""
-    suggested_name: str
+    suggested_rule_name: str
     payee_pattern: Optional[str] = None
     payee_match_type: Optional[MatchType] = None
     description_pattern: Optional[str] = None
     description_match_type: Optional[MatchType] = None
+    amount_min: Optional[Decimal] = None
+    amount_max: Optional[Decimal] = None
+    transaction_type: Optional[TransactionTypeFilter] = None
     category_id: int
     category_name: str
-    confidence_score: Decimal
-    sample_count: int  # Number of transactions this pattern was found in
-    priority: int = 100  # Suggested priority
+    confidence_score: float
+    match_count: int  # Number of transactions this pattern was found in
+    sample_transactions: list[int] = Field(default_factory=list)  # Sample transaction IDs
+
+
+class SuggestRulesRequest(BaseModel):
+    """Request for rule suggestions"""
+    min_occurrences: int = Field(default=3, ge=1, description="Minimum number of matching transactions")
+    min_confidence: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence score")
+
+
+class AcceptSuggestionRequest(BaseModel):
+    """Request to accept and create a rule from a suggestion"""
+    suggested_rule_name: str
+    payee_pattern: Optional[str] = None
+    payee_match_type: Optional[MatchType] = None
+    description_pattern: Optional[str] = None
+    description_match_type: Optional[MatchType] = None
+    amount_min: Optional[Decimal] = None
+    amount_max: Optional[Decimal] = None
+    transaction_type: Optional[TransactionTypeFilter] = None
+    category_id: int
+    priority: int = Field(default=100, description="Rule priority")
+    enabled: bool = Field(default=True, description="Enable rule immediately")
