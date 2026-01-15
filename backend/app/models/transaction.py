@@ -22,10 +22,17 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
 
+    # NEW: Foreign key to Payee entity
+    payee_id = Column(Integer, ForeignKey("payees.id", ondelete="SET NULL"), nullable=True, index=True)
+
     type = Column(SQLEnum(TransactionType), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False)
     date = Column(Date, nullable=False, index=True)
+
+    # LEGACY: String payee field kept for backward compatibility during migration
+    # Will be deprecated in future version
     payee = Column(String, nullable=True)
+
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
 
@@ -40,6 +47,9 @@ class Transaction(Base):
     account = relationship("Account", foreign_keys=[account_id], backref="transactions")
     category = relationship("Category", backref="transactions")
     transfer_account = relationship("Account", foreign_keys=[transfer_account_id])
+
+    # NEW: Payee entity relationship
+    payee_entity = relationship("Payee", back_populates="transactions")
 
     def __repr__(self):
         return f"<Transaction(id={self.id}, amount={self.amount}, date={self.date}, type='{self.type}')>"

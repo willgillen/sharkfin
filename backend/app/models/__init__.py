@@ -5,6 +5,7 @@ from app.models.transaction import Transaction
 from app.models.budget import Budget
 from app.models.import_history import ImportHistory, ImportedTransaction
 from app.models.categorization_rule import CategorizationRule
+from app.models.payee import Payee
 
 __all__ = [
     "User",
@@ -15,4 +16,5 @@ __all__ = [
     "ImportHistory",
     "ImportedTransaction",
     "CategorizationRule",
+    "Payee",
 ]

@@ -12,7 +12,11 @@ class TransactionBase(BaseModel):
     type: TransactionType
     amount: Decimal
     date: date
-    payee: Optional[str] = None
+
+    # NEW: Support both payee_id (preferred) and payee string (legacy)
+    payee_id: Optional[int] = None
+    payee: Optional[str] = None  # Deprecated but kept for compatibility
+
     description: Optional[str] = None
     notes: Optional[str] = None
     transfer_account_id: Optional[int] = None
@@ -46,7 +50,11 @@ class TransactionUpdate(BaseModel):
     type: Optional[TransactionType] = None
     amount: Optional[Decimal] = None
     date: Optional[date] = None
-    payee: Optional[str] = None
+
+    # NEW: Support both payee_id (preferred) and payee string (legacy)
+    payee_id: Optional[int] = None
+    payee: Optional[str] = None  # Deprecated but kept for compatibility
+
     description: Optional[str] = None
     notes: Optional[str] = None
     transfer_account_id: Optional[int] = None
@@ -73,3 +81,11 @@ class TransactionInDB(TransactionBase):
 class Transaction(TransactionInDB):
     """Schema for transaction returned in API responses."""
     pass
+
+
+class TransactionWithPayee(TransactionInDB):
+    """Transaction enriched with payee entity details."""
+    payee_canonical_name: Optional[str] = None
+    payee_default_category_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
