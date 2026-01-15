@@ -24,6 +24,7 @@ class User(Base):
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     budgets = relationship("Budget", back_populates="user", cascade="all, delete-orphan")
     import_history = relationship("ImportHistory", back_populates="user", cascade="all, delete-orphan")
+    categorization_rules = relationship("CategorizationRule", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}')>"

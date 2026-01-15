@@ -72,6 +72,22 @@ def test_user(db_session):
 
 
 @pytest.fixture
+def test_account(db_session, test_user):
+    """Create a test account."""
+    from app.models.account import AccountType
+    account = Account(
+        user_id=test_user.id,
+        name="Test Checking",
+        type=AccountType.CHECKING,
+        current_balance=1000.00
+    )
+    db_session.add(account)
+    db_session.commit()
+    db_session.refresh(account)
+    return account
+
+
+@pytest.fixture
 def auth_headers(client, test_user):
     """Get authentication headers for test user."""
     response = client.post(
