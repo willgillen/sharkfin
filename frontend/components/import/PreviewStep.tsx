@@ -49,15 +49,15 @@ export default function PreviewStep({
     setError(null);
 
     try {
-      let duplicateResults: PotentialDuplicate[];
+      let duplicateResponse;
 
       if (fileType === "csv" && columnMapping) {
-        duplicateResults = await importsAPI.detectCSVDuplicates(file, accountId, columnMapping);
+        duplicateResponse = await importsAPI.detectCSVDuplicates(file, accountId, columnMapping);
       } else {
-        duplicateResults = await importsAPI.detectOFXDuplicates(file, accountId);
+        duplicateResponse = await importsAPI.detectOFXDuplicates(file, accountId);
       }
 
-      setDuplicates(duplicateResults);
+      setDuplicates(duplicateResponse.duplicates);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to check for duplicates");
       console.error("Duplicate check error:", err);
@@ -67,8 +67,8 @@ export default function PreviewStep({
   };
 
   const handleContinue = async () => {
-    // Always proceed to smart suggestions step
-    onComplete("preview", {});
+    // Pass duplicates to next step
+    onComplete("preview", { duplicates });
   };
 
   const formatAmount = (amount: string | number) => {

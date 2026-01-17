@@ -28,8 +28,6 @@ export default function DuplicateReviewStep({
   const [selectedSkips, setSelectedSkips] = useState<Set<number>>(
     new Set(duplicates.map((d) => d.new_transaction.row))
   );
-  const [isImporting, setIsImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const toggleSkip = (rowNumber: number) => {
     const newSkips = new Set(selectedSkips);
@@ -41,29 +39,10 @@ export default function DuplicateReviewStep({
     setSelectedSkips(newSkips);
   };
 
-  const handleImport = async () => {
-    setIsImporting(true);
-    setError(null);
-
-    try {
-      const skipRows = Array.from(selectedSkips);
-      let result;
-
-      if (fileType === "csv" && columnMapping) {
-        result = await importsAPI.executeCSVImport(file, accountId, columnMapping, skipRows);
-      } else {
-        result = await importsAPI.executeOFXImport(file, accountId, skipRows);
-      }
-
-      onComplete("duplicates", { result });
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || "Failed to import transactions";
-      setError(errorMsg);
-      onError(errorMsg);
-      console.error("Import error:", err);
-    } finally {
-      setIsImporting(false);
-    }
+  const handleContinue = async () => {
+    // Pass skip rows to next step (smart suggestions)
+    const skipRows = Array.from(selectedSkips);
+    onComplete("duplicates", { skipRows });
   };
 
   const formatAmount = (amount: string | number) => {
@@ -97,21 +76,6 @@ export default function DuplicateReviewStep({
           Review and select which ones to skip.
         </p>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Selection Summary */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -200,17 +164,15 @@ export default function DuplicateReviewStep({
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          disabled={isImporting}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           Back
         </button>
         <button
-          onClick={handleImport}
-          disabled={isImporting}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleContinue}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
         >
-          {isImporting ? "Importing..." : `Import ${duplicates.length - selectedSkips.size} Transaction${duplicates.length - selectedSkips.size !== 1 ? "s" : ""}`}
+          Continue with {duplicates.length - selectedSkips.size} Transaction{duplicates.length - selectedSkips.size !== 1 ? "s" : ""}
         </button>
       </div>
     </div>

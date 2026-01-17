@@ -77,28 +77,28 @@ export default function ImportPage() {
         break;
 
       case "preview":
-        // After preview, go to smart suggestions
-        setCurrentStep("smart-suggestions");
-        break;
-
-      case "smart-suggestions":
-        // After smart suggestions, check for duplicates
-        setDuplicates(data.duplicates);
-        setSkipRows(data.skipRows || []);
+        // After preview, check for duplicates
+        setDuplicates(data.duplicates || []);
 
         if (data.duplicates && data.duplicates.length > 0) {
+          // Show duplicate review step
           setCurrentStep("duplicates");
         } else {
-          // No duplicates, go straight to import
-          setImportResult(data.result);
-          setCurrentStep("result");
+          // No duplicates, go to smart suggestions
+          setCurrentStep("smart-suggestions");
         }
         break;
 
-      case "duplicates":
-        setSkipRows(data.skipRows);
+      case "smart-suggestions":
+        // After smart suggestions, proceed to import
         setImportResult(data.result);
         setCurrentStep("result");
+        break;
+
+      case "duplicates":
+        // After duplicates, go to smart suggestions with skip rows
+        setSkipRows(data.skipRows || []);
+        setCurrentStep("smart-suggestions");
         break;
     }
   };
@@ -118,10 +118,15 @@ export default function ImportPage() {
         }
         break;
       case "smart-suggestions":
-        setCurrentStep("preview");
+        // Go back to duplicates if we have them, otherwise preview
+        if (duplicates.length > 0) {
+          setCurrentStep("duplicates");
+        } else {
+          setCurrentStep("preview");
+        }
         break;
       case "duplicates":
-        setCurrentStep("smart-suggestions");
+        setCurrentStep("preview");
         break;
       case "result":
         // Reset and start over
@@ -290,6 +295,7 @@ export default function ImportPage() {
               csvPreview={csvPreview}
               ofxPreview={ofxPreview}
               columnMapping={columnMapping}
+              skipRows={skipRows}
               onComplete={handleStepComplete}
               onBack={handleBack}
               onError={setError}

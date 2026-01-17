@@ -17,6 +17,7 @@ interface SmartRuleSuggestionsStepProps {
   columnMapping?: CSVColumnMapping | null;
   csvPreview?: any;
   ofxPreview?: any;
+  skipRows?: number[];
   onComplete: (step: string, data: any) => void;
   onBack: () => void;
   onError: (error: string) => void;
@@ -29,6 +30,7 @@ export default function SmartRuleSuggestionsStep({
   columnMapping,
   csvPreview,
   ofxPreview,
+  skipRows = [],
   onComplete,
   onBack,
   onError,
@@ -182,36 +184,18 @@ export default function SmartRuleSuggestionsStep({
         }
       }
 
-      // Now check for duplicates
-      let duplicateResults;
+      // Execute import (duplicates already handled in previous step)
+      let result;
       if (fileType === "csv" && columnMapping) {
-        duplicateResults = await importsAPI.detectCSVDuplicates(file, accountId, columnMapping);
+        result = await importsAPI.executeCSVImport(file, accountId, columnMapping, skipRows);
       } else {
-        duplicateResults = await importsAPI.detectOFXDuplicates(file, accountId);
+        result = await importsAPI.executeOFXImport(file, accountId, skipRows);
       }
 
-      if (duplicateResults.length > 0) {
-        // Go to duplicate review step
-        onComplete("smart-suggestions", {
-          suggestionsCreated: createdRules,
-          duplicates: duplicateResults,
-          skipRows: []
-        });
-      } else {
-        // No duplicates, proceed directly to import
-        let result;
-        if (fileType === "csv" && columnMapping) {
-          result = await importsAPI.executeCSVImport(file, accountId, columnMapping, []);
-        } else {
-          result = await importsAPI.executeOFXImport(file, accountId, []);
-        }
-
-        onComplete("smart-suggestions", {
-          suggestionsCreated: createdRules,
-          duplicates: [],
-          result
-        });
-      }
+      onComplete("smart-suggestions", {
+        suggestionsCreated: createdRules,
+        result
+      });
 
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || "Failed to process import";
