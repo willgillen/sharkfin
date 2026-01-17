@@ -20,13 +20,29 @@ class OFXService:
         if hasattr(account, 'statement') and account.statement:
             for txn in account.statement.transactions:
                 try:
-                    # Determine transaction type based on amount sign
                     amount = float(txn.amount)
-                    trans_type = 'DEBIT' if amount < 0 else 'CREDIT'
+
+                    # Use the transaction type from OFX if available, otherwise infer from amount sign
+                    # OFX provides TRNTYPE which explicitly indicates DEBIT/CREDIT
+                    if hasattr(txn, 'type') and txn.type:
+                        # OFX transaction type is authoritative
+                        # Map OFX types to our transaction types
+                        ofx_type = str(txn.type).upper()
+                        if ofx_type in ['DEBIT', 'PAYMENT', 'CHECK', 'XFER', 'WITHDRAWAL', 'ATM', 'POS', 'FEE', 'SRVCHG']:
+                            trans_type = 'DEBIT'
+                        elif ofx_type in ['CREDIT', 'DEP', 'DEPOSIT', 'INT', 'DIV', 'DIRECTDEP']:
+                            trans_type = 'CREDIT'
+                        else:
+                            # Unknown OFX type, fall back to amount-based logic
+                            trans_type = 'DEBIT' if amount < 0 else 'CREDIT'
+                    else:
+                        # No TRNTYPE in OFX, use amount sign
+                        # Negative = DEBIT (money out), Positive = CREDIT (money in)
+                        trans_type = 'DEBIT' if amount < 0 else 'CREDIT'
 
                     transaction = {
                         'date': txn.date.strftime('%Y-%m-%d') if txn.date else None,
-                        'amount': abs(amount),
+                        'amount': abs(amount),  # Always store as positive
                         'payee': txn.payee[:200] if txn.payee else None,
                         'description': txn.memo[:500] if txn.memo else None,
                         'type': trans_type,

@@ -204,8 +204,11 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Tests: `test_payee_list_includes_category_name()`
 
 #### 13.2 Brand Logo Icon System
-- [ ] Implement Clearbit Logo API integration (`https://logo.clearbit.com/{domain}`)
-- [ ] Create `PayeeLogoService` with brand → domain mapping (1000+ brands)
+- [ ] Simple Icons (open-source): 2000+ brand SVGs
+  - Download Simple Icons SVG set (~3000 brands)
+  - Store in frontend/public/brand-icons/
+  - Create icon search index
+- [ ] Create `PayeeLogoService` with brand → domain mapping (2000+ brands)
 - [ ] Auto-suggest logo URL on payee creation based on name matching
 - [ ] Frontend: Logo preview with "Use Suggested" button
 - [ ] Fallback to manual URL entry
