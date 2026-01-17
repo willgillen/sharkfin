@@ -17,14 +17,52 @@ class DuplicateDetectionService:
         account_id: int,
         new_transactions: List[Dict[str, Any]]
     ) -> List[PotentialDuplicate]:
-        """Find potential duplicates for new transactions"""
+        """
+        Find potential duplicates for new transactions.
+
+        Checks against ALL existing transactions in the account, not just the current batch.
+        Uses multi-layered matching:
+        1. FITID exact match (100% confidence) - for OFX/QFX imports
+        2. Date + Amount + Description fuzzy match (confidence-based)
+
+        Confidence levels:
+        - Exact (1.00): FITID match
+        - Very High (0.95+): Same date, exact amount, very similar description
+        - High (0.85-0.95): Within 1 day, exact amount, similar description
+        - Medium (0.70-0.85): Within 2 days, exact amount, somewhat similar description
+        """
         duplicates = []
 
         for idx, new_txn in enumerate(new_transactions):
+            # First check for exact FITID match (OFX/QFX imports)
+            fitid = new_txn.get('fitid')
+            if fitid and self.check_fitid_duplicate(user_id, account_id, fitid):
+                # FITID match is 100% confidence - exact duplicate
+                existing_txn = self.db.query(Transaction).filter(
+                    and_(
+                        Transaction.user_id == user_id,
+                        Transaction.account_id == account_id,
+                        Transaction.fitid == fitid
+                    )
+                ).first()
+
+                if existing_txn:
+                    duplicates.append(PotentialDuplicate(
+                        existing_transaction_id=existing_txn.id,
+                        existing_date=existing_txn.date.isoformat(),
+                        existing_amount=str(existing_txn.amount),
+                        existing_description=existing_txn.description,
+                        new_transaction={'row': new_txn.get('row', idx), **new_txn},
+                        confidence_score=1.00
+                    ))
+                    continue  # Skip fuzzy matching for exact FITID matches
+
+            # Fuzzy matching: date + amount + description
             txn_date = datetime.strptime(new_txn['date'], '%Y-%m-%d').date()
             amount = float(new_txn['amount'])
 
             # Query existing transactions within ±2 days with exact amount match
+            # Check against ALL transactions in the account, not just recent imports
             existing = self.db.query(Transaction).filter(
                 and_(
                     Transaction.user_id == user_id,
@@ -39,7 +77,7 @@ class DuplicateDetectionService:
             for existing_txn in existing:
                 confidence = self._calculate_confidence(new_txn, existing_txn)
 
-                if confidence > 0.7:  # 70% confidence threshold
+                if confidence >= 0.70:  # 70% confidence threshold
                     duplicates.append(PotentialDuplicate(
                         existing_transaction_id=existing_txn.id,
                         existing_date=existing_txn.date.isoformat(),
@@ -84,17 +122,21 @@ class DuplicateDetectionService:
         return min(score, 1.0)  # Cap at 1.0
 
     def check_fitid_duplicate(self, user_id: int, account_id: int, fitid: str) -> bool:
-        """Check if a transaction with this FITID (Financial Institution Transaction ID) already exists"""
+        """
+        Check if a transaction with this FITID (Financial Institution Transaction ID) already exists.
+
+        FITID is a unique identifier provided by financial institutions in OFX/QFX files.
+        This provides exact duplicate detection with 100% confidence.
+        """
         if not fitid:
             return False
 
-        # For OFX imports, we can check if description contains the FITID
-        # This is a simple implementation - a more robust solution would store FITID separately
+        # Query the dedicated fitid column for exact match
         existing = self.db.query(Transaction).filter(
             and_(
                 Transaction.user_id == user_id,
                 Transaction.account_id == account_id,
-                Transaction.notes.contains(f"FITID:{fitid}")
+                Transaction.fitid == fitid
             )
         ).first()
 

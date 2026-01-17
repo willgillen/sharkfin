@@ -367,7 +367,8 @@ async def execute_ofx_import(
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
                     payee_id=payee_id,
-                    notes=f"FITID:{trans_data.get('fitid')}" if trans_data.get('fitid') else None,
+                    fitid=trans_data.get('fitid'),  # Store FITID in dedicated column
+                    notes=trans_data.get('notes'),
                 )
                 db.add(transaction)
                 db.flush()

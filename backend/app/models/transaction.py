@@ -36,6 +36,10 @@ class Transaction(Base):
     description = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
 
+    # Financial Institution Transaction ID (for OFX/QFX imports)
+    # Used for exact duplicate detection
+    fitid = Column(String(255), nullable=True, index=True)
+
     # For transfers
     transfer_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
 
