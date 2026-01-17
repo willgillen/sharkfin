@@ -9,6 +9,7 @@ from app.api.deps import get_current_active_user
 from app.models.user import User as UserModel
 from app.models.transaction import Transaction as TransactionModel
 from app.schemas.transaction import Transaction, TransactionCreate, TransactionUpdate
+from app.services.payee_service import PayeeService
 
 router = APIRouter()
 
@@ -20,13 +21,39 @@ def create_transaction(
     current_user: UserModel = Depends(get_current_active_user)
 ):
     """Create a new transaction for the authenticated user."""
+    # Handle payee entity creation
+    payee_id = transaction_data.payee_id
+
+    # If payee string provided but no payee_id, create/find payee entity
+    if transaction_data.payee and not payee_id:
+        payee_service = PayeeService(db)
+        payee = payee_service.get_or_create(
+            user_id=current_user.id,
+            canonical_name=transaction_data.payee
+        )
+        payee_id = payee.id
+        # Increment usage statistics
+        payee_service.increment_usage(payee.id)
+
+    # Create transaction with payee_id
+    transaction_dict = transaction_data.model_dump(exclude={'payee_id', 'payee'})
+    transaction_dict['payee_id'] = payee_id
+    transaction_dict['payee'] = transaction_data.payee  # Keep legacy field for now
+
     db_transaction = TransactionModel(
-        **transaction_data.model_dump(),
+        **transaction_dict,
         user_id=current_user.id
     )
     db.add(db_transaction)
     db.commit()
     db.refresh(db_transaction)
+
+    # Increment payee usage after transaction creation
+    if payee_id and not transaction_data.payee:
+        # Only increment if using existing payee_id (not already incremented above)
+        payee_service = PayeeService(db)
+        payee_service.increment_usage(payee_id)
+
     return db_transaction
 
 
@@ -122,8 +149,20 @@ def update_transaction(
             detail="Transaction not found"
         )
 
-    # Update only provided fields
+    # Handle payee entity creation/update
     update_data = transaction_data.model_dump(exclude_unset=True)
+
+    # If payee string provided, create/find payee entity
+    if 'payee' in update_data and update_data['payee'] and 'payee_id' not in update_data:
+        payee_service = PayeeService(db)
+        payee = payee_service.get_or_create(
+            user_id=current_user.id,
+            canonical_name=update_data['payee']
+        )
+        update_data['payee_id'] = payee.id
+        payee_service.increment_usage(payee.id)
+
+    # Update fields
     for field, value in update_data.items():
         setattr(transaction, field, value)
 
@@ -155,31 +194,45 @@ def delete_transaction(
     return None
 
 
-@router.get("/suggestions/payees", response_model=List[str])
+@router.get("/suggestions/payees")
 def get_payee_suggestions(
     q: Optional[str] = Query(None, min_length=1),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """Get payee suggestions for autocomplete based on transaction history."""
-    query = db.query(TransactionModel.payee).filter(
-        TransactionModel.user_id == current_user.id,
-        TransactionModel.payee.isnot(None),
-        TransactionModel.payee != ""
-    )
+    """
+    Get payee suggestions for autocomplete.
+    Now uses Payee entity autocomplete with category suggestions.
+    """
+    from app.schemas.payee import PayeeWithCategory
 
-    # Filter by search query if provided
+    payee_service = PayeeService(db)
+
     if q:
-        query = query.filter(TransactionModel.payee.ilike(f"%{q}%"))
+        # Use Payee entity search
+        payees = payee_service.search_payees(user_id=current_user.id, query=q, limit=limit)
+    else:
+        # Get most frequently used payees
+        payees = payee_service.get_all(user_id=current_user.id, skip=0, limit=limit)
 
-    # Group by payee and order by frequency (most used first)
-    payees = query.group_by(TransactionModel.payee)\
-        .order_by(desc(func.count(TransactionModel.payee)))\
-        .limit(limit)\
-        .all()
+    # Enrich with category information
+    results = []
+    for payee in payees:
+        payee_dict = {
+            "id": payee.id,
+            "canonical_name": payee.canonical_name,
+            "default_category_id": payee.default_category_id,
+            "transaction_count": payee.transaction_count,
+            "default_category_name": None
+        }
 
-    return [payee[0] for payee in payees]
+        if payee.default_category:
+            payee_dict["default_category_name"] = payee.default_category.name
+
+        results.append(payee_dict)
+
+    return results
 
 
 @router.get("/suggestions/category", response_model=Dict[str, Optional[int]])

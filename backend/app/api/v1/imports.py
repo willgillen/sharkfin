@@ -22,6 +22,7 @@ from app.services.import_service import ImportService
 from app.services.ofx_service import OFXService
 from app.services.duplicate_detection_service import DuplicateDetectionService
 from app.services.smart_rule_suggestion_service import SmartRuleSuggestionService
+from app.services.payee_service import PayeeService
 import json
 
 router = APIRouter()
@@ -225,9 +226,19 @@ async def execute_csv_import(
 
         imported_count = 0
         error_count = 0
+        payee_service = PayeeService(db)
 
         for trans_data in mapped_transactions:
             try:
+                # Handle payee entity creation
+                payee_id = None
+                if trans_data.get('payee'):
+                    payee = payee_service.get_or_create(
+                        user_id=current_user.id,
+                        canonical_name=trans_data['payee']
+                    )
+                    payee_id = payee.id
+
                 # Create transaction
                 transaction = Transaction(
                     user_id=current_user.id,
@@ -237,10 +248,15 @@ async def execute_csv_import(
                     date=trans_data['date'],
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
+                    payee_id=payee_id,
                     notes=trans_data.get('notes'),
                 )
                 db.add(transaction)
                 db.flush()  # Get transaction ID
+
+                # Increment payee usage
+                if payee_id:
+                    payee_service.increment_usage(payee_id)
 
                 # Link to import
                 imported_txn = ImportedTransaction(
@@ -325,12 +341,22 @@ async def execute_ofx_import(
 
         imported_count = 0
         error_count = 0
+        payee_service = PayeeService(db)
 
         for idx, trans_data in enumerate(transactions):
             if idx in skip_row_list:
                 continue
 
             try:
+                # Handle payee entity creation
+                payee_id = None
+                if trans_data.get('payee'):
+                    payee = payee_service.get_or_create(
+                        user_id=current_user.id,
+                        canonical_name=trans_data['payee']
+                    )
+                    payee_id = payee.id
+
                 # Create transaction
                 transaction = Transaction(
                     user_id=current_user.id,
@@ -340,10 +366,15 @@ async def execute_ofx_import(
                     date=trans_data['date'],
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
+                    payee_id=payee_id,
                     notes=f"FITID:{trans_data.get('fitid')}" if trans_data.get('fitid') else None,
                 )
                 db.add(transaction)
                 db.flush()
+
+                # Increment payee usage
+                if payee_id:
+                    payee_service.increment_usage(payee_id)
 
                 # Link to import
                 imported_txn = ImportedTransaction(

@@ -4,6 +4,7 @@ from datetime import date
 from app.models.transaction import TransactionType
 from app.models.account import AccountType
 from app.models.category import CategoryType
+from app.models.payee import Payee
 
 
 class TestTransactionCRUD:
@@ -603,3 +604,247 @@ class TestTransactionCRUD:
         data = response.json()
         assert len(data) == 1
         assert data[0]["account_id"] == account1.id
+
+
+class TestTransactionPayeeIntegration:
+    """Test transaction integration with Payee entities."""
+
+    def test_create_transaction_with_payee_string_creates_payee_entity(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """Test that creating a transaction with payee string auto-creates Payee entity."""
+        from app.models.account import Account
+
+        # Create account
+        account = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Create transaction with payee string
+        transaction_data = {
+            "account_id": account.id,
+            "type": "debit",
+            "amount": "25.50",
+            "date": "2024-01-15",
+            "payee": "WHOLE FOODS MARKET #123"
+        }
+
+        response = client.post(
+            "/api/v1/transactions",
+            json=transaction_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+
+        # Verify transaction has payee
+        assert data["payee"] == "WHOLE FOODS MARKET #123"
+        assert data["payee_id"] is not None
+
+        # Verify Payee entity was created with normalized name
+        payee = db_session.query(Payee).filter(Payee.id == data["payee_id"]).first()
+        assert payee is not None
+        assert payee.canonical_name == "Whole Foods Market"  # Normalized
+        assert payee.user_id == test_user.id
+        assert payee.transaction_count == 1
+
+    def test_create_transaction_with_same_payee_reuses_entity(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """Test that creating multiple transactions with same payee reuses entity."""
+        from app.models.account import Account
+
+        account = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Create first transaction
+        response1 = client.post(
+            "/api/v1/transactions",
+            json={
+                "account_id": account.id,
+                "type": "debit",
+                "amount": "10.00",
+                "date": "2024-01-15",
+                "payee": "Starbucks"
+            },
+            headers=auth_headers
+        )
+        assert response1.status_code == 201
+        payee_id_1 = response1.json()["payee_id"]
+
+        # Create second transaction with same payee
+        response2 = client.post(
+            "/api/v1/transactions",
+            json={
+                "account_id": account.id,
+                "type": "debit",
+                "amount": "12.00",
+                "date": "2024-01-16",
+                "payee": "STARBUCKS #456"  # Different variation
+            },
+            headers=auth_headers
+        )
+        assert response2.status_code == 201
+        payee_id_2 = response2.json()["payee_id"]
+
+        # Should reuse same payee entity (normalized to same name)
+        assert payee_id_1 == payee_id_2
+
+        # Verify transaction count incremented
+        payee = db_session.query(Payee).filter(Payee.id == payee_id_1).first()
+        assert payee.transaction_count == 2
+
+    def test_create_transaction_with_payee_id_directly(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """Test creating transaction with payee_id directly."""
+        from app.models.account import Account
+
+        account = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+
+        # Create payee first
+        payee = Payee(
+            user_id=test_user.id,
+            canonical_name="Amazon"
+        )
+        db_session.add(payee)
+        db_session.commit()
+        db_session.refresh(payee)
+
+        # Create transaction with payee_id
+        response = client.post(
+            "/api/v1/transactions",
+            json={
+                "account_id": account.id,
+                "type": "debit",
+                "amount": "49.99",
+                "date": "2024-01-15",
+                "payee_id": payee.id
+            },
+            headers=auth_headers
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["payee_id"] == payee.id
+
+        # Verify transaction count incremented
+        db_session.refresh(payee)
+        assert payee.transaction_count == 1
+
+    def test_update_transaction_payee_string_creates_entity(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """Test updating transaction payee creates Payee entity."""
+        from app.models.account import Account
+        from app.models.transaction import Transaction
+
+        account = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+
+        # Create transaction without payee
+        transaction = Transaction(
+            user_id=test_user.id,
+            account_id=account.id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("25.00"),
+            date=date(2024, 1, 15)
+        )
+        db_session.add(transaction)
+        db_session.commit()
+        db_session.refresh(transaction)
+
+        # Update with payee
+        response = client.put(
+            f"/api/v1/transactions/{transaction.id}",
+            json={"payee": "Target"},
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["payee"] == "Target"
+        assert data["payee_id"] is not None
+
+        # Verify Payee entity created
+        payee = db_session.query(Payee).filter(Payee.id == data["payee_id"]).first()
+        assert payee is not None
+        assert payee.canonical_name == "Target"
+
+    def test_payee_autocomplete_returns_entity_data(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """Test payee autocomplete endpoint returns Payee entity data."""
+        from app.models.account import Account
+        from app.models.category import Category
+
+        # Create account and category
+        account = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        category = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([account, category])
+        db_session.commit()
+        db_session.refresh(category)
+
+        # Create payee with default category
+        payee = Payee(
+            user_id=test_user.id,
+            canonical_name="Whole Foods",
+            default_category_id=category.id,
+            transaction_count=5
+        )
+        db_session.add(payee)
+        db_session.commit()
+
+        # Test autocomplete
+        response = client.get(
+            "/api/v1/transactions/suggestions/payees?q=Whole",
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) > 0
+
+        # Verify response includes entity data
+        payee_data = data[0]
+        assert payee_data["id"] == payee.id
+        assert payee_data["canonical_name"] == "Whole Foods"
+        assert payee_data["default_category_id"] == category.id
+        assert payee_data["default_category_name"] == "Groceries"
+        assert payee_data["transaction_count"] == 5

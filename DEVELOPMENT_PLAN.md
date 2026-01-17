@@ -62,7 +62,7 @@ This application aims to provide feature parity with applications like Mint (now
 ### Phase 2: Advanced Features 🔄 IN PROGRESS
 
 #### Week 9-10: Payee Entity System & Rules Engine 🔄 IN PROGRESS
-**Backend: Payee Entity System** ✅
+**Backend: Payee Entity System** 🔄
 - [x] Payee model with relationships and metadata support
 - [x] PayeeService with normalization and autocomplete
 - [x] Pydantic schemas for Payee CRUD
@@ -70,8 +70,8 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] Comprehensive PayeeService unit tests (24 tests)
 - [x] Smart rule suggestion service integration
 - [x] Enhanced payee normalization (URLs, duplicates, cities, etc.)
-- [ ] Payee API endpoints (CRUD + autocomplete)
-- [ ] Transaction service integration (create payees during transaction import)
+- [x] Payee API endpoints (CRUD + autocomplete) - 14 API tests
+- [ ] Transaction service integration (auto-create payees during manual entry)
 - [ ] Import service integration (auto-create payees from CSV/OFX)
 
 **Backend: Rules Engine** ✅
@@ -88,16 +88,21 @@ This application aims to provide feature parity with applications like Mint (now
 
 **Frontend: Rules & Payees** ⏳
 - [x] Smart rule suggestions in import wizard
-- [ ] Payee autocomplete in transaction forms
+- [ ] Payee management page (list, create, edit, delete, search)
+  - [ ] Payee list with search and filtering
+  - [ ] Edit payee dialog (name, type, category, logo, notes)
+  - [ ] Merge payees functionality
+  - [ ] View transaction history per payee
+  - [ ] Bulk operations (delete, set category)
+- [ ] Payee autocomplete in transaction forms (QuickAddBar, transaction modals)
 - [ ] Rules management page
 - [ ] Rule creation/editing interface
-- [ ] Payee management page
 - [ ] Rule testing interface UI
 
 **Tests** 🔄
 - [x] PayeeService unit tests (24 tests)
 - [x] Smart rule suggestion tests
-- [ ] Payee API integration tests
+- [x] Payee API integration tests (14 tests)
 - [ ] Rules engine with Payee entity tests
 - [ ] Import service with Payee creation tests
 
