@@ -162,8 +162,66 @@ shark-fin/
 - [x] Categories management page
 - [x] Transaction import system (CSV + OFX/QFX with duplicate detection)
 
-### Medium Term (Week 9-16) 🔄 IN PROGRESS
-- [ ] Rules engine for auto-categorization
+### UAT Refinement Phase (Week 9-15) 🔄 INSERTED - IN PROGRESS
+**Priority**: CRITICAL - Address quality and UX issues before continuing with advanced features
+
+#### Week 9: Import Wizard Critical Fixes
+- [ ] Fix amount sign inconsistencies in CSV/OFX imports
+- [ ] Enhanced duplicate detection (check against ALL transactions, not just current batch)
+- [ ] User-controlled duplicate resolution UI (skip/merge/replace/import anyway)
+- [ ] FITID tracking for exact duplicate matching
+- [ ] 15+ new integration tests
+
+#### Week 10: Import Wizard Advanced Features
+- [ ] Store original import files in database for audit/rollback
+- [ ] Smart payee extraction with regex (Square, Toast, PayPal patterns)
+- [ ] Saved column mapping templates (reusable across imports)
+- [ ] Drag-and-drop column mapping UI
+- [ ] Import process transparency and detailed logging
+- [ ] Enhanced rollback capabilities with entity tracking
+
+#### Week 11: Payee System Enhancements
+- [ ] Fix category display bug in payee list (shows "Category: 4" instead of name)
+- [ ] Brand logo system (1000+ company logos via Clearbit API)
+- [ ] Emoji fallback system for unknown/local payees
+- [ ] Auto-suggest logos and emojis on payee creation
+
+#### Week 12: Transaction UX Improvements
+- [ ] Collapsible filters in table column headers
+- [ ] Collapsible Quick Add bar (default collapsed)
+- [ ] Inline type selector (replace toggle buttons with dropdown)
+- [ ] Remove Type column (use color coding instead)
+- [ ] Configurable column display (user preferences)
+- [ ] Infinite scroll with virtual windowing
+- [ ] Transaction notes indicator with inline expansion
+- [ ] Star/flag transactions for follow-up
+- [ ] Payee icons in transaction list
+
+#### Week 13: UI/UX Polish
+- [ ] Fix form field text readability (color contrast)
+- [ ] Overall color scheme review and refinement
+- [ ] Refined navigation structure (dropdown or collapsible sidebar)
+- [ ] Fix account institution field save bug
+
+#### Week 14: Settings & Preferences System
+- [ ] Settings infrastructure (database schema, API)
+- [ ] Settings UI (VS Code/Obsidian inspired layout)
+- [ ] 6 setting categories: General, Transactions, Import, Display, Notifications, Privacy
+- [ ] Settings integration throughout application
+- [ ] Searchable settings with help text
+
+#### Week 15: Testing & Development Tools
+- [ ] Database reset scripts (full/soft/entity-specific)
+- [ ] Enhanced realistic seed data (multiple users, 12 months of transactions)
+- [ ] Test data factories (Factory Boy integration)
+- [ ] UAT validation and sign-off
+
+**Deliverables**: 50+ improvements, 100+ new tests, professional UI polish, comprehensive settings system
+
+**Success Metrics**: All 44 UAT observations addressed, >85% test coverage maintained, no critical bugs
+
+### Medium Term (Week 16-24) 📋 PLANNED
+- [ ] Rules engine for auto-categorization (complete integration with Payee entities)
 - [ ] Recurring transactions
 - [ ] Goals and savings tracking
 - [ ] Bill tracking
@@ -454,26 +512,32 @@ Manual installation guide with:
 
 ### 🔄 Next Priorities
 
-#### Immediate (Next Sprint)
-1. [ ] Rules engine for auto-categorization
-   - Backend: Rule model (if/then conditions)
-   - Backend: Rule execution engine
-   - Backend: Pattern matching for transactions
-   - Frontend: Rules management page
-   - Frontend: Rule testing interface
-2. [ ] Recurring transactions
-   - Backend: Recurring transaction templates
-   - Backend: Automated transaction generation
-   - Backend: Schedule management (daily, weekly, monthly, yearly)
-   - Frontend: Recurring transactions page
-   - Frontend: Template creation and editing
+#### CRITICAL: UAT Refinement Phase (Weeks 9-15)
+**Status**: Inserted before continuing with advanced features
+**Objective**: Address 44 UAT observations to improve quality, UX, and data integrity
 
-#### This Month
-1. [ ] Goals and savings tracking
-2. [ ] Bill tracking and reminders
-3. [ ] Advanced reporting (cash flow, net worth trends)
-4. [ ] User settings and profile management
-5. [ ] Full data backup and restore
+**Week 9 Focus** (Current):
+1. [ ] Fix amount sign inconsistencies in import
+2. [ ] Enhanced duplicate detection (all transactions)
+3. [ ] Duplicate resolution UI with user control
+4. [ ] FITID tracking for exact matching
+
+**See full UAT Refinement Plan**: `/Users/willgillen/.claude/plans/uat-refinement-plan.md`
+
+**Why This Phase is Critical**:
+- Fixes data integrity issues (duplicate imports, amount signs)
+- Significantly improves user experience (import wizard, transaction table)
+- Adds essential infrastructure (settings system, testing tools)
+- Polishes UI/UX to professional standards
+- Must be completed before complex features like recurring transactions
+
+#### After UAT Refinement (Week 16+)
+1. [ ] Rules engine for auto-categorization (complete Payee entity integration)
+2. [ ] Recurring transactions
+3. [ ] Goals and savings tracking
+4. [ ] Bill tracking and reminders
+5. [ ] Advanced reporting (cash flow, net worth trends)
+6. [ ] Full data backup and restore
 
 ## Resources and References
 
@@ -497,10 +561,12 @@ Manual installation guide with:
 ## Project Documents
 
 1. **[DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)** - Comprehensive development roadmap
-2. **[FEATURE_RESEARCH.md](FEATURE_RESEARCH.md)** - Detailed feature analysis
-3. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup and development guide
-4. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-5. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - This document
+2. **[UAT Refinement Plan](.claude/plans/uat-refinement-plan.md)** - Critical quality improvements (Weeks 11-17)
+3. **[UAT_OBSERVATIONS.md](UAT_OBSERVATIONS.md)** - User acceptance testing observations
+4. **[FEATURE_RESEARCH.md](FEATURE_RESEARCH.md)** - Detailed feature analysis
+5. **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup and development guide
+6. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+7. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - This document
 
 ## Contact and Support
 
@@ -510,12 +576,28 @@ Manual installation guide with:
 
 ---
 
-**Project Status**: MVP Development - Phase 1 Complete ✅
-**Current Phase**: Advanced Features (Phase 2 - Rules & Recurring Transactions)
-**Next Phase**: Goals, Bill Tracking, and Advanced Reporting
-**Last Updated**: January 13, 2026
+**Project Status**: UAT Refinement Phase (Inserted)
+**Current Phase**: 🔴 CRITICAL - UAT Refinement & Quality Improvements (Weeks 11-17)
+**After UAT Phase**: Advanced Features (Goals, Recurring Transactions, Advanced Reporting)
+**Last Updated**: January 17, 2026
 
 ### Recent Progress
+
+**Latest (January 17, 2026)**:
+- ✅ **Payee Entity System (Complete - Backend + Frontend)** ← Latest!
+  - Backend: Payee model, service, API with 43 tests
+  - Frontend: Autocomplete, management pages (list, edit, create)
+  - Auto-creates payees from transaction entry and imports
+  - Intelligent normalization and deduplication
+- ✅ **UAT Testing & Observations**
+  - Conducted comprehensive user acceptance testing
+  - Identified 44 critical observations and improvements
+  - Created UAT Refinement Plan (7 weeks, Weeks 11-17)
+  - **Inserted as top priority before continuing with advanced features**
+- ✅ Navigation updated (added Payees link)
+- ✅ 151 backend tests passing (up from 146)
+
+**Phase 1 MVP Completed**:
 - ✅ Complete backend API (Auth, Accounts, Categories, Transactions, Budgets, Reports)
 - ✅ Dashboard & Reports API with financial analytics
 - ✅ Frontend foundation with Next.js 14
@@ -525,10 +607,10 @@ Manual installation guide with:
 - ✅ Transactions management (full CRUD with filtering)
 - ✅ Budgets management (full CRUD with progress tracking)
 - ✅ Categories management (hierarchical with color/icon support)
-- ✅ **Transaction Import System (CSV + OFX/QFX with duplicate detection)** ← Latest!
-- ✅ **Import History with rollback capability** ← Latest!
+- ✅ Transaction Import System (CSV + OFX/QFX with duplicate detection)
+- ✅ Import History with rollback capability
 - ✅ GitHub Actions CI/CD for automated testing
-- ✅ 91% test coverage (61 tests passing)
+- ✅ 91% test coverage (151 tests passing)
 - ✅ Demo user with realistic financial data
 - ✅ Full Docker environment (Frontend + Backend + DB + Redis)
 

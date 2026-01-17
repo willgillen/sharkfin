@@ -109,7 +109,293 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] All 151 backend tests passing
 - [ ] Rules engine with Payee entity tests (when rules updated)
 
-#### Week 11-12: Goals & Advanced Reporting ⏳
+---
+
+## 🔴 INSERTED PHASE: UAT Refinement & Quality Improvements (Weeks 11-17)
+
+**Priority**: CRITICAL - Must complete before continuing with advanced features
+**Objective**: Address 44 UAT observations to fix data integrity, improve UX, and polish application
+**Reference**: See `/Users/willgillen/.claude/plans/uat-refinement-plan.md` for full technical specifications
+
+### Week 11: Import Wizard Critical Fixes 🔴 CRITICAL
+**Priority**: Data Integrity Issues
+
+#### 11.1 Fix Amount Sign Inconsistencies
+- [ ] Investigate OFX/CSV TRNAMT parsing logic
+- [ ] Standardize amount sign interpretation across account types
+- [ ] Test with real bank file formats (checking, credit card, savings)
+- [ ] Create tests: `test_csv_debit_amounts_always_positive()`, `test_ofx_transaction_type_determines_sign()`
+- [ ] Files: `backend/app/services/ofx_service.py`, `backend/app/services/import_service.py`
+
+#### 11.2 Enhanced Duplicate Detection
+- [ ] Add FITID column to transactions table (migration)
+- [ ] Update `detect_duplicates()` to check against ALL user transactions (not just current batch)
+- [ ] Implement confidence-based matching (Exact, Very High 95%+, High 85-95%, Medium 70-85%)
+- [ ] Create indexes: `idx_transactions_fitid`, `idx_transactions_duplicate_check`
+- [ ] Tests: `test_duplicate_detection_against_all_transactions()`, `test_same_file_import_prevented()`
+
+#### 11.3 Duplicate Resolution UI
+- [ ] Create new import wizard step: "Review Duplicates"
+- [ ] Side-by-side comparison table with confidence scores
+- [ ] User actions: Skip, Merge, Import Anyway, Replace
+- [ ] Bulk actions: "Skip all high confidence", "Import all low confidence"
+- [ ] Backend: Add `DuplicateResolutionAction` enum and schemas
+- [ ] Frontend: `DuplicateReviewStep.tsx` component
+- [ ] Tests: `test_duplicate_merge_updates_existing_transaction()`, `test_duplicate_skip_prevents_import()`
+
+### Week 12: Import Wizard Advanced Features
+**Priority**: High - User Experience & Transparency
+
+#### 12.1 Original File Storage
+- [ ] Database migration: Add `original_file_data BYTEA` to import_history
+- [ ] Store compressed (gzip) file data during import
+- [ ] Add download endpoint: `GET /api/v1/imports/{import_id}/download`
+- [ ] Display file size and type in import history
+- [ ] Tests: `test_csv_file_stored_in_database()`, `test_file_download_endpoint()`
+
+#### 12.2 Smart Payee Extraction with Regex
+- [ ] Create `PayeeExtractionService` with pattern matching
+- [ ] Regex patterns for: Square (`SQ *`), Toast (`TST*`), PayPal, URLs, locations
+- [ ] Extract payee candidates and match to existing Payee entities (>80% similarity)
+- [ ] Update SmartRuleSuggestionService to use extracted payees
+- [ ] Show confidence scores in UI
+- [ ] Tests: `test_extract_payee_from_square_transaction()`, `test_match_extracted_payee_to_existing()`
+
+#### 12.3 Saved Column Mapping Templates
+- [ ] Create `column_mapping_templates` table (migration)
+- [ ] CRUD API endpoints for templates
+- [ ] Save/load mapping templates in import wizard
+- [ ] Auto-detect matching template based on CSV headers (>80% match)
+- [ ] Frontend: Template selector dropdown, "Save Mapping" button
+- [ ] Tests: `test_save_column_mapping_template()`, `test_auto_detect_matching_template()`
+
+#### 12.4 Drag-and-Drop Column Mapping UI
+- [ ] Install `react-beautiful-dnd` or `dnd-kit`
+- [ ] Rewrite MapColumnsStep with drag-and-drop interface
+- [ ] Left panel: Available CSV columns (draggable)
+- [ ] Right panel: Target fields (drop zones)
+- [ ] Live preview of mapped data
+- [ ] Visual indicators for required vs optional fields
+
+#### 12.5 Import Process Transparency & Logging
+- [ ] Create `import_logs` table (migration)
+- [ ] Create "Review Plan" step showing actions before execution
+- [ ] User toggles: Auto-create payees, Auto-apply rules, Skip duplicates
+- [ ] Log all import events (INFO, WARNING, ERROR levels)
+- [ ] Frontend: Import log viewer with filtering
+- [ ] Tests: `test_import_log_creation()`, `test_review_plan_shows_actions()`
+
+#### 12.6 Enhanced Rollback/Undo
+- [ ] Create `import_created_entities` table (tracks all created entities)
+- [ ] Track: transactions, payees, rules, categories created during import
+- [ ] Cascade rollback to delete all created entities
+- [ ] Safeguards: prevent rollback if transactions modified or payees reused
+- [ ] Impact analysis before rollback
+- [ ] Tests: `test_rollback_deletes_created_payees()`, `test_rollback_prevents_if_transactions_modified()`
+
+### Week 13: Payee System Enhancements
+**Priority**: Medium - Visual Identity & Polish
+
+#### 13.1 Fix Category Display Bug
+- [ ] Fix payee list to show category name instead of "Category: 4"
+- [ ] Add eager loading for `default_category` relationship
+- [ ] Return `default_category_name` in API response
+- [ ] Add link to category page
+- [ ] Tests: `test_payee_list_includes_category_name()`
+
+#### 13.2 Brand Logo Icon System
+- [ ] Implement Clearbit Logo API integration (`https://logo.clearbit.com/{domain}`)
+- [ ] Create `PayeeLogoService` with brand → domain mapping (1000+ brands)
+- [ ] Auto-suggest logo URL on payee creation based on name matching
+- [ ] Frontend: Logo preview with "Use Suggested" button
+- [ ] Fallback to manual URL entry
+- [ ] Tests: `test_logo_suggestion_for_walmart()`, `test_payee_creation_with_auto_logo()`
+
+#### 13.3 Emoji Icon Fallback System
+- [ ] Create `EmojiSuggestionService` with keyword → emoji mapping
+- [ ] 200+ keyword mappings (fire🔥, pizza🍕, coffee☕, grocery🛒, gas⛽, etc.)
+- [ ] Install `emoji-picker-react` library
+- [ ] Frontend: Emoji picker with suggested emojis based on name
+- [ ] Store emoji as `logo_url: "emoji:🔥"`
+- [ ] Update rendering logic to handle emoji prefix
+- [ ] Default emoji for unknown payees: 🏪
+- [ ] Tests: `test_emoji_suggestion_for_fireplaces_r_us()`, `test_default_emoji_for_unknown_payee()`
+
+### Week 14: Transaction UX Improvements
+**Priority**: Medium - User Experience Enhancements
+
+#### 14.1 Collapsible Filters in Table Headers
+- [ ] Remove dedicated filter section
+- [ ] Add sortable column headers (click to sort ascending/descending)
+- [ ] Add filter icon in each column header → dropdown with filter options
+- [ ] Active filters shown as removable chips
+- [ ] "Clear all filters" button
+- [ ] Create `ColumnFilter.tsx` component
+
+#### 14.2 Collapsible Quick Add Bar
+- [ ] Default state: Single line "+ Add Transaction" button
+- [ ] Expanded state: Full form inline with table
+- [ ] Position as first row in transaction table
+- [ ] Smooth slide-down animation
+- [ ] Auto-collapse after successful add
+- [ ] ESC key to collapse
+
+#### 14.3 Inline Type Selector & Remove Type Column
+- [ ] Replace Expense/Income toggle buttons with dropdown
+- [ ] Dropdown options: 📤 Expense (red), 📥 Income (green), 🔄 Transfer (blue)
+- [ ] Remove Type column from transaction table
+- [ ] Use color coding for amounts instead (red=expense, green=income, blue=transfer)
+- [ ] Tests: Test type selection and color coding
+
+#### 14.4 Configurable Column Display
+- [ ] Add `ui_preferences JSONB` to users table
+- [ ] Gear icon in table header → column selector
+- [ ] Checkboxes for visible columns (Date and Amount required)
+- [ ] Save column preferences to backend
+- [ ] Load preferences on page mount
+- [ ] Tests: `test_save_column_preferences()`, `test_load_column_preferences()`
+
+#### 14.5 Infinite Scroll with Virtual Windowing
+- [ ] Install `react-virtual` or `react-window`
+- [ ] Implement cursor-based pagination backend: `?cursor=timestamp&limit=50&direction=next`
+- [ ] Initial load: 50 transactions
+- [ ] Keep max 500 transactions in memory
+- [ ] Bi-directional scrolling (load previous on scroll up)
+- [ ] Spinner indicators while loading
+- [ ] Tests: Test scroll pagination, memory limits
+
+#### 14.6 Transaction Notes Indicator
+- [ ] Add Notes column with 💬 icon (shows count if notes exist)
+- [ ] Click to expand notes inline or in popover
+- [ ] Create `NotesPopover.tsx` component
+- [ ] Hide column by default (show in column selector)
+- [ ] Tests: Test note indicator display
+
+#### 14.7 Star/Flag Transactions
+- [ ] Add `is_starred BOOLEAN` to transactions table (migration)
+- [ ] Create index: `idx_transactions_starred`
+- [ ] Add star column in table (⭐/☆)
+- [ ] Click to toggle (optimistic update)
+- [ ] Add "Starred" filter quick button
+- [ ] Starred transactions highlighted with yellow background
+- [ ] Tests: `test_star_transaction()`, `test_filter_starred_transactions()`
+
+#### 14.8 Payee Icons in Transaction List
+- [ ] Eager load `payee_entity` relationship in transaction list
+- [ ] Include `logo_url` in API response
+- [ ] Render payee icon before name (logo or emoji)
+- [ ] Small size (24x24)
+- [ ] Tests: Test icon rendering
+
+### Week 15: UI/UX Polish
+**Priority**: High - Visual Quality & Usability
+
+#### 15.1 Form Field Text Readability
+- [ ] Audit all form input className attributes
+- [ ] Update to use `text-gray-900` (instead of light grays)
+- [ ] Ensure placeholders use `placeholder-gray-400`
+- [ ] Create reusable `Input.tsx` component with proper styling
+- [ ] Update all form components to use consistent input styling
+- [ ] Visual regression testing
+
+#### 15.2 Overall Color Scheme Review
+- [ ] Define color palette in `tailwind.config.js`
+- [ ] Primary: Blue #3B82F6, Success: Green #10B981, Warning: Yellow #F59E0B, Danger: Red #EF4444
+- [ ] Semantic colors for transactions (expense=red, income=green, transfer=blue)
+- [ ] Neutral colors (bg, surface, border, text)
+- [ ] Test WCAG AA contrast compliance
+- [ ] Apply consistently across application
+
+#### 15.3 Refined Navigation Structure
+- [ ] Implement dropdown menu or collapsible sidebar
+- [ ] Main nav: Dashboard, Accounts, Transactions, Budgets, Reports
+- [ ] Dropdown "More" menu: Categories, Payees, Rules, Import, Import History, Settings
+- [ ] Group items logically (Settings group, Tools group)
+- [ ] Mobile-friendly responsive design
+- [ ] Test navigation interactions
+
+#### 15.4 Fix Account Institution Field Bug
+- [ ] Verify `institution` field exists in Account model
+- [ ] Verify `AccountCreate` and `AccountUpdate` schemas include `institution`
+- [ ] Verify frontend form sends `institution` in API call
+- [ ] Check database migration includes `institution` column
+- [ ] Tests: `test_create_account_with_institution()`, `test_institution_persists_after_save()`
+
+### Week 16: Settings & Preferences System
+**Priority**: High - Infrastructure for Future Features
+
+#### 16.1 Settings Infrastructure
+- [ ] Create `user_settings` table (migration)
+- [ ] Create `UserSetting` model with user_id, category, key, value (JSONB)
+- [ ] Create `SettingsService` with CRUD operations
+- [ ] Create Pydantic schemas for settings
+- [ ] API endpoints: `GET/PUT/DELETE /api/v1/settings/{category}/{key}`
+- [ ] 6 setting categories: General, Transactions, Import, Display, Notifications, Privacy
+- [ ] Tests: `test_create_user_setting()`, `test_get_user_settings()`, `test_reset_setting_to_default()`
+
+#### 16.2 Settings UI
+- [ ] Create VS Code/Obsidian-inspired layout
+- [ ] Left sidebar: Category navigation
+- [ ] Right panel: Settings for selected category
+- [ ] Search box: Filter settings by keyword
+- [ ] Help text under each setting
+- [ ] Setting types: text, number, select, toggle, color picker, checkbox
+- [ ] Save/Cancel buttons
+- [ ] Reset to default per setting
+- [ ] Files: `settings/page.tsx`, `SettingsCategory.tsx`, `SettingItem.tsx`
+
+#### 16.3 Settings Integration
+- [ ] Create `useSettings()` hook
+- [ ] Load settings on app mount
+- [ ] Apply transaction column preferences
+- [ ] Apply import preferences (duplicate strictness, auto-apply rules)
+- [ ] Apply display preferences (date format, number format)
+- [ ] Tests: Test settings load and application
+
+### Week 17: Testing & Development Tools
+**Priority**: Medium - Developer Experience & UAT Support
+
+#### 17.1 Database Reset Scripts
+- [ ] Create `backend/scripts/db_reset.sh` and `db_reset.py`
+- [ ] Commands: `--full` (drop all), `--soft` (keep users), `--transactions`, `--accounts`, `--payees`
+- [ ] `--seed` flag to reseed after reset
+- [ ] `--user` flag to reset specific user data
+- [ ] Safety: Require confirmation, only allow in dev environment
+- [ ] Docker integration: `docker-compose exec backend python scripts/db_reset.py`
+- [ ] Tests: `test_soft_reset_keeps_users()`, `test_full_reset_clears_all()`
+
+#### 17.2 Enhanced Seed Data
+- [ ] Create `enhanced_seeds.py` with realistic test data
+- [ ] Multiple users (demo, heavy volume, minimal data)
+- [ ] Diverse accounts (checking, savings, credit cards, loans, investments)
+- [ ] 500+ realistic transactions per user (12 months)
+- [ ] Recurring bills, groceries, restaurants, entertainment, healthcare
+- [ ] Major retailers with appropriate logos/emojis
+- [ ] Full category tree with subcategories
+- [ ] Budgets with over/under scenarios
+- [ ] Import history examples
+- [ ] Tests: Test seed script integrity
+
+#### 17.3 Test Data Factories
+- [ ] Install Factory Boy
+- [ ] Create `backend/app/tests/factories.py`
+- [ ] Factories: UserFactory, AccountFactory, TransactionFactory, PayeeFactory, CategoryFactory
+- [ ] Use in tests to reduce boilerplate
+- [ ] Support sequences and randomization
+- [ ] Tests: Example usage in existing tests
+
+---
+
+**UAT Refinement Phase Status**: 📋 Planned - Inserting before advanced features
+**Total Duration**: 7 weeks (Weeks 11-17)
+**Deliverables**: 50+ improvements, 100+ new tests, professional UI polish, settings system
+**Success Criteria**: All 44 UAT observations addressed, >85% test coverage, no critical bugs
+
+---
+
+## Phase 2 (Continued): Advanced Features (Weeks 18-24)
+
+#### Week 18-19: Goals & Advanced Reporting ⏳
 - [ ] Backend: Savings goals model and API
 - [ ] Backend: Debt tracking with payoff calculations
 - [ ] Backend: Net worth tracking over time
@@ -120,7 +406,7 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Frontend: Cash flow forecast view
 - [ ] Tests: Goals and advanced reports tests
 
-#### Week 13-14: Bill Tracking & Recurring Transactions ⏳
+#### Week 20-21: Bill Tracking & Recurring Transactions ⏳
 - [ ] Backend: Recurring transaction templates
 - [ ] Backend: Automated transaction generation engine
 - [ ] Backend: Schedule management (daily, weekly, monthly, yearly)
@@ -131,7 +417,7 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Frontend: Subscription detection interface
 - [ ] Tests: Recurring transactions test coverage
 
-#### Week 15-16: Data Management & Backup ⏳
+#### Week 22-24: Data Management & Backup ⏳
 - [ ] Backend: Full data backup export
 - [ ] Backend: Data restore functionality
 - [ ] Backend: Import history tracking improvements
@@ -140,7 +426,7 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Frontend: Import history enhancements
 - [ ] Tests: Backup and restore tests
 
-**Phase 2 Status**: 🔄 In Progress - Payee Entity System Backend Complete, API & Frontend Integration Next
+**Phase 2 Status**: ⏸️ Paused - UAT Refinement Phase inserted as priority
 
 **Recent Completions (Jan 17, 2026)**:
 - ✅ Payee Entity System (Complete - Backend + Frontend):
@@ -167,11 +453,21 @@ This application aims to provide feature parity with applications like Mint (now
   - Expanded merchant patterns (H-E-B, Torchy's, Anthropic, AT&T, etc.)
   - Now detects recurring merchants correctly in CSV imports
 
-**Next Priorities**:
-1. Payee advanced features (merge payees, transaction history view, bulk operations)
-2. Rules engine update to work with Payee entities (instead of strings)
-3. Data migration script to convert existing transaction.payee strings to entities
-4. Rules management frontend pages
+**Next Priorities** (CRITICAL SHIFT):
+1. 🔴 **UAT Refinement Phase (Weeks 11-17)** - INSERTED AS TOP PRIORITY
+   - Address 44 UAT observations before continuing with advanced features
+   - Fix critical data integrity issues (import duplicates, amount signs)
+   - Polish UI/UX to professional standards
+   - Build settings infrastructure
+   - Create development tools for testing
+   - See detailed plan above and in `/Users/willgillen/.claude/plans/uat-refinement-plan.md`
+
+2. After UAT Refinement (Week 18+):
+   - Payee advanced features (merge payees, transaction history view, bulk operations)
+   - Rules engine update to work with Payee entities (instead of strings)
+   - Data migration script to convert existing transaction.payee strings to entities
+   - Rules management frontend pages
+   - Continue with Goals, Recurring Transactions, and Advanced Reporting
 
 ### Phase 3: Premium Features ⏳ PLANNED
 
