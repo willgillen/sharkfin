@@ -2,6 +2,7 @@ from typing import List, Dict, Optional, Set
 from collections import defaultdict, Counter
 import re
 from decimal import Decimal
+from app.services.payee_service import PayeeService
 
 class SmartRuleSuggestion:
     """Represents a smart rule suggestion during import."""
@@ -43,10 +44,12 @@ class SmartRuleSuggestionService:
 
         # Grocery stores
         (r'\bWHOLE\s*FOODS\b', 'Whole Foods', 'grocery'),
+        (r'\bH-E-B\b', 'H-E-B', 'grocery'),
         (r'\bSAFEWAY\b', 'Safeway', 'grocery'),
         (r'\bKROGER\b', 'Kroger', 'grocery'),
         (r'\bPUBLIX\b', 'Publix', 'grocery'),
         (r'\bTRADER\s*JOE', 'Trader Joe\'s', 'grocery'),
+        (r'\bRANDALLS\b', 'Randalls', 'grocery'),
 
         # Gas stations
         (r'\bSHELL\b', 'Shell', 'gas'),
@@ -56,28 +59,37 @@ class SmartRuleSuggestionService:
         (r'\bBP\b', 'BP', 'gas'),
         (r'\b76\b', '76', 'gas'),
 
-        # Restaurants
+        # Restaurants & Fast Food
         (r'\bSTARBUCKS\b', 'Starbucks', 'restaurant'),
-        (r'\bMCDONALD', 'McDonald\'s', 'restaurant'),
-        (r'\bCHIPOTLE\b', 'Chipotle', 'restaurant'),
-        (r'\bSUBWAY\b', 'Subway', 'restaurant'),
-        (r'\bPANERA\b', 'Panera', 'restaurant'),
+        (r'\bMCDONALD', 'McDonald\'s', 'fast_food'),
+        (r'\bCHIPOTLE\b', 'Chipotle', 'fast_food'),
+        (r'\bSUBWAY\b', 'Subway', 'fast_food'),
+        (r'\bPANERA\b', 'Panera', 'fast_food'),
+        (r'\bTACO\s*BELL\b', 'Taco Bell', 'fast_food'),
+        (r'\bTORCHY', 'Torchy\'s', 'restaurant'),
+        (r'\bCHUY', 'Chuy\'s', 'restaurant'),
 
-        # Utilities
+        # Utilities & Telecom
         (r'\bPG&E\b', 'PG&E', 'utilities'),
+        (r'\bATT\*?\s*BILL', 'AT&T', 'utilities'),
         (r'\bAT&T\b', 'AT&T', 'utilities'),
         (r'\bVERIZON\b', 'Verizon', 'utilities'),
         (r'\bCOMCAST\b', 'Comcast', 'utilities'),
+        (r'\bATMOS\s*ENERGY\b', 'Atmos Energy', 'utilities'),
 
-        # Subscriptions
+        # Subscriptions & Tech
         (r'\bNETFLIX\b', 'Netflix', 'subscription'),
         (r'\bSPOTIFY\b', 'Spotify', 'subscription'),
         (r'\bAPPLE\.COM\b', 'Apple', 'subscription'),
         (r'\bGOOGLE\b', 'Google', 'subscription'),
+        (r'\bANTHROPIC\b', 'Anthropic', 'subscription'),
+        (r'\bCLAUDE\.AI\b', 'Claude AI', 'subscription'),
+        (r'AWS\.AMAZON\b', 'AWS', 'subscription'),
 
         # Transportation
         (r'\bUBER\b', 'Uber', 'transportation'),
         (r'\bLYFT\b', 'Lyft', 'transportation'),
+        (r'\bHCTRA\b', 'HCTRA Toll Tag', 'transportation'),
     ]
 
     def __init__(self):
@@ -110,9 +122,26 @@ class SmartRuleSuggestionService:
         pattern_suggestions = self._find_common_patterns(transactions, min_occurrences, min_confidence)
 
         # Filter out patterns already covered by merchant detection
-        existing_patterns = {s.payee_pattern.upper() for s in suggestions}
+        # Check if patterns match the same transactions (>80% overlap = duplicate)
         for pattern_suggestion in pattern_suggestions:
-            if pattern_suggestion.payee_pattern.upper() not in existing_patterns:
+            is_duplicate = False
+            pattern_rows = set(pattern_suggestion.matching_rows)
+
+            for existing_suggestion in suggestions:
+                existing_rows = set(existing_suggestion.matching_rows)
+
+                # Calculate overlap: intersection / smaller set
+                if len(pattern_rows) > 0 and len(existing_rows) > 0:
+                    intersection = len(pattern_rows & existing_rows)
+                    smaller_set_size = min(len(pattern_rows), len(existing_rows))
+                    overlap_ratio = intersection / smaller_set_size
+
+                    # If >80% of transactions overlap, consider it a duplicate
+                    if overlap_ratio > 0.8:
+                        is_duplicate = True
+                        break
+
+            if not is_duplicate:
                 suggestions.append(pattern_suggestion)
 
         # Step 3: Sort by confidence and number of matches
@@ -180,46 +209,55 @@ class SmartRuleSuggestionService:
         Find common patterns in descriptions and payees.
 
         This handles cases where merchants aren't in our known list.
+        Uses PayeeService normalization to group similar payee variations together.
         """
         suggestions = []
 
-        # Extract potential merchant names from descriptions
-        merchant_candidates = defaultdict(list)
+        # Use PayeeService normalization to find recurring payees
+        payee_service = PayeeService(db=None)  # We only need the normalization method
+        normalized_payees = defaultdict(list)
 
         for idx, txn in enumerate(transactions):
             description = txn.get('description', '')
             payee = txn.get('payee', '')
 
-            # Try to extract merchant name from description
-            extracted = self._extract_merchant_name(description or payee)
+            # Use the description as the primary source (that's where payee info is in CSV)
+            text_to_normalize = description or payee
 
-            if extracted:
-                merchant_candidates[extracted].append({
+            if not text_to_normalize or text_to_normalize.strip() == '':
+                continue
+
+            # Normalize using PayeeService (same logic as will be used for actual payees)
+            normalized = payee_service._normalize_payee_name(text_to_normalize)
+
+            if normalized and len(normalized) >= 3:  # Minimum 3 chars for a valid payee
+                normalized_payees[normalized].append({
                     'index': idx,
                     'description': description,
-                    'payee': payee
+                    'payee': payee,
+                    'original': text_to_normalize
                 })
 
         # Create suggestions for patterns that appear frequently
-        for merchant_name, matches in merchant_candidates.items():
+        for normalized_name, matches in normalized_payees.items():
             if len(matches) >= min_occurrences:
                 matching_rows = [m['index'] for m in matches]
-                sample_descriptions = [m['description'] or m['payee'] for m in matches[:3]]
+                sample_descriptions = [m['original'] for m in matches[:3]]
 
-                # Calculate confidence based on consistency and frequency
-                consistency = len(matches) / max(1, len(transactions))
-                frequency_factor = min(1.0, len(matches) / 10)
-                confidence = (consistency * 0.5) + (frequency_factor * 0.5)
+                # Calculate confidence based on frequency
+                # Use a more lenient formula: if it appears 3+ times, it's worth suggesting
+                # Confidence scales with frequency up to a maximum of 10 occurrences
+                confidence = min(1.0, len(matches) / 10) * 0.7 + 0.3  # Range: 0.3 to 1.0
 
                 if confidence >= min_confidence:
                     suggestion = SmartRuleSuggestion(
-                        suggested_name=f"Auto: {merchant_name.title()}",
-                        payee_pattern=merchant_name,
+                        suggested_name=f"Auto: {normalized_name}",
+                        payee_pattern=normalized_name,
                         payee_match_type="contains",
                         matching_rows=matching_rows,
                         sample_descriptions=sample_descriptions,
                         confidence=confidence,
-                        detected_merchant=merchant_name
+                        detected_merchant=normalized_name
                     )
                     suggestions.append(suggestion)
 

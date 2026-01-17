@@ -310,13 +310,42 @@ class PayeeService:
             r'\s+STORE\s*#?\d+$',  # Store number with "STORE" keyword (do this first)
             r'\s+\d{1,2}/\d{1,2}$',  # Date like 8/18
             r'\s+#\d+$',  # Store number
+            r'\s+\.\.\.\d+$',  # ...123456 format
             r'\s+\d{10,}$',  # Long number at end
             r'\s+(INC|LLC|CORP|CO|LTD)\.?$',  # Company suffixes
             r'\s+CHRG\s+SVCS$',
+            r'\s+HTTPS?://.*$',  # Remove URLs
+            r'\s+HTTPS?:/.*$',  # Remove partial URLs (malformed)
+            r'\s+WWW\..*$',  # Remove web addresses
+            r'\s+[A-Z0-9]+\.COM$',  # Remove .com domains
+            r'\s+[A-Z0-9]+\.NET$',  # Remove .net domains
+            r'\s+[A-Z0-9]+\.ORG$',  # Remove .org domains
+            # Remove common city suffixes (usually at end after business name)
+            r'\s+(AUSTIN|LEANDER|CEDAR PARK|GEORGETOWN|ROUND ROCK)$',
         ]
 
         for suffix_pattern in suffixes_to_remove:
             text = re.sub(suffix_pattern, '', text, flags=re.IGNORECASE)
+
+        # Remove city/location suffixes if they duplicate the merchant name
+        # For patterns like "CS AUSTIN CAFE AUSTIN" -> "CS AUSTIN CAFE"
+        # or "MAIDS AND MOORE MAIDSANDMOORE" -> "MAIDS AND MOORE"
+        words = text.split()
+        if len(words) > 2:
+            # Check if last word appears earlier (case-insensitive)
+            last_word_upper = words[-1].upper()
+            for i in range(len(words) - 1):
+                if words[i].upper() == last_word_upper:
+                    # Remove the duplicate at the end
+                    text = ' '.join(words[:-1])
+                    break
+
+            # Also check if last word is a concatenation of earlier words (no spaces)
+            # e.g., "MAIDS AND MOORE MAIDSANDMOORE" -> check if "MAIDSANDMOORE" == "MAIDSANDMOORE"
+            last_word = words[-1]
+            first_words_concatenated = ''.join(words[:-1]).upper()
+            if last_word.upper() == first_words_concatenated:
+                text = ' '.join(words[:-1])
 
         # Clean up extra whitespace
         text = ' '.join(text.split())
