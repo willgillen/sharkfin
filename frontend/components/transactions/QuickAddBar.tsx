@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { transactionsAPI, accountsAPI, categoriesAPI } from "@/lib/api";
-import { Account, Category, TransactionType } from "@/types";
+import { Account, Category, TransactionType, PayeeSuggestion } from "@/types";
 
 interface QuickAddBarProps {
   onTransactionAdded: () => void;
@@ -18,7 +18,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [payeeSuggestions, setPayeeSuggestions] = useState<string[]>([]);
+  const [payeeSuggestions, setPayeeSuggestions] = useState<PayeeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,17 +73,13 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
   }, [payee]);
 
   // Get category suggestion when payee is selected
-  const handlePayeeSelect = async (selectedPayee: string) => {
-    setPayee(selectedPayee);
+  const handlePayeeSelect = (selectedPayee: PayeeSuggestion) => {
+    setPayee(selectedPayee.canonical_name);
     setShowSuggestions(false);
 
-    try {
-      const { category_id } = await transactionsAPI.getCategorySuggestion(selectedPayee);
-      if (category_id) {
-        setCategoryId(category_id);
-      }
-    } catch (err) {
-      console.error("Failed to get category suggestion:", err);
+    // Auto-fill category from payee's default category
+    if (selectedPayee.default_category_id) {
+      setCategoryId(selectedPayee.default_category_id);
     }
 
     // Focus amount input after selecting payee
@@ -245,14 +241,28 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           />
           {showSuggestions && payeeSuggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-              {payeeSuggestions.map((suggestion, idx) => (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {payeeSuggestions.map((suggestion) => (
                 <div
-                  key={idx}
+                  key={suggestion.id}
                   onClick={() => handlePayeeSelect(suggestion)}
-                  className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                 >
-                  {suggestion}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">
+                        {suggestion.canonical_name}
+                      </div>
+                      {suggestion.default_category_name && (
+                        <div className="text-xs text-gray-500">
+                          {suggestion.default_category_name}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400 ml-2">
+                      {suggestion.transaction_count} txns
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -115,6 +115,50 @@ export interface CategoryUpdate {
   parent_id?: number;
 }
 
+// Payee types
+export interface Payee {
+  id: number;
+  user_id: number;
+  canonical_name: string;
+  default_category_id: number | null;
+  payee_type: string | null;
+  logo_url: string | null;
+  notes: string | null;
+  transaction_count: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface PayeeWithCategory extends Payee {
+  default_category_name: string | null;
+}
+
+export interface PayeeCreate {
+  canonical_name: string;
+  default_category_id?: number;
+  payee_type?: string;
+  logo_url?: string;
+  notes?: string;
+}
+
+export interface PayeeUpdate {
+  canonical_name?: string;
+  default_category_id?: number;
+  payee_type?: string;
+  logo_url?: string;
+  notes?: string;
+}
+
+// Payee autocomplete response
+export interface PayeeSuggestion {
+  id: number;
+  canonical_name: string;
+  default_category_id: number | null;
+  transaction_count: number;
+  default_category_name: string | null;
+}
+
 // Transaction types
 export enum TransactionType {
   DEBIT = "debit",
@@ -127,6 +171,7 @@ export interface Transaction {
   user_id: number;
   account_id: number;
   category_id: number | null;
+  payee_id: number | null;
   type: TransactionType;
   amount: string;
   date: string;

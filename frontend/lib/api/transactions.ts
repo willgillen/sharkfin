@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import { Transaction, TransactionCreate, TransactionUpdate } from "@/types";
+import { Transaction, TransactionCreate, TransactionUpdate, PayeeSuggestion } from "@/types";
 
 export const transactionsAPI = {
   async getAll(params?: {
@@ -35,8 +35,8 @@ export const transactionsAPI = {
     await apiClient.delete(`/api/v1/transactions/${id}`);
   },
 
-  async getPayeeSuggestions(query?: string): Promise<string[]> {
-    const { data } = await apiClient.get<string[]>("/api/v1/transactions/suggestions/payees", {
+  async getPayeeSuggestions(query?: string): Promise<PayeeSuggestion[]> {
+    const { data } = await apiClient.get<PayeeSuggestion[]>("/api/v1/transactions/suggestions/payees", {
       params: { q: query, limit: 10 },
     });
     return data;

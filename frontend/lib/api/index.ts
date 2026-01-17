@@ -7,3 +7,4 @@ export { budgetsAPI } from "./budgets";
 export { reportsAPI } from "./reports";
 export { importsAPI } from "./imports";
 export { rulesAPI } from "./rules";
+export { payeesAPI } from "./payees";
