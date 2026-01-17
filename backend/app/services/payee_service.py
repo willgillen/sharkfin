@@ -201,21 +201,31 @@ class PayeeService:
         """
         Create a new payee explicitly.
 
-        Note: Prefer get_or_create() to avoid duplicates.
+        Note: Uses get_or_create to avoid duplicates, then updates with additional metadata.
 
         Args:
             user_id: User ID who owns the payee
             payee_data: Payee creation data
 
         Returns:
-            Created Payee
+            Created Payee (existing or new)
         """
-        # Use get_or_create to avoid duplicates
-        return self.get_or_create(
+        # Use get_or_create to find or create the basic payee
+        payee = self.get_or_create(
             user_id=user_id,
             canonical_name=payee_data.canonical_name,
             default_category_id=payee_data.default_category_id
         )
+
+        # Update with additional metadata if provided
+        update_data = payee_data.model_dump(exclude_unset=True, exclude={'canonical_name', 'default_category_id'})
+        if update_data:
+            for field, value in update_data.items():
+                setattr(payee, field, value)
+            self.db.commit()
+            self.db.refresh(payee)
+
+        return payee
 
     def update(
         self,

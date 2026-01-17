@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules
+from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules, payees
 
 app = FastAPI(
     title="Shark Fin API",
@@ -27,6 +27,7 @@ app.include_router(budgets.router, prefix="/api/v1/budgets", tags=["budgets"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["imports"])
 app.include_router(rules.router, prefix="/api/v1/rules", tags=["rules"])
+app.include_router(payees.router, prefix="/api/v1/payees", tags=["payees"])
 
 @app.get("/")
 async def root():
