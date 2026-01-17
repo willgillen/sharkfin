@@ -48,25 +48,56 @@ export default function PreviewStep({
     setIsChecking(true);
     setError(null);
 
+    const isDev = process.env.NODE_ENV === 'development';
+
+    if (isDev) {
+      console.log("=== PREVIEW STEP: CHECKING FOR DUPLICATES ===");
+      console.log("File type:", fileType);
+      console.log("File name:", file.name);
+      console.log("Account ID:", accountId);
+      console.log("Has column mapping:", !!columnMapping);
+    }
+
     try {
       let duplicateResponse;
 
       if (fileType === "csv" && columnMapping) {
+        if (isDev) console.log("Calling detectCSVDuplicates...");
         duplicateResponse = await importsAPI.detectCSVDuplicates(file, accountId, columnMapping);
       } else {
+        if (isDev) console.log("Calling detectOFXDuplicates...");
         duplicateResponse = await importsAPI.detectOFXDuplicates(file, accountId);
       }
 
+      if (isDev) {
+        console.log("=== DUPLICATE DETECTION RESPONSE ===");
+        console.log("Full response:", duplicateResponse);
+        console.log("Duplicates array:", duplicateResponse.duplicates);
+        console.log("Duplicates count:", duplicateResponse.duplicates?.length || 0);
+        console.log("Total new transactions:", duplicateResponse.total_new_transactions);
+        console.log("Total duplicates:", duplicateResponse.total_duplicates);
+      }
+
       setDuplicates(duplicateResponse.duplicates);
+      if (isDev) console.log("Duplicates state set to:", duplicateResponse.duplicates);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to check for duplicates");
       console.error("Duplicate check error:", err);
     } finally {
       setIsChecking(false);
+      if (isDev) console.log("=== DUPLICATE CHECK COMPLETE ===");
     }
   };
 
   const handleContinue = async () => {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    if (isDev) {
+      console.log("=== PREVIEW STEP: CONTINUE BUTTON CLICKED ===");
+      console.log("Duplicates being passed to next step:", duplicates);
+      console.log("Duplicates length:", duplicates.length);
+    }
+
     // Pass duplicates to next step
     onComplete("preview", { duplicates });
   };

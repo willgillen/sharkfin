@@ -77,13 +77,26 @@ export default function ImportPage() {
         break;
 
       case "preview":
+        if (process.env.NODE_ENV === 'development') {
+          console.log("=== IMPORT PAGE: PREVIEW STEP COMPLETE ===");
+          console.log("Data received from preview:", data);
+          console.log("Duplicates in data:", data.duplicates);
+          console.log("Duplicates length:", data.duplicates?.length || 0);
+        }
+
         // After preview, check for duplicates
         setDuplicates(data.duplicates || []);
 
         if (data.duplicates && data.duplicates.length > 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Found ${data.duplicates.length} duplicates - routing to duplicates step`);
+          }
           // Show duplicate review step
           setCurrentStep("duplicates");
         } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log("No duplicates found - routing to smart suggestions");
+          }
           // No duplicates, go to smart suggestions
           setCurrentStep("smart-suggestions");
         }
