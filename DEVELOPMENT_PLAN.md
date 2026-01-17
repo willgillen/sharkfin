@@ -87,15 +87,16 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Update rules engine to work with Payee entities (instead of strings)
 - [ ] Rule testing interface endpoint
 
-**Frontend: Rules & Payees** ⏳
+**Frontend: Rules & Payees** 🔄
 - [x] Smart rule suggestions in import wizard
-- [ ] Payee management page (list, create, edit, delete, search)
-  - [ ] Payee list with search and filtering
-  - [ ] Edit payee dialog (name, type, category, logo, notes)
+- [x] Payee autocomplete in transaction forms (QuickAddBar with entity data)
+- [x] Payee management pages
+  - [x] Payee list with search and sorting by usage
+  - [x] Edit payee page (name, type, category, logo, notes)
+  - [x] Create new payee page
   - [ ] Merge payees functionality
   - [ ] View transaction history per payee
   - [ ] Bulk operations (delete, set category)
-- [ ] Payee autocomplete in transaction forms (QuickAddBar, transaction modals)
 - [ ] Rules management page
 - [ ] Rule creation/editing interface
 - [ ] Rule testing interface UI
@@ -142,15 +143,23 @@ This application aims to provide feature parity with applications like Mint (now
 **Phase 2 Status**: 🔄 In Progress - Payee Entity System Backend Complete, API & Frontend Integration Next
 
 **Recent Completions (Jan 17, 2026)**:
-- ✅ Payee Entity System (Backend Complete):
-  - Complete Payee model with user relationships, metadata, and usage statistics
-  - PayeeService with intelligent normalization (handles URLs, duplicates, city names, store numbers, etc.)
-  - Autocomplete/search functionality ranked by usage frequency
-  - Payee CRUD API endpoints with category suggestions
-  - Transaction integration (auto-create payees from payee strings)
-  - Import integration (CSV/OFX auto-create payees during import)
-  - 43 total tests (24 service + 14 API + 5 transaction integration)
-  - Database migration with proper indexes for performance
+- ✅ Payee Entity System (Complete - Backend + Frontend):
+  - **Backend:**
+    - Complete Payee model with user relationships, metadata, and usage statistics
+    - PayeeService with intelligent normalization (handles URLs, duplicates, city names, store numbers, etc.)
+    - Autocomplete/search functionality ranked by usage frequency
+    - Payee CRUD API endpoints with category suggestions
+    - Transaction integration (auto-create payees from payee strings)
+    - Import integration (CSV/OFX auto-create payees during import)
+    - 43 total tests (24 service + 14 API + 5 transaction integration)
+    - Database migration with proper indexes for performance
+  - **Frontend:**
+    - Payee autocomplete in QuickAddBar with entity data display
+    - Shows canonical name, default category, and transaction count
+    - Auto-fills category when payee with default selected
+    - Payee management pages (list, edit, create)
+    - Search and sort by usage frequency
+    - Full CRUD operations on payee metadata
 - ✅ Smart Rule Suggestion Enhancements:
   - Integrated PayeeService normalization for consistent payee detection
   - Improved confidence calculation (frequency-based vs consistency-based)
@@ -159,10 +168,10 @@ This application aims to provide feature parity with applications like Mint (now
   - Now detects recurring merchants correctly in CSV imports
 
 **Next Priorities**:
-1. Frontend payee autocomplete in transaction forms (QuickAddBar)
-2. Frontend payee management page (list, edit, merge, delete)
-3. Rules engine update to work with Payee entities (instead of strings)
-4. Data migration script to convert existing transaction.payee strings to entities
+1. Payee advanced features (merge payees, transaction history view, bulk operations)
+2. Rules engine update to work with Payee entities (instead of strings)
+3. Data migration script to convert existing transaction.payee strings to entities
+4. Rules management frontend pages
 
 ### Phase 3: Premium Features ⏳ PLANNED
 
