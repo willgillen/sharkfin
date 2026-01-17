@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 import chardet
+import gzip
 from io import BytesIO, StringIO
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -300,16 +301,45 @@ class ImportService:
         filename: str,
         import_type: str,
         total_rows: int,
-        file_size: int = 0
+        file_size: int = 0,
+        file_data: Optional[bytes] = None
     ) -> ImportHistory:
-        """Create import history record"""
+        """
+        Create import history record with optional original file storage.
+
+        Args:
+            user_id: User ID
+            account_id: Account ID
+            filename: Original filename
+            import_type: Type of import (csv, ofx, qfx)
+            total_rows: Total number of rows/transactions
+            file_size: Original file size in bytes
+            file_data: Original file contents (will be compressed with gzip)
+
+        Returns:
+            ImportHistory record
+        """
+        # Compress file data if provided
+        compressed_data = None
+        original_file_size = None
+        is_compressed = False
+
+        if file_data:
+            original_file_size = len(file_data)
+            compressed_data = gzip.compress(file_data, compresslevel=9)
+            is_compressed = True
+
         import_record = ImportHistory(
             user_id=user_id,
             account_id=account_id,
             filename=filename,
             import_type=import_type,
             total_rows=total_rows,
-            file_size=file_size
+            file_size=file_size,
+            original_file_data=compressed_data,
+            original_file_name=filename,
+            original_file_size=original_file_size,
+            is_compressed=is_compressed
         )
         self.db.add(import_record)
         self.db.commit()

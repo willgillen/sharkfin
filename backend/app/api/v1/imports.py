@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import gzip
 from app.api.deps import get_current_active_user, get_db
 from app.models.user import User
 from app.models.account import Account
@@ -211,14 +213,15 @@ async def execute_csv_import(
         service = ImportService(db)
         df = service.parse_csv(contents)
 
-        # Create import record
+        # Create import record with original file data
         import_record = service.create_import_record(
             user_id=current_user.id,
             account_id=account_id,
             filename=file.filename,
             import_type="csv",
             total_rows=len(df),
-            file_size=len(contents)
+            file_size=len(contents),
+            file_data=contents  # Store compressed original file
         )
 
         # Map and import transactions
@@ -328,7 +331,7 @@ async def execute_ofx_import(
 
         service = ImportService(db)
 
-        # Create import record
+        # Create import record with original file data
         import_type = "qfx" if file.filename.endswith('.qfx') else "ofx"
         import_record = service.create_import_record(
             user_id=current_user.id,
@@ -336,7 +339,8 @@ async def execute_ofx_import(
             filename=file.filename,
             import_type=import_type,
             total_rows=len(transactions),
-            file_size=len(contents)
+            file_size=len(contents),
+            file_data=contents  # Store compressed original file
         )
 
         imported_count = 0
@@ -573,4 +577,60 @@ async def analyze_import_for_rules(
         suggestions=suggestion_responses,
         total_transactions_analyzed=len(request.transactions),
         total_suggestions=len(suggestion_responses)
+    )
+
+
+@router.get("/{import_id}/download")
+async def download_import_file(
+    import_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download the original import file.
+
+    Returns the original file that was imported, decompressed if it was stored compressed.
+    """
+    # Get import record and verify ownership
+    import_record = db.query(ImportHistory).filter(
+        ImportHistory.id == import_id,
+        ImportHistory.user_id == current_user.id
+    ).first()
+
+    if not import_record:
+        raise HTTPException(status_code=404, detail="Import not found")
+
+    if not import_record.original_file_data:
+        raise HTTPException(
+            status_code=404,
+            detail="Original file not available for this import"
+        )
+
+    # Decompress the file data
+    file_data = import_record.original_file_data
+    if import_record.is_compressed:
+        try:
+            file_data = gzip.decompress(file_data)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to decompress file: {str(e)}"
+            )
+
+    # Determine media type based on file type
+    media_type_map = {
+        'csv': 'text/csv',
+        'ofx': 'application/x-ofx',
+        'qfx': 'application/x-ofx'
+    }
+    media_type = media_type_map.get(import_record.import_type, 'application/octet-stream')
+
+    # Return file with appropriate headers
+    filename = import_record.original_file_name or import_record.filename
+    return Response(
+        content=file_data,
+        media_type=media_type,
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
     )

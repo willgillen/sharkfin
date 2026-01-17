@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -15,6 +15,12 @@ class ImportHistory(Base):
     import_type = Column(String(20), nullable=False)  # csv, ofx, qfx
     filename = Column(String(255), nullable=False)
     file_size = Column(Integer)
+
+    # Original file storage (for re-download capability)
+    original_file_data = Column(LargeBinary, nullable=True)  # Compressed (gzip) file data
+    original_file_name = Column(String(255), nullable=True)  # Original filename
+    original_file_size = Column(Integer, nullable=True)  # Original file size (before compression)
+    is_compressed = Column(Boolean, default=True, nullable=True)  # Whether file_data is gzipped
 
     # Results
     total_rows = Column(Integer, nullable=False)
