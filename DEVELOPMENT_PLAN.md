@@ -12,8 +12,8 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Development Progress Checklist
 
-**Last Updated**: January 13, 2026
-**Current Phase**: Phase 2 - Advanced Features (Rules Engine & Recurring Transactions)
+**Last Updated**: January 17, 2026
+**Current Phase**: Phase 2 - Advanced Features (Payee Entity System & Rules Engine Integration)
 
 ### Phase 1: MVP Foundation ✅ COMPLETED
 
@@ -61,19 +61,45 @@ This application aims to provide feature parity with applications like Mint (now
 
 ### Phase 2: Advanced Features 🔄 IN PROGRESS
 
-#### Week 9-10: Rules Engine ⏳ NEXT
-- [ ] Backend: Rule model (if/then conditions)
-- [ ] Backend: Rule execution engine
-- [ ] Backend: Pattern matching for transactions
-  - [ ] Payee contains/matches text
-  - [ ] Amount greater/less than
-  - [ ] Description patterns
-- [ ] Backend: Rule priority system
-- [ ] Backend: Bulk rule application to historical transactions
-- [ ] Frontend: Rules management page
-- [ ] Frontend: Rule creation/editing interface
-- [ ] Frontend: Rule testing interface
-- [ ] Tests: Comprehensive rule engine test coverage
+#### Week 9-10: Payee Entity System & Rules Engine 🔄 IN PROGRESS
+**Backend: Payee Entity System** ✅
+- [x] Payee model with relationships and metadata support
+- [x] PayeeService with normalization and autocomplete
+- [x] Pydantic schemas for Payee CRUD
+- [x] Database migration for payees table
+- [x] Comprehensive PayeeService unit tests (24 tests)
+- [x] Smart rule suggestion service integration
+- [x] Enhanced payee normalization (URLs, duplicates, cities, etc.)
+- [ ] Payee API endpoints (CRUD + autocomplete)
+- [ ] Transaction service integration (create payees during transaction import)
+- [ ] Import service integration (auto-create payees from CSV/OFX)
+
+**Backend: Rules Engine** ✅
+- [x] CategorizationRule model (if/then conditions)
+- [x] Rule execution engine with priority system
+- [x] Pattern matching for transactions:
+  - [x] Payee contains/exact/starts_with/ends_with/regex
+  - [x] Amount greater/less than
+  - [x] Description patterns
+- [x] Smart rule suggestions during CSV import
+- [x] Bulk rule application to historical transactions
+- [ ] Update rules engine to work with Payee entities (instead of strings)
+- [ ] Rule testing interface endpoint
+
+**Frontend: Rules & Payees** ⏳
+- [x] Smart rule suggestions in import wizard
+- [ ] Payee autocomplete in transaction forms
+- [ ] Rules management page
+- [ ] Rule creation/editing interface
+- [ ] Payee management page
+- [ ] Rule testing interface UI
+
+**Tests** 🔄
+- [x] PayeeService unit tests (24 tests)
+- [x] Smart rule suggestion tests
+- [ ] Payee API integration tests
+- [ ] Rules engine with Payee entity tests
+- [ ] Import service with Payee creation tests
 
 #### Week 11-12: Goals & Advanced Reporting ⏳
 - [ ] Backend: Savings goals model and API
@@ -106,7 +132,28 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Frontend: Import history enhancements
 - [ ] Tests: Backup and restore tests
 
-**Phase 2 Status**: 🔄 In Progress - Starting with Rules Engine
+**Phase 2 Status**: 🔄 In Progress - Payee Entity System Backend Complete, API & Frontend Integration Next
+
+**Recent Completions (Jan 17, 2026)**:
+- ✅ Payee Entity System (Backend Phase 1):
+  - Complete Payee model with user relationships, metadata, and usage statistics
+  - PayeeService with intelligent normalization (handles URLs, duplicates, city names, store numbers, etc.)
+  - Autocomplete/search functionality ranked by usage frequency
+  - 24 comprehensive unit tests - all passing
+  - Database migration with proper indexes for performance
+- ✅ Smart Rule Suggestion Enhancements:
+  - Integrated PayeeService normalization for consistent payee detection
+  - Improved confidence calculation (frequency-based vs consistency-based)
+  - Enhanced deduplication using transaction overlap detection
+  - Expanded merchant patterns (H-E-B, Torchy's, Anthropic, AT&T, etc.)
+  - Now detects recurring merchants correctly in CSV imports
+
+**Next Priorities**:
+1. Payee API endpoints (CRUD + autocomplete endpoint)
+2. Transaction service integration (auto-create payees during manual entry)
+3. Import service integration (auto-create payees from CSV/OFX imports)
+4. Frontend payee autocomplete in transaction forms
+5. Rules engine update to work with Payee entities (instead of strings)
 
 ### Phase 3: Premium Features ⏳ PLANNED
 
