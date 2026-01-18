@@ -42,12 +42,15 @@ class PayeeExtractionService:
         if processor_match:
             confidence += 0.2
 
-        # 2. Remove store/location numbers
+        # 2. Expand abbreviations (BEFORE transaction ID removal to avoid losing important words)
+        cleaned = self._expand_abbreviations(cleaned)
+
+        # 3. Remove store/location numbers
         cleaned, number_removed = self._remove_store_numbers(cleaned)
         if number_removed:
             confidence += 0.1
 
-        # 3. Remove transaction IDs and codes
+        # 4. Remove transaction IDs and codes
         cleaned, id_removed = self._remove_transaction_ids(cleaned)
         if id_removed:
             confidence += 0.1
@@ -78,7 +81,7 @@ class PayeeExtractionService:
 
     def _remove_processor_prefixes(self, text: str) -> Tuple[str, bool]:
         """
-        Remove payment processor prefixes.
+        Remove payment processor prefixes and banking prefixes.
 
         Patterns:
         - SQ * (Square)
@@ -87,15 +90,28 @@ class PayeeExtractionService:
         - PAYPAL *
         - VENMO *
         - CASHAPP*
+        - ACH DEPOSIT COMPANY ...
+        - ACH WITHDRAWAL COMPANY ...
+        - PAYMENT TO ...
+        - ONLINE PAYMENT TO ...
         """
         patterns = [
-            r'^SQ\s*\*\s*',           # Square: "SQ *" or "SQ*"
-            r'^TST\s*\*\s*',          # Toast: "TST*" or "TST *"
-            r'^STRIPE\s*\*\s*',       # Stripe
-            r'^PAYPAL\s*\*\s*',       # PayPal - must have asterisk
-            r'^VENMO\s*\*\s*',        # Venmo
-            r'^CASHAPP\s*\*\s*',      # CashApp
-            r'^ZELLE\s*\*\s*',        # Zelle
+            r'^SQ\s*\*\s*',                             # Square: "SQ *" or "SQ*"
+            r'^TST\s*\*\s*',                            # Toast: "TST*" or "TST *"
+            r'^STRIPE\s*\*\s*',                         # Stripe
+            r'^PAYPAL\s*\*\s*',                         # PayPal - must have asterisk
+            r'^VENMO\s*\*\s*',                          # Venmo
+            r'^CASHAPP\s*\*\s*',                        # CashApp
+            r'^ZELLE\s*\*\s*',                          # Zelle
+            r'^ACH\s+DEPOSIT\s+COMPANY\s+',             # ACH deposits
+            r'^ACH\s+WITHDRAWAL\s+COMPANY\s+',          # ACH withdrawals
+            r'^ACH\s+DEBIT\s+',                         # ACH debits
+            r'^ACH\s+CREDIT\s+',                        # ACH credits
+            r'^ONLINE\s+PAYMENT\s+TO\s+',               # Online payments
+            r'^PAYMENT\s+TO\s+',                        # Payments
+            r'^DEBIT\s+CARD\s+PURCHASE\s*-?\s*',        # Debit card
+            r'^CREDIT\s+CARD\s+PURCHASE\s*-?\s*',       # Credit card
+            r'^POS\s+PURCHASE\s*-?\s*',                 # POS purchases
         ]
 
         for pattern in patterns:
@@ -190,11 +206,15 @@ class PayeeExtractionService:
         - City, State abbreviations
         - Street addresses
         - Common location words
+        - Alphanumeric location codes (XX1801, 5812)
         """
         patterns = [
             r'\s+\d+\s+(ST|AVE|BLVD|RD|LN|DR|CT|WAY)\s*$',  # Street addresses at end
             r'\s+[A-Z]{2}\s+\d{5}\s*$',                      # "CA 12345" (state + zip)
             r'\s+\d{5}\s*$',                                 # Zip code at end
+            r'\s+\d{4,}\s+[A-Z]{2,4}\s*$',                   # "5812 CEDA" (number + city abbrev)
+            r'\s+[A-Z]{2}\d{4,}\s+[A-Z]{2}\s*$',            # "XX1801 TX" (alphanumeric + state)
+            r'\s+\d{4,}\s*$',                                # Generic 4+ digit codes at end (like 5812)
         ]
 
         for pattern in patterns:
@@ -204,6 +224,39 @@ class PayeeExtractionService:
                 return (cleaned, True)
 
         return (text, False)
+
+    def _expand_abbreviations(self, text: str) -> str:
+        """
+        Expand common abbreviations to full names.
+
+        This helps consolidate variations like "SCHW" → "Schwab"
+        """
+        # Common company/institution abbreviations (case-insensitive)
+        abbreviations = {
+            # Financial institutions
+            r'\bSCHW\b': 'Schwab',
+            r'\bSCHWAB\s*BA\b': 'Schwab Bank',
+            r'\bCHARLES\s+SCHW\b': 'Charles Schwab',
+            r'\bMERCEDESBENZ\s*FINANCIA?\b': 'Mercedes-Benz Financial',
+            r'\bAMERICAN\s+EXPRESS\b': 'American Express',
+            r'\bAMEX\b': 'American Express',
+
+            # Government/Utilities
+            r'\bDEPT\s+EDUC\b': 'Department of Education',
+            r'\bPEDERNALE?S?\b': 'Pedernales Electric',
+            r'\bPED\s+ELEC\b': 'Pedernales Electric',
+
+            # Common business abbreviations
+            r'\bFREEDOM\s+E\b': 'Freedom',  # Truncated company name
+
+            # Transaction types to clean
+            r'\bDIVIDEND\s+DEPOSIT\b': 'Investment Dividend',
+        }
+
+        for pattern, replacement in abbreviations.items():
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+        return text
 
     def _normalize_whitespace(self, text: str) -> str:
         """
