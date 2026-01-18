@@ -157,12 +157,26 @@ This application aims to provide feature parity with applications like Mint (now
 ### Week 12: Import Wizard Advanced Features
 **Priority**: High - User Experience & Transparency
 
-#### 12.1 Original File Storage
-- [ ] Database migration: Add `original_file_data BYTEA` to import_history
-- [ ] Store compressed (gzip) file data during import
-- [ ] Add download endpoint: `GET /api/v1/imports/{import_id}/download`
-- [ ] Display file size and type in import history
-- [ ] Tests: `test_csv_file_stored_in_database()`, `test_file_download_endpoint()`
+#### 12.1 Original File Storage ✅
+- [x] **Database**: Added 4 columns to import_history (original_file_data, original_file_name, original_file_size, is_compressed)
+- [x] **Compression**: Gzip level 9 compression achieving >50% reduction for typical CSV files
+- [x] **Backend**: Download endpoint GET /api/v1/imports/{import_id}/download with:
+  - User ownership verification
+  - On-demand decompression
+  - Proper media types (text/csv, application/x-ofx)
+  - Content-Disposition headers for download
+- [x] **Frontend**: Import history UI with:
+  - File size display (formatted as KB/MB)
+  - Download button with icon
+  - Loading states during download
+  - Error handling
+- [x] **Testing**: Created test_file_storage.py with 9 comprehensive tests covering:
+  - CSV/OFX compression and storage
+  - Download endpoint with auth
+  - Security (cross-user access prevention)
+  - Compression ratio verification
+  - Media type handling
+- **All 183 backend tests passing**
 
 #### 12.2 Smart Payee Extraction with Regex
 - [ ] Create `PayeeExtractionService` with pattern matching
