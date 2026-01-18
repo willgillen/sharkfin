@@ -392,6 +392,7 @@ export interface ImportHistoryResponse {
   id: number;
   import_type: "csv" | "ofx" | "qfx";
   filename: string;
+  file_size?: number;
   account_id?: number;
   account_name?: string;
   total_rows: number;
@@ -402,6 +403,9 @@ export interface ImportHistoryResponse {
   started_at: string;
   completed_at?: string;
   can_rollback: boolean;
+  original_file_name?: string;
+  original_file_size?: number;
+  has_file_data?: boolean;
 }
 
 // Smart Rule Suggestions during Import

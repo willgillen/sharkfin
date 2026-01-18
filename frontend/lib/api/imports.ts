@@ -136,5 +136,33 @@ export const importsAPI = {
       request
     );
     return data;
+  },
+
+  async downloadFile(importId: number): Promise<void> {
+    const response = await apiClient.get(`/api/v1/imports/${importId}/download`, {
+      responseType: 'blob'
+    });
+
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `import-${importId}`;
+
+    if (contentDisposition) {
+      const matches = /filename="([^"]+)"/.exec(contentDisposition);
+      if (matches && matches[1]) {
+        filename = matches[1];
+      }
+    }
+
+    // Create blob and download
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 };

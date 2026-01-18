@@ -447,6 +447,7 @@ async def get_import_history(
             id=imp.id,
             import_type=imp.import_type,
             filename=imp.filename,
+            file_size=imp.file_size,
             account_id=imp.account_id,
             account_name=account_name,
             total_rows=imp.total_rows,
@@ -456,7 +457,10 @@ async def get_import_history(
             status=imp.status,
             started_at=imp.started_at,
             completed_at=imp.completed_at,
-            can_rollback=imp.can_rollback
+            can_rollback=imp.can_rollback,
+            original_file_name=imp.original_file_name,
+            original_file_size=imp.original_file_size,
+            has_file_data=imp.original_file_data is not None
         ))
 
     return result

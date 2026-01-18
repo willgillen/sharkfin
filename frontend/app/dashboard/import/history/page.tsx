@@ -14,6 +14,7 @@ export default function ImportHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [rollingBack, setRollingBack] = useState<number | null>(null);
+  const [downloading, setDownloading] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -54,6 +55,26 @@ export default function ImportHistoryPage() {
     } finally {
       setRollingBack(null);
     }
+  };
+
+  const handleDownload = async (importId: number) => {
+    setDownloading(importId);
+    setError("");
+
+    try {
+      await importsAPI.downloadFile(importId);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to download file");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number | undefined) => {
+    if (!bytes) return "-";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const formatDate = (dateString: string) => {
@@ -200,7 +221,9 @@ export default function ImportHistoryPage() {
                         {getFileTypeIcon(importItem.import_type)}
                         <div className="ml-3">
                           <p className="text-sm font-medium text-gray-900">{importItem.filename}</p>
-                          <p className="text-xs text-gray-500 uppercase">{importItem.import_type}</p>
+                          <p className="text-xs text-gray-500">
+                            {importItem.import_type.toUpperCase()} · {formatFileSize(importItem.original_file_size)}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -225,18 +248,36 @@ export default function ImportHistoryPage() {
                       {getStatusBadge(importItem.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {importItem.can_rollback && importItem.status === "completed" && (
-                        <button
-                          onClick={() => handleRollback(importItem.id)}
-                          disabled={rollingBack === importItem.id}
-                          className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {rollingBack === importItem.id ? "Rolling back..." : "Rollback"}
-                        </button>
-                      )}
-                      {!importItem.can_rollback && (
-                        <span className="text-gray-400">-</span>
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        {importItem.has_file_data && (
+                          <button
+                            onClick={() => handleDownload(importItem.id)}
+                            disabled={downloading === importItem.id}
+                            className="text-blue-600 hover:text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Download original file"
+                          >
+                            {downloading === importItem.id ? (
+                              "Downloading..."
+                            ) : (
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                        {importItem.can_rollback && importItem.status === "completed" && (
+                          <button
+                            onClick={() => handleRollback(importItem.id)}
+                            disabled={rollingBack === importItem.id}
+                            className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {rollingBack === importItem.id ? "Rolling back..." : "Rollback"}
+                          </button>
+                        )}
+                        {!importItem.has_file_data && !importItem.can_rollback && (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -90,6 +90,7 @@ class ImportHistoryResponse(BaseModel):
     id: int
     import_type: ImportType
     filename: str
+    file_size: Optional[int] = None
     account_id: Optional[int] = None
     account_name: Optional[str] = None
     total_rows: int
@@ -100,6 +101,9 @@ class ImportHistoryResponse(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime] = None
     can_rollback: bool
+    original_file_name: Optional[str] = None
+    original_file_size: Optional[int] = None
+    has_file_data: bool = False
 
     class Config:
         from_attributes = True
