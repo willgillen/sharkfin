@@ -525,7 +525,7 @@ async def analyze_import_for_rules(
     """
     from app.models.categorization_rule import CategorizationRule
 
-    smart_suggestion_service = SmartRuleSuggestionService()
+    smart_suggestion_service = SmartRuleSuggestionService(db=db)
 
     suggestions = smart_suggestion_service.analyze_import_data(
         transactions=request.transactions,
@@ -572,7 +572,9 @@ async def analyze_import_for_rules(
             matching_row_indices=s.matching_rows,
             sample_descriptions=s.sample_descriptions,
             confidence=s.confidence,
-            detected_merchant=s.detected_merchant
+            detected_merchant=s.detected_merchant,
+            extracted_payee_name=s.extracted_payee_name,
+            extraction_confidence=s.extraction_confidence
         )
         for s in filtered_suggestions
     ]

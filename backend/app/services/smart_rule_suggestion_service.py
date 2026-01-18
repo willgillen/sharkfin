@@ -3,6 +3,7 @@ from collections import defaultdict, Counter
 import re
 from decimal import Decimal
 from app.services.payee_service import PayeeService
+from app.services.payee_extraction_service import PayeeExtractionService
 
 class SmartRuleSuggestion:
     """Represents a smart rule suggestion during import."""
@@ -15,7 +16,9 @@ class SmartRuleSuggestion:
         matching_rows: List[int],
         sample_descriptions: List[str],
         confidence: float,
-        detected_merchant: Optional[str] = None
+        detected_merchant: Optional[str] = None,
+        extracted_payee_name: Optional[str] = None,
+        extraction_confidence: Optional[float] = None
     ):
         self.suggested_name = suggested_name
         self.payee_pattern = payee_pattern
@@ -24,6 +27,8 @@ class SmartRuleSuggestion:
         self.sample_descriptions = sample_descriptions
         self.confidence = confidence
         self.detected_merchant = detected_merchant
+        self.extracted_payee_name = extracted_payee_name
+        self.extraction_confidence = extraction_confidence
 
 
 class SmartRuleSuggestionService:
@@ -92,8 +97,8 @@ class SmartRuleSuggestionService:
         (r'\bHCTRA\b', 'HCTRA Toll Tag', 'transportation'),
     ]
 
-    def __init__(self):
-        pass
+    def __init__(self, db=None):
+        self.extraction_service = PayeeExtractionService(db) if db else None
 
     def analyze_import_data(
         self,
@@ -156,6 +161,7 @@ class SmartRuleSuggestionService:
     ) -> List[SmartRuleSuggestion]:
         """
         Detect known merchants from transaction descriptions.
+        Uses PayeeExtractionService to clean merchant names.
         """
         suggestions = []
         merchant_matches = defaultdict(list)
@@ -170,11 +176,22 @@ class SmartRuleSuggestionService:
 
             for pattern, merchant_name, category_hint in self.MERCHANT_PATTERNS:
                 if re.search(pattern, text_to_check, re.IGNORECASE):
+                    # Use extraction service to clean the description if available
+                    extracted_name = None
+                    extraction_confidence = None
+
+                    if self.extraction_service:
+                        original_desc = txn.get('description', '')
+                        if original_desc:
+                            extracted_name, extraction_confidence = self.extraction_service.extract_payee_name(original_desc)
+
                     merchant_matches[merchant_name].append({
                         'index': idx,
                         'description': txn.get('description', ''),
                         'payee': txn.get('payee', ''),
-                        'category_hint': category_hint
+                        'category_hint': category_hint,
+                        'extracted_name': extracted_name,
+                        'extraction_confidence': extraction_confidence
                     })
 
         # Create suggestions for merchants that appear enough times
@@ -184,7 +201,16 @@ class SmartRuleSuggestionService:
                 sample_descriptions = [m['description'] or m['payee'] for m in matches[:3]]
 
                 # High confidence for known merchants
-                confidence = min(0.95, 0.7 + (len(matches) * 0.05))
+                base_confidence = min(0.95, 0.7 + (len(matches) * 0.05))
+
+                # Use the first extracted name and average extraction confidence
+                extracted_name = matches[0].get('extracted_name')
+                extraction_confidences = [m.get('extraction_confidence') for m in matches if m.get('extraction_confidence')]
+                avg_extraction_confidence = sum(extraction_confidences) / len(extraction_confidences) if extraction_confidences else None
+
+                # Boost overall confidence if extraction confidence is high
+                if avg_extraction_confidence and avg_extraction_confidence > 0.7:
+                    base_confidence = min(0.98, base_confidence + 0.05)
 
                 suggestion = SmartRuleSuggestion(
                     suggested_name=f"Auto: {merchant_name}",
@@ -192,8 +218,10 @@ class SmartRuleSuggestionService:
                     payee_match_type="contains",
                     matching_rows=matching_rows,
                     sample_descriptions=sample_descriptions,
-                    confidence=confidence,
-                    detected_merchant=merchant_name
+                    confidence=base_confidence,
+                    detected_merchant=merchant_name,
+                    extracted_payee_name=extracted_name,
+                    extraction_confidence=avg_extraction_confidence
                 )
                 suggestions.append(suggestion)
 
@@ -209,57 +237,111 @@ class SmartRuleSuggestionService:
         Find common patterns in descriptions and payees.
 
         This handles cases where merchants aren't in our known list.
-        Uses PayeeService normalization to group similar payee variations together.
+        Uses PayeeExtractionService for intelligent extraction and grouping.
         """
         suggestions = []
 
-        # Use PayeeService normalization to find recurring payees
-        payee_service = PayeeService(db=None)  # We only need the normalization method
-        normalized_payees = defaultdict(list)
+        # Use extraction service if available, otherwise fall back to PayeeService normalization
+        if self.extraction_service:
+            extracted_payees = defaultdict(list)
 
-        for idx, txn in enumerate(transactions):
-            description = txn.get('description', '')
-            payee = txn.get('payee', '')
+            for idx, txn in enumerate(transactions):
+                description = txn.get('description', '')
+                payee = txn.get('payee', '')
 
-            # Use the description as the primary source (that's where payee info is in CSV)
-            text_to_normalize = description or payee
+                # Use the description as the primary source (that's where payee info is in CSV)
+                text_to_extract = description or payee
 
-            if not text_to_normalize or text_to_normalize.strip() == '':
-                continue
+                if not text_to_extract or text_to_extract.strip() == '':
+                    continue
 
-            # Normalize using PayeeService (same logic as will be used for actual payees)
-            normalized = payee_service._normalize_payee_name(text_to_normalize)
+                # Extract payee name with confidence
+                extracted_name, extraction_confidence = self.extraction_service.extract_payee_name(text_to_extract)
 
-            if normalized and len(normalized) >= 3:  # Minimum 3 chars for a valid payee
-                normalized_payees[normalized].append({
-                    'index': idx,
-                    'description': description,
-                    'payee': payee,
-                    'original': text_to_normalize
-                })
+                if extracted_name and len(extracted_name) >= 3:  # Minimum 3 chars for a valid payee
+                    extracted_payees[extracted_name].append({
+                        'index': idx,
+                        'description': description,
+                        'payee': payee,
+                        'original': text_to_extract,
+                        'extraction_confidence': extraction_confidence
+                    })
 
-        # Create suggestions for patterns that appear frequently
-        for normalized_name, matches in normalized_payees.items():
-            if len(matches) >= min_occurrences:
-                matching_rows = [m['index'] for m in matches]
-                sample_descriptions = [m['original'] for m in matches[:3]]
+            # Create suggestions for patterns that appear frequently
+            for extracted_name, matches in extracted_payees.items():
+                if len(matches) >= min_occurrences:
+                    matching_rows = [m['index'] for m in matches]
+                    sample_descriptions = [m['original'] for m in matches[:3]]
 
-                # Calculate confidence based on frequency
-                # Use a more lenient formula: if it appears 3+ times, it's worth suggesting
-                # Confidence scales with frequency up to a maximum of 10 occurrences
-                confidence = min(1.0, len(matches) / 10) * 0.7 + 0.3  # Range: 0.3 to 1.0
+                    # Calculate base confidence based on frequency
+                    # Range: 0.5 to 1.0 (start higher for low-frequency patterns)
+                    base_confidence = min(1.0, 0.5 + (len(matches) / 20))
 
-                if confidence >= min_confidence:
-                    suggestion = SmartRuleSuggestion(
-                        suggested_name=f"Auto: {normalized_name}",
-                        payee_pattern=normalized_name,
-                        payee_match_type="contains",
-                        matching_rows=matching_rows,
-                        sample_descriptions=sample_descriptions,
-                        confidence=confidence,
-                        detected_merchant=normalized_name
-                    )
-                    suggestions.append(suggestion)
+                    # Average extraction confidence across matches
+                    extraction_confidences = [m['extraction_confidence'] for m in matches]
+                    avg_extraction_confidence = sum(extraction_confidences) / len(extraction_confidences)
+
+                    # Combine base confidence with extraction confidence
+                    # Weight: 50% base (frequency) + 50% extraction quality
+                    # This gives more weight to extraction quality for well-extracted patterns
+                    combined_confidence = (base_confidence * 0.5) + (avg_extraction_confidence * 0.5)
+
+                    if combined_confidence >= min_confidence:
+                        suggestion = SmartRuleSuggestion(
+                            suggested_name=f"Auto: {extracted_name}",
+                            payee_pattern=extracted_name,
+                            payee_match_type="contains",
+                            matching_rows=matching_rows,
+                            sample_descriptions=sample_descriptions,
+                            confidence=combined_confidence,
+                            detected_merchant=extracted_name,
+                            extracted_payee_name=extracted_name,
+                            extraction_confidence=avg_extraction_confidence
+                        )
+                        suggestions.append(suggestion)
+
+        else:
+            # Fallback to PayeeService normalization if extraction service not available
+            payee_service = PayeeService(db=None)
+            normalized_payees = defaultdict(list)
+
+            for idx, txn in enumerate(transactions):
+                description = txn.get('description', '')
+                payee = txn.get('payee', '')
+
+                text_to_normalize = description or payee
+
+                if not text_to_normalize or text_to_normalize.strip() == '':
+                    continue
+
+                normalized = payee_service._normalize_payee_name(text_to_normalize)
+
+                if normalized and len(normalized) >= 3:
+                    normalized_payees[normalized].append({
+                        'index': idx,
+                        'description': description,
+                        'payee': payee,
+                        'original': text_to_normalize
+                    })
+
+            for normalized_name, matches in normalized_payees.items():
+                if len(matches) >= min_occurrences:
+                    matching_rows = [m['index'] for m in matches]
+                    sample_descriptions = [m['original'] for m in matches[:3]]
+
+                    confidence = min(1.0, len(matches) / 10) * 0.7 + 0.3
+
+                    if confidence >= min_confidence:
+                        suggestion = SmartRuleSuggestion(
+                            suggested_name=f"Auto: {normalized_name}",
+                            payee_pattern=normalized_name,
+                            payee_match_type="contains",
+                            matching_rows=matching_rows,
+                            sample_descriptions=sample_descriptions,
+                            confidence=confidence,
+                            detected_merchant=normalized_name
+                        )
+                        suggestions.append(suggestion)
 
         return suggestions
 

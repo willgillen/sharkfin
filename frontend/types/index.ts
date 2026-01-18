@@ -417,6 +417,8 @@ export interface SmartRuleSuggestionResponse {
   sample_descriptions: string[];
   confidence: number;
   detected_merchant?: string;
+  extracted_payee_name?: string;
+  extraction_confidence?: number;
 }
 
 export interface AnalyzeImportForRulesRequest {

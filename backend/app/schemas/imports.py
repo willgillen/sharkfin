@@ -119,6 +119,8 @@ class SmartRuleSuggestionResponse(BaseModel):
     sample_descriptions: List[str]
     confidence: float
     detected_merchant: Optional[str] = None
+    extracted_payee_name: Optional[str] = None
+    extraction_confidence: Optional[float] = None
 
 
 class AnalyzeImportForRulesRequest(BaseModel):

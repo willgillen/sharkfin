@@ -322,6 +322,16 @@ export default function SmartRuleSuggestionsStep({
                           </span>
                         )}
                       </p>
+                      {suggestion.extracted_payee_name && (
+                        <p>
+                          <span className="font-medium">Extracted Payee:</span> {suggestion.extracted_payee_name}
+                          {suggestion.extraction_confidence && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              ({Math.round(suggestion.extraction_confidence * 100)}% extraction quality)
+                            </span>
+                          )}
+                        </p>
+                      )}
                       <p>
                         <span className="font-medium">Matches:</span> {suggestion.matching_row_indices.length} transaction
                         {suggestion.matching_row_indices.length !== 1 ? 's' : ''} in this import
