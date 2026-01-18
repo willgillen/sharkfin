@@ -178,13 +178,39 @@ This application aims to provide feature parity with applications like Mint (now
   - Media type handling
 - **All 183 backend tests passing**
 
-#### 12.2 Smart Payee Extraction with Regex
-- [ ] Create `PayeeExtractionService` with pattern matching
-- [ ] Regex patterns for: Square (`SQ *`), Toast (`TST*`), PayPal, URLs, locations
-- [ ] Extract payee candidates and match to existing Payee entities (>80% similarity)
-- [ ] Update SmartRuleSuggestionService to use extracted payees
-- [ ] Show confidence scores in UI
-- [ ] Tests: `test_extract_payee_from_square_transaction()`, `test_match_extracted_payee_to_existing()`
+#### 12.2 Smart Payee Extraction with Regex ✅
+- [x] **Service**: Created PayeeExtractionService with comprehensive pattern matching:
+  - Payment processors: Square (SQ *), Toast (TST*), PayPal, Venmo, Stripe, Zelle, CashApp
+  - Store numbers: #1234, STORE 1234, trailing 4+ digit IDs
+  - Transaction IDs: Long alphanumeric codes, asterisk prefixes
+  - URL components: .COM, .NET, WWW., HTTP://
+  - Location indicators: Street addresses, zip codes
+- [x] **Extraction**: Returns (cleaned_name, confidence_score) with cumulative confidence based on patterns matched
+- [x] **Fuzzy Matching**: Levenshtein distance matching to existing Payee entities (default 80% threshold)
+- [x] **Normalization**: Title casing, whitespace cleanup, punctuation removal
+- [x] **Integration**: Updated SmartRuleSuggestionService to use PayeeExtractionService:
+  - Merchant detection uses extraction for cleaning names
+  - Pattern detection groups transactions by extracted payee
+  - Confidence scoring: 50% frequency + 50% extraction quality
+  - Base confidence adjusted to 0.5-1.0 for better low-frequency pattern detection
+- [x] **Frontend**: Updated SmartRuleSuggestionsStep UI to display:
+  - Extracted payee name in suggestions
+  - Extraction confidence as quality percentage
+  - Enhanced suggestion cards with extraction data
+- [x] **Testing**: Created test_payee_extraction.py with 25 tests (all passing):
+  - Payment processor prefix removal
+  - Store number and location removal
+  - URL suffix cleaning
+  - Real-world scenarios (Amazon, Starbucks, gas stations)
+  - Fuzzy matching with various thresholds
+  - Complete extract-and-match pipeline
+- [x] **Integration Testing**: Created test_smart_suggestions_integration.py with 16 tests (all passing):
+  - Merchant detection with extraction
+  - Pattern detection for unknown merchants
+  - Square/Toast/PayPal grouping by actual merchant
+  - Confidence scoring with extraction boost
+  - Edge cases and real-world scenarios
+- **All 224 backend tests passing**
 
 #### 12.3 Saved Column Mapping Templates
 - [ ] Create `column_mapping_templates` table (migration)
