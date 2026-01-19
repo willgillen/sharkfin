@@ -168,7 +168,7 @@ export default function EnhancedPayeeReviewStep({
       decisions.push(decision);
     });
 
-    onComplete("payee_review", decisions);
+    onComplete("payee-review", decisions);
   };
 
   if (loading) {
