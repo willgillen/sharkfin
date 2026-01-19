@@ -279,8 +279,8 @@ export default function TransactionsPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {transaction.description}
                         </div>
-                        {transaction.payee && (
-                          <div className="text-sm text-gray-500">{transaction.payee}</div>
+                        {transaction.payee_name && (
+                          <div className="text-sm text-gray-500">{transaction.payee_name}</div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

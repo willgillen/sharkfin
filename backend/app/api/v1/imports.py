@@ -1090,6 +1090,12 @@ async def execute_csv_import_with_decisions(
         df = import_service.parse_csv(contents)
         parsed_transactions = import_service.map_csv_to_transactions(df, mapping, [])
 
+        # Debug logging
+        print(f"[CSV Execute] Total payee_assignments: {len(request.payee_assignments)}")
+        print(f"[CSV Execute] Total parsed_transactions: {len(parsed_transactions)}")
+        for i, d in enumerate(request.payee_assignments[:5]):  # First 5
+            print(f"[CSV Execute] Assignment {i}: idx={d.transaction_index}, payee_id={d.payee_id}, new_name={d.new_payee_name}")
+
         # Services
         payee_service = PayeeService(db)
         matching_service = IntelligentPayeeMatchingService(db)
@@ -1116,7 +1122,8 @@ async def execute_csv_import_with_decisions(
                     )
 
         # Step 2: Build payee override map for import
-        payee_overrides = {}  # Map extracted_name -> final_payee_id
+        payee_overrides = {}  # Map transaction_index -> final_payee_id
+        print(f"[CSV Execute] Step 2 - new_payees keys: {list(new_payees.keys())}")
         for idx, txn in enumerate(parsed_transactions):
             if idx in request.skip_rows:
                 continue
@@ -1132,6 +1139,7 @@ async def execute_csv_import_with_decisions(
                 if decision.payee_id:
                     # User selected existing payee
                     payee_overrides[str(idx)] = decision.payee_id
+                    print(f"[CSV Execute] Override idx={idx}: existing payee_id={decision.payee_id}")
 
                     # Strengthen pattern if requested
                     if decision.create_pattern:
@@ -1145,42 +1153,109 @@ async def execute_csv_import_with_decisions(
                 elif idx in new_payees:
                     # New payee was created
                     payee_overrides[str(idx)] = new_payees[idx]
+                    print(f"[CSV Execute] Override idx={idx}: new payee_id={new_payees[idx]}")
+            else:
+                print(f"[CSV Execute] No decision found for idx={idx}")
 
-        # Step 3: Execute import
-        result = import_service.import_csv(
+        print(f"[CSV Execute] Final payee_overrides: {payee_overrides}")
+
+        # Step 3: Execute import - create transactions directly
+        # Create import record
+        import_record = import_service.create_import_record(
             user_id=current_user.id,
             account_id=request.account_id,
-            csv_data=contents,
-            column_mapping=mapping,
-            skip_rows=request.skip_rows,
-            filename=file.filename
+            filename=file.filename,
+            import_type="csv",
+            total_rows=len(parsed_transactions),
+            file_size=len(contents),
+            file_data=contents
         )
 
-        # Override payees based on user decisions
-        # We need to update transactions after import
-        for idx, txn in enumerate(parsed_transactions):
-            if str(idx) in payee_overrides:
-                payee_id = payee_overrides[str(idx)]
-                # Find the transaction that was created
-                # This is a bit hacky - we should improve the import service to handle this better
-                # For now, we'll match by date and amount
-                trans_date = txn.get('date')
-                trans_amount = txn.get('amount')
+        imported_count = 0
+        error_count = 0
+        skip_row_list = request.skip_rows or []
 
-                if trans_date and trans_amount:
-                    transaction = db.query(Transaction).filter(
-                        Transaction.user_id == current_user.id,
-                        Transaction.account_id == request.account_id,
-                        Transaction.date == trans_date,
-                        Transaction.amount == trans_amount
-                    ).order_by(Transaction.id.desc()).first()
+        for idx, trans_data in enumerate(parsed_transactions):
+            if idx in skip_row_list:
+                continue
 
-                    if transaction:
-                        transaction.payee_id = payee_id
+            try:
+                # Skip transactions with invalid amounts (NaN, None, etc.)
+                import math
+                amount = trans_data.get('amount')
+                if amount is None or (isinstance(amount, float) and (math.isnan(amount) or math.isinf(amount))):
+                    error_count += 1
+                    continue
+
+                # Determine payee_id from user decisions
+                payee_id = payee_overrides.get(str(idx))
+
+                # If no decision was made, fall back to extraction
+                if payee_id is None:
+                    description = trans_data.get('description', '')
+                    payee = trans_data.get('payee', '')
+                    text_to_extract = description or payee
+
+                    if text_to_extract and text_to_extract.strip():
+                        extraction_service = PayeeExtractionService(db)
+                        extracted_name, _ = extraction_service.extract_payee_name(text_to_extract)
+                        if extracted_name:
+                            payee_entity = payee_service.get_or_create(
+                                user_id=current_user.id,
+                                canonical_name=extracted_name
+                            )
+                            payee_id = payee_entity.id
+
+                # Create transaction - payee name comes from linked Payee entity via API
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    account_id=request.account_id,
+                    amount=amount,
+                    type=TransactionType[trans_data['type']],
+                    date=trans_data['date'],
+                    description=trans_data.get('description'),
+                    payee_id=payee_id,
+                    notes=trans_data.get('notes'),
+                )
+                db.add(transaction)
+                db.flush()
+
+                # Increment payee usage
+                if payee_id:
+                    payee_service.increment_usage(payee_id)
+
+                # Link to import
+                imported_txn = ImportedTransaction(
+                    import_id=import_record.id,
+                    transaction_id=transaction.id,
+                    row_number=idx
+                )
+                db.add(imported_txn)
+                imported_count += 1
+
+            except Exception as e:
+                error_count += 1
+                print(f"Error importing CSV transaction {idx}: {e}")
 
         db.commit()
 
-        return result
+        # Update import record
+        import_service.complete_import_record(
+            import_id=import_record.id,
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count
+        )
+
+        return ImportExecuteResponse(
+            import_id=import_record.id,
+            status=ImportStatus.COMPLETED,
+            total_rows=len(parsed_transactions),
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count,
+            message=f"Successfully imported {imported_count} transactions"
+        )
 
     except Exception as e:
         db.rollback()

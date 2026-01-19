@@ -20,7 +20,7 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
     amount: transaction?.amount || "0.00",
     date: transaction?.date || new Date().toISOString().split("T")[0],
     description: transaction?.description || "",
-    payee: transaction?.payee || "",
+    payee: transaction?.payee_name || transaction?.payee || "",
     notes: transaction?.notes || "",
     is_recurring: transaction?.is_recurring || false,
     tags: transaction?.tags || [],

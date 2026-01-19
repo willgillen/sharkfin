@@ -177,7 +177,8 @@ export interface Transaction {
   date: string;
   description: string;
   notes: string | null;
-  payee: string | null;
+  payee: string | null;  // Legacy field - use payee_name instead
+  payee_name: string | null;  // Payee name from linked Payee entity
   is_recurring: boolean;
   tags: string[];
   created_at: string;

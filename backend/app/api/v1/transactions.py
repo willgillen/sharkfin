@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 
 from app.core.database import get_db
@@ -10,6 +10,29 @@ from app.models.user import User as UserModel
 from app.models.transaction import Transaction as TransactionModel
 from app.schemas.transaction import Transaction, TransactionCreate, TransactionUpdate
 from app.services.payee_service import PayeeService
+
+
+def _transaction_to_response(transaction: TransactionModel) -> dict:
+    """Convert transaction model to response dict with payee_name from linked entity."""
+    result = {
+        "id": transaction.id,
+        "user_id": transaction.user_id,
+        "account_id": transaction.account_id,
+        "category_id": transaction.category_id,
+        "type": transaction.type,
+        "amount": transaction.amount,
+        "date": transaction.date,
+        "payee_id": transaction.payee_id,
+        "payee": transaction.payee,  # Legacy field
+        "description": transaction.description,
+        "notes": transaction.notes,
+        "transfer_account_id": transaction.transfer_account_id,
+        "created_at": transaction.created_at,
+        "updated_at": transaction.updated_at,
+        # Get payee_name from linked Payee entity
+        "payee_name": transaction.payee_entity.canonical_name if transaction.payee_entity else None,
+    }
+    return result
 
 router = APIRouter()
 
@@ -54,7 +77,12 @@ def create_transaction(
         payee_service = PayeeService(db)
         payee_service.increment_usage(payee_id)
 
-    return db_transaction
+    # Reload with payee relationship for response
+    db_transaction = db.query(TransactionModel).options(
+        joinedload(TransactionModel.payee_entity)
+    ).filter(TransactionModel.id == db_transaction.id).first()
+
+    return _transaction_to_response(db_transaction)
 
 
 @router.get("", response_model=List[Transaction])
@@ -74,7 +102,10 @@ def get_transactions(
 
     Default behavior: Returns up to 100 most recent transactions sorted by date (newest first).
     """
-    query = db.query(TransactionModel).filter(TransactionModel.user_id == current_user.id)
+    # Eager load payee_entity to get payee_name without N+1 queries
+    query = db.query(TransactionModel).options(
+        joinedload(TransactionModel.payee_entity)
+    ).filter(TransactionModel.user_id == current_user.id)
 
     # Apply filters
     if account_id:
@@ -106,7 +137,9 @@ def get_transactions(
     # Apply pagination
     query = query.offset(skip).limit(limit)
 
-    return query.all()
+    transactions = query.all()
+    # Convert to response format with payee_name from linked entity
+    return [_transaction_to_response(t) for t in transactions]
 
 
 @router.get("/{transaction_id}", response_model=Transaction)
@@ -116,7 +149,9 @@ def get_transaction(
     current_user: UserModel = Depends(get_current_active_user)
 ):
     """Get a specific transaction by ID."""
-    transaction = db.query(TransactionModel).filter(
+    transaction = db.query(TransactionModel).options(
+        joinedload(TransactionModel.payee_entity)
+    ).filter(
         TransactionModel.id == transaction_id,
         TransactionModel.user_id == current_user.id
     ).first()
@@ -127,7 +162,7 @@ def get_transaction(
             detail="Transaction not found"
         )
 
-    return transaction
+    return _transaction_to_response(transaction)
 
 
 @router.put("/{transaction_id}", response_model=Transaction)
@@ -138,7 +173,9 @@ def update_transaction(
     current_user: UserModel = Depends(get_current_active_user)
 ):
     """Update a transaction."""
-    transaction = db.query(TransactionModel).filter(
+    transaction = db.query(TransactionModel).options(
+        joinedload(TransactionModel.payee_entity)
+    ).filter(
         TransactionModel.id == transaction_id,
         TransactionModel.user_id == current_user.id
     ).first()
@@ -168,7 +205,7 @@ def update_transaction(
 
     db.commit()
     db.refresh(transaction)
-    return transaction
+    return _transaction_to_response(transaction)
 
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -80,7 +80,10 @@ class TransactionInDB(TransactionBase):
 
 class Transaction(TransactionInDB):
     """Schema for transaction returned in API responses."""
-    pass
+    # Payee name from linked Payee entity (preferred over legacy payee string field)
+    payee_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransactionWithPayee(TransactionInDB):
