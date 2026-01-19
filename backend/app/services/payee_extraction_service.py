@@ -180,20 +180,23 @@ class PayeeExtractionService:
         - Trailing numbers like "WALMART 01234"
         """
         patterns = [
-            r'\s*#\s*\d+\s*$',                    # "#1234" at end
+            r'\s*#\s*\d+',                        # "#1234" anywhere (not just end)
             r'\s+STORE\s+\d+\s*$',                # "STORE 1234" at end
             r'\s+LOCATION\s+\d+\s*$',             # "LOCATION 456" at end
             r'\s+LOC\s+\d+\s*$',                  # "LOC 789" at end
             r'\s+\d{4,}\s*$',                     # 4+ digits at end (store IDs)
         ]
 
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                cleaned = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
-                return (cleaned, True)
+        any_match = False
+        cleaned = text
 
-        return (text, False)
+        # Apply ALL patterns (not just first match)
+        for pattern in patterns:
+            if re.search(pattern, cleaned, re.IGNORECASE):
+                cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE).strip()
+                any_match = True
+
+        return (cleaned, any_match)
 
     def _remove_transaction_ids(self, text: str) -> Tuple[str, bool]:
         """
@@ -262,6 +265,10 @@ class PayeeExtractionService:
         - Person names at end (for ACH payroll: "WILLIAM GILLEN" or "William Gillen")
           Matches exactly 2 words that look like names (3-15 letters each)
         """
+        # Common US city names to remove (case-insensitive)
+        common_cities = r'(HOUSTON|DALLAS|AUSTIN|ATLANTA|SEATTLE|DENVER|PHOENIX|' \
+                       r'CHICAGO|BOSTON|PORTLAND|MIAMI|ORLANDO|DETROIT|CLEVELAND)'
+
         patterns = [
             r'\s+\d+\s+(ST|AVE|BLVD|RD|LN|DR|CT|WAY)\s*$',  # Street addresses at end
             r'\s+[A-Z]{2}\s+\d{5}\s*$',                      # "CA 12345" (state + zip)
@@ -269,16 +276,20 @@ class PayeeExtractionService:
             r'\s+\d{4,}\s+[A-Z]{2,4}\s*$',                   # "5812 CEDA" (number + city abbrev)
             r'\s+[A-Z]{2}\d{4,}\s+[A-Z]{2}\s*$',            # "XX1801 TX" (alphanumeric + state)
             r'\s+\d{4,}\s*$',                                # Generic 4+ digit codes at end (like 5812)
-            r'\s+[A-Z][A-Za-z]{2,14}\s+[A-Z][A-Za-z]{2,14}\s*$',  # Person names: "WILLIAM GILLEN" or "William Gillen" (3-15 letters each)
+            r'\s+[A-Z][A-Za-z]{2,14}\s+[A-Z]{2}\s*$',       # "AUSTIN TX" or "Houston Tx" (city + state)
+            r'\s+' + common_cities + r'\s*$',                 # Common city names at end
         ]
 
-        for pattern in patterns:
-            match = re.search(pattern, text)
-            if match:
-                cleaned = re.sub(pattern, '', text).strip()
-                return (cleaned, True)
+        any_match = False
+        cleaned = text
 
-        return (text, False)
+        # Apply ALL patterns (not just first match)
+        for pattern in patterns:
+            if re.search(pattern, cleaned, re.IGNORECASE):
+                cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE).strip()
+                any_match = True
+
+        return (cleaned, any_match)
 
     def _expand_abbreviations(self, text: str) -> str:
         """

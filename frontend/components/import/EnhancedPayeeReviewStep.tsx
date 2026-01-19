@@ -204,7 +204,6 @@ export default function EnhancedPayeeReviewStep({
   // Group new payees by extracted name (like old PayeeReviewStep)
   interface PayeeGroup {
     suggestedName: string;
-    finalName: string; // User's edited name (starts as suggestedName)
     transactionIndices: number[];
     sampleDescriptions: string[];
     transactionCount: number;
@@ -213,7 +212,9 @@ export default function EnhancedPayeeReviewStep({
   const payeeGroups = new Map<string, PayeeGroup>();
 
   newPayeeAssignments.forEach((assignment) => {
-    const suggestedName = assignment.extractedName || assignment.selectedNewPayeeName || "";
+    const suggestedName = assignment.extractedName || "";
+    if (!suggestedName) return; // Skip if no suggested name
+
     const existing = payeeGroups.get(suggestedName);
 
     if (existing) {
@@ -223,7 +224,6 @@ export default function EnhancedPayeeReviewStep({
     } else {
       payeeGroups.set(suggestedName, {
         suggestedName,
-        finalName: assignment.selectedNewPayeeName || suggestedName, // Use edited name if exists
         transactionIndices: [assignment.transactionIndex],
         sampleDescriptions: [assignment.originalDescription],
         transactionCount: 1,
@@ -235,6 +235,14 @@ export default function EnhancedPayeeReviewStep({
   const sortedPayeeGroups = Array.from(payeeGroups.values()).sort(
     (a, b) => b.transactionCount - a.transactionCount
   );
+
+  // Helper function to get the current edited name for a group
+  const getGroupFinalName = (group: PayeeGroup): string => {
+    // Get the selectedNewPayeeName from the first transaction in the group
+    // (all transactions in a group should have the same edited name)
+    const firstAssignment = assignments.get(group.transactionIndices[0]);
+    return firstAssignment?.selectedNewPayeeName || group.suggestedName;
+  };
 
   return (
     <div className="space-y-6">
@@ -434,7 +442,7 @@ export default function EnhancedPayeeReviewStep({
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        value={group.finalName}
+                        value={getGroupFinalName(group)}
                         onChange={(e) => handleGroupedPayeeNameChange(group.transactionIndices, e.target.value)}
                         placeholder="Enter payee name"
                       />
