@@ -233,7 +233,7 @@ class PayeeExtractionService:
 
         patterns = [
             r'\*[A-Z0-9]{6,}',                    # "*ABC123DEF"
-            r'\s+[A-Z0-9]{8,}\s*$',               # Long alphanumeric at end
+            r'\s+[A-Z]*\d+[A-Z0-9]{6,}\s*$',      # Long alphanumeric at end (must contain digits)
             r'\s+-\s+[A-Z0-9]{6,}\s*$',           # "- ABC123XYZ" at end
             r'\s+ENTRY\s+' + entry_descriptors,   # ACH entry descriptors (specific types only)
             r'\s+\d{10,}',                        # Long numeric IDs (10+ digits) anywhere
@@ -356,11 +356,31 @@ class PayeeExtractionService:
         - "William Gillen" (title case)
 
         Only matches at the END of the string to avoid removing merchant names.
+        Uses negative lookahead to protect common business words.
         """
+        # Words that indicate a business name, not a person name
+        business_words = (
+            'ENTRY|COMPANY|PAYMENT|WITHDRAWAL|DEPOSIT|'
+            'STORE|SHOP|MARKET|RESTAURANT|CAFE|COFFEE|BAKERY|'
+            'FOODS|FOOD|DELI|GRILL|BAR|PUB|TAVERN|'
+            'BANK|CREDIT|UNION|FINANCIAL|INSURANCE|'
+            'ELECTRIC|ENERGY|POWER|GAS|WATER|UTILITY|'
+            'MEDICAL|HEALTH|DENTAL|PHARMACY|CLINIC|HOSPITAL|'
+            'AUTO|AUTOMOTIVE|MOTORS|SERVICE|SERVICES|'
+            'SUPPLY|SUPPLIES|HARDWARE|LUMBER|'
+            'HOTEL|MOTEL|INN|RESORT|'
+            'LIQUOR|WINE|SPIRITS|BEER|'
+            'EXPRESS|SHIPPING|FREIGHT|DELIVERY|'
+            'RENTALS|RENTAL|LEASING|'
+            'CENTER|CENTRE|PLAZA|MALL|'
+            'CORP|CORPORATION|INC|LLC|LTD|'
+            'STUDIO|SALON|SPA|FITNESS|GYM'
+        )
+
         patterns = [
             # Two or three capitalized words at end (3-15 letters each)
-            # But NOT common merchant words
-            r'\s+(?!ENTRY|COMPANY|PAYMENT|WITHDRAWAL|DEPOSIT)[A-Z][A-Za-z]{2,14}\s+(?!ENTRY|COMPANY|PAYMENT|WITHDRAWAL|DEPOSIT)[A-Z][A-Za-z]{2,14}(\s+[A-Z])?(\s+ACH\s+TRANSACTION)?\s*$',
+            # But NOT common business words
+            rf'\s+(?!{business_words})[A-Z][A-Za-z]{{2,14}}\s+(?!{business_words})[A-Z][A-Za-z]{{2,14}}(\s+[A-Z])?(\s+ACH\s+TRANSACTION)?\s*$',
         ]
 
         any_match = False
@@ -418,6 +438,7 @@ class PayeeExtractionService:
         - Remove multiple spaces
         - Trim whitespace
         - Remove common trailing payment/ACH terms
+        - Remove all periods and standalone numbers
         - Title case for consistency
         """
         # Replace multiple spaces with single space
@@ -430,11 +451,21 @@ class PayeeExtractionService:
         trailing_terms = r'\s+(EPAYMENT|ER\s+AM|GILLENSTEPHANIE|ACH\s+TRANSACTION)\s*$'
         text = re.sub(trailing_terms, '', text, flags=re.IGNORECASE).strip()
 
-        # Remove trailing digits with 4-digit codes (like "0607", "5999")
-        text = re.sub(r'\s+\d{4}\s*$', '', text).strip()
+        # Remove all periods (usually URL remnants or abbreviation artifacts)
+        text = text.replace('.', '')
 
-        # Remove trailing punctuation
-        text = re.sub(r'[,.\-_]+$', '', text).strip()
+        # Remove standalone number groups (space-separated or at start/end)
+        # This removes "321801", "96", "051", etc. but preserves "7-ELEVEN"
+        text = re.sub(r'^\d+\s+', '', text)          # Numbers at start
+        text = re.sub(r'\s+\d+$', '', text)          # Numbers at end
+        text = re.sub(r'\s+\d+\s+', ' ', text)       # Numbers in middle
+
+        # Clean up any resulting multiple spaces or leading/trailing spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        # Remove leading/trailing punctuation (hyphens, underscores, etc.)
+        text = re.sub(r'^[\-_,.\s]+', '', text)
+        text = re.sub(r'[\-_,.\s]+$', '', text)
 
         # Title case (capitalize each word)
         text = text.title()

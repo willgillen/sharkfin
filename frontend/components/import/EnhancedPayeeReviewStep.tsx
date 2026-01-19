@@ -122,6 +122,39 @@ export default function EnhancedPayeeReviewStep({
     );
   };
 
+  // Handle switching to "create new payee" mode for a transaction
+  const handleCreateNewPayee = (transactionIndex: number) => {
+    const assignment = assignments.get(transactionIndex);
+    if (!assignment) return;
+
+    setAssignments(
+      new Map(
+        assignments.set(transactionIndex, {
+          ...assignment,
+          selectedPayeeId: null,
+          selectedNewPayeeName: assignment.extractedName, // Start with extracted name
+          // Keep original matchType so we can restore it if user cancels
+        })
+      )
+    );
+  };
+
+  // Handle canceling "create new" and returning to suggested match
+  const handleCancelCreateNew = (transactionIndex: number) => {
+    const assignment = assignments.get(transactionIndex);
+    if (!assignment) return;
+
+    setAssignments(
+      new Map(
+        assignments.set(transactionIndex, {
+          ...assignment,
+          selectedPayeeId: assignment.matchedPayeeId ?? null,
+          selectedNewPayeeName: "",
+        })
+      )
+    );
+  };
+
   const handleGroupedPayeeNameChange = (transactionIndices: number[], name: string) => {
     // Update all transactions in this group with the new payee name
     const updatedAssignments = new Map(assignments);
@@ -302,36 +335,71 @@ export default function EnhancedPayeeReviewStep({
 
           {highConfidenceExpanded && (
             <div className="p-4 space-y-3 border-t border-green-200">
-              {highConfidenceAssignments.map((assignment) => (
-                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
-                    <p className="text-sm truncate" title={assignment.originalDescription}>
-                      {assignment.originalDescription}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
-                    </p>
+              {highConfidenceAssignments.map((assignment) => {
+                // Check if user has switched to "create new" mode for this item
+                const isCreatingNew = assignment.selectedPayeeId === null && assignment.selectedNewPayeeName !== "";
+
+                return (
+                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                      <p className="text-sm truncate" title={assignment.originalDescription}>
+                        {assignment.originalDescription}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                      {isCreatingNew ? (
+                        // Show text input for new payee name
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            value={assignment.selectedNewPayeeName}
+                            onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
+                            placeholder="Enter new payee name"
+                          />
+                          <button
+                            type="button"
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                            onClick={() => handleCancelCreateNew(assignment.transactionIndex)}
+                          >
+                            ← Back to suggestions
+                          </button>
+                        </div>
+                      ) : (
+                        // Show dropdown with suggestions + create new option
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          value={assignment.selectedPayeeId?.toString() || ""}
+                          onChange={(e) => {
+                            if (e.target.value === "__create_new__") {
+                              handleCreateNewPayee(assignment.transactionIndex);
+                            } else {
+                              handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null);
+                            }
+                          }}
+                        >
+                          <option value={assignment.matchedPayeeId?.toString()}>
+                            {assignment.matchedPayeeName} (Suggested)
+                          </option>
+                          {assignment.alternativeMatches.map((alt) => (
+                            <option key={alt.payee_id} value={alt.payee_id.toString()}>
+                              {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
+                            </option>
+                          ))}
+                          <option value="__create_new__" className="font-medium">
+                            ➕ Create New Payee...
+                          </option>
+                        </select>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={assignment.selectedPayeeId?.toString() || ""}
-                      onChange={(e) => handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null)}
-                    >
-                      <option value={assignment.matchedPayeeId?.toString()}>
-                        {assignment.matchedPayeeName} (Suggested)
-                      </option>
-                      {assignment.alternativeMatches.map((alt) => (
-                        <option key={alt.payee_id} value={alt.payee_id.toString()}>
-                          {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -364,36 +432,71 @@ export default function EnhancedPayeeReviewStep({
 
           {lowConfidenceExpanded && (
             <div className="p-4 space-y-3 border-t border-yellow-200">
-              {lowConfidenceAssignments.map((assignment) => (
-                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
-                    <p className="text-sm truncate" title={assignment.originalDescription}>
-                      {assignment.originalDescription}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
-                    </p>
+              {lowConfidenceAssignments.map((assignment) => {
+                // Check if user has switched to "create new" mode for this item
+                const isCreatingNew = assignment.selectedPayeeId === null && assignment.selectedNewPayeeName !== "";
+
+                return (
+                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                      <p className="text-sm truncate" title={assignment.originalDescription}>
+                        {assignment.originalDescription}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                      {isCreatingNew ? (
+                        // Show text input for new payee name
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            value={assignment.selectedNewPayeeName}
+                            onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
+                            placeholder="Enter new payee name"
+                          />
+                          <button
+                            type="button"
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                            onClick={() => handleCancelCreateNew(assignment.transactionIndex)}
+                          >
+                            ← Back to suggestions
+                          </button>
+                        </div>
+                      ) : (
+                        // Show dropdown with suggestions + create new option
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          value={assignment.selectedPayeeId?.toString() || ""}
+                          onChange={(e) => {
+                            if (e.target.value === "__create_new__") {
+                              handleCreateNewPayee(assignment.transactionIndex);
+                            } else {
+                              handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null);
+                            }
+                          }}
+                        >
+                          <option value={assignment.matchedPayeeId?.toString()}>
+                            {assignment.matchedPayeeName} (Suggested)
+                          </option>
+                          {assignment.alternativeMatches.map((alt) => (
+                            <option key={alt.payee_id} value={alt.payee_id.toString()}>
+                              {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
+                            </option>
+                          ))}
+                          <option value="__create_new__" className="font-medium">
+                            ➕ Create New Payee...
+                          </option>
+                        </select>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={assignment.selectedPayeeId?.toString() || ""}
-                      onChange={(e) => handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null)}
-                    >
-                      <option value={assignment.matchedPayeeId?.toString()}>
-                        {assignment.matchedPayeeName} (Suggested)
-                      </option>
-                      {assignment.alternativeMatches.map((alt) => (
-                        <option key={alt.payee_id} value={alt.payee_id.toString()}>
-                          {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

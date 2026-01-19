@@ -64,6 +64,14 @@ class IntelligentPayeeMatchingService:
     LOW_CONFIDENCE_THRESHOLD = 0.70
     FUZZY_MATCH_THRESHOLD = 0.70
 
+    # Minimum payee name length to consider for matching
+    # Short names like "An", "Al" tend to create false positives
+    MIN_PAYEE_NAME_LENGTH = 3
+
+    # Minimum pattern value length for description_contains patterns
+    # Short patterns like "LS", "AN" match too many unrelated transactions
+    MIN_PATTERN_VALUE_LENGTH = 4
+
     def __init__(self, db: Session):
         self.db = db
         self.extraction_service = PayeeExtractionService(db)
@@ -233,6 +241,17 @@ class IntelligentPayeeMatchingService:
         patterns_sorted = sorted(patterns, key=lambda p: p.confidence_score, reverse=True)
 
         for pattern in patterns_sorted:
+            # Skip patterns for payees with very short names - they create false positives
+            # e.g., pattern "AN" for payee "An" matches almost everything
+            if len(pattern.payee.canonical_name) < self.MIN_PAYEE_NAME_LENGTH:
+                continue
+
+            # Skip description_contains patterns with very short values
+            # e.g., "LS" matches "MANUELS", "RANDALLS", "TULSA", etc.
+            if (pattern.pattern_type == 'description_contains' and
+                    len(pattern.pattern_value) < self.MIN_PATTERN_VALUE_LENGTH):
+                continue
+
             matched = False
 
             if pattern.pattern_type == 'description_contains':
@@ -293,6 +312,11 @@ class IntelligentPayeeMatchingService:
         matches = []
 
         for payee in payees:
+            # Skip payees with very short names - they create false positives
+            # e.g., "An" matching "Amazon" with high similarity
+            if len(payee.canonical_name) < self.MIN_PAYEE_NAME_LENGTH:
+                continue
+
             similarity = ratio(
                 extracted_name.lower(),
                 payee.canonical_name.lower()
@@ -385,6 +409,13 @@ class IntelligentPayeeMatchingService:
         """
         # Extract core pattern from description
         pattern_value = self._extract_pattern_value(description, pattern_type)
+
+        # Don't create patterns that are too short - they match too broadly
+        if (pattern_type == 'description_contains' and
+                len(pattern_value) < self.MIN_PATTERN_VALUE_LENGTH):
+            # Return None or a minimal pattern object without saving
+            # For now, just don't create the pattern
+            return None
 
         # Check if pattern already exists
         existing = self.db.query(PayeeMatchingPattern).filter(

@@ -876,9 +876,10 @@ async def analyze_csv_payees_intelligent(
         mapping_dict = json.loads(column_mapping)
         mapping = CSVColumnMapping(**mapping_dict)
 
-        # Parse CSV transactions
+        # Parse CSV and map to transactions
         service = ImportService(db)
-        parsed_transactions = service.parse_csv(contents, mapping)
+        df = service.parse_csv(contents)
+        parsed_transactions = service.map_csv_to_transactions(df, mapping, [])
 
         # Run intelligent analysis
         matching_service = IntelligentPayeeMatchingService(db)
@@ -1084,9 +1085,10 @@ async def execute_csv_import_with_decisions(
         if not account:
             raise HTTPException(status_code=404, detail="Account not found")
 
-        # Parse CSV transactions
+        # Parse CSV and map to transactions
         import_service = ImportService(db)
-        parsed_transactions = import_service.parse_csv(contents, mapping)
+        df = import_service.parse_csv(contents)
+        parsed_transactions = import_service.map_csv_to_transactions(df, mapping, [])
 
         # Services
         payee_service = PayeeService(db)
@@ -1283,37 +1285,101 @@ async def execute_ofx_import_with_decisions(
                     # New payee was created
                     payee_overrides[str(idx)] = new_payees[idx]
 
-        # Step 3: Execute import
-        result = ofx_service.import_ofx(
+        # Step 3: Execute import - create transactions directly
+        import_service = ImportService(db)
+
+        # Create import record
+        import_type = "qfx" if file.filename.endswith('.qfx') else "ofx"
+        import_record = import_service.create_import_record(
             user_id=current_user.id,
             account_id=request.account_id,
-            ofx_data=contents,
-            skip_rows=request.skip_rows,
-            filename=file.filename
+            filename=file.filename,
+            import_type=import_type,
+            total_rows=len(parsed_transactions),
+            file_size=len(contents),
+            file_data=contents
         )
 
-        # Override payees based on user decisions
-        for idx, txn in enumerate(parsed_transactions):
-            if str(idx) in payee_overrides:
-                payee_id = payee_overrides[str(idx)]
-                # Find the transaction that was created
-                trans_date = txn.get('date')
-                trans_amount = txn.get('amount')
+        imported_count = 0
+        error_count = 0
+        skip_row_list = request.skip_rows or []
 
-                if trans_date and trans_amount:
-                    transaction = db.query(Transaction).filter(
-                        Transaction.user_id == current_user.id,
-                        Transaction.account_id == request.account_id,
-                        Transaction.date == trans_date,
-                        Transaction.amount == trans_amount
-                    ).order_by(Transaction.id.desc()).first()
+        for idx, trans_data in enumerate(parsed_transactions):
+            if idx in skip_row_list:
+                continue
 
-                    if transaction:
-                        transaction.payee_id = payee_id
+            try:
+                # Determine payee_id from user decisions
+                payee_id = payee_overrides.get(str(idx))
+
+                # If no decision was made, fall back to extraction
+                if payee_id is None:
+                    description = trans_data.get('description', '')
+                    payee = trans_data.get('payee', '')
+                    text_to_extract = description or payee
+
+                    if text_to_extract and text_to_extract.strip():
+                        extraction_service = PayeeExtractionService(db)
+                        extracted_name, _ = extraction_service.extract_payee_name(text_to_extract)
+                        if extracted_name:
+                            payee_entity = payee_service.get_or_create(
+                                user_id=current_user.id,
+                                canonical_name=extracted_name
+                            )
+                            payee_id = payee_entity.id
+
+                # Create transaction
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    account_id=request.account_id,
+                    amount=trans_data['amount'],
+                    type=TransactionType[trans_data['type']],
+                    date=trans_data['date'],
+                    description=trans_data.get('description'),
+                    payee=trans_data.get('payee'),
+                    payee_id=payee_id,
+                    fitid=trans_data.get('fitid'),
+                    notes=trans_data.get('notes'),
+                )
+                db.add(transaction)
+                db.flush()
+
+                # Increment payee usage
+                if payee_id:
+                    payee_service.increment_usage(payee_id)
+
+                # Link to import
+                imported_txn = ImportedTransaction(
+                    import_id=import_record.id,
+                    transaction_id=transaction.id,
+                    row_number=idx
+                )
+                db.add(imported_txn)
+                imported_count += 1
+
+            except Exception as e:
+                error_count += 1
+                print(f"Error importing transaction: {e}")
 
         db.commit()
 
-        return result
+        # Update import record
+        import_service.complete_import_record(
+            import_id=import_record.id,
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count
+        )
+
+        return ImportExecuteResponse(
+            import_id=import_record.id,
+            status=ImportStatus.COMPLETED,
+            total_rows=len(parsed_transactions),
+            imported_count=imported_count,
+            duplicate_count=len(skip_row_list),
+            error_count=error_count,
+            message=f"Successfully imported {imported_count} transactions"
+        )
 
     except Exception as e:
         db.rollback()
