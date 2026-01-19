@@ -942,6 +942,8 @@ async def analyze_csv_payees_intelligent(
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Log full traceback
         raise HTTPException(
             status_code=500,
             detail=f"Failed to analyze CSV payees: {str(e)}"
@@ -971,8 +973,8 @@ async def analyze_ofx_payees_intelligent(
 
     try:
         # Parse OFX transactions
-        ofx_service = OFXService(db)
-        parsed_transactions = ofx_service.parse_ofx_file(contents)
+        parsed_ofx = OFXService.parse_ofx(contents)
+        parsed_transactions = OFXService.map_ofx_to_transactions(parsed_ofx)
 
         # Run intelligent analysis
         matching_service = IntelligentPayeeMatchingService(db)
@@ -1036,6 +1038,8 @@ async def analyze_ofx_payees_intelligent(
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Log full traceback
         raise HTTPException(
             status_code=500,
             detail=f"Failed to analyze OFX payees: {str(e)}"
@@ -1220,8 +1224,8 @@ async def execute_ofx_import_with_decisions(
             raise HTTPException(status_code=404, detail="Account not found")
 
         # Parse OFX transactions
-        ofx_service = OFXService(db)
-        parsed_transactions = ofx_service.parse_ofx_file(contents)
+        parsed_ofx = OFXService.parse_ofx(contents)
+        parsed_transactions = OFXService.map_ofx_to_transactions(parsed_ofx)
 
         # Services
         payee_service = PayeeService(db)
