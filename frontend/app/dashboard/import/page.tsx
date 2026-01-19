@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import FileUploadStep from "@/components/import/FileUploadStep";
 import ColumnMappingStep from "@/components/import/ColumnMappingStep";
 import PreviewStep from "@/components/import/PreviewStep";
-import PayeeReviewStep from "@/components/import/PayeeReviewStep";
+import EnhancedPayeeReviewStep from "@/components/import/EnhancedPayeeReviewStep";
 import SmartRuleSuggestionsStep from "@/components/import/SmartRuleSuggestionsStep";
 import DuplicateReviewStep from "@/components/import/DuplicateReviewStep";
 import ImportResultStep from "@/components/import/ImportResultStep";
@@ -19,6 +19,7 @@ import {
   ImportExecuteResponse,
   CategorizationRule
 } from "@/types";
+import { PayeeAssignmentDecision } from "@/types/intelligent-matching";
 
 type ImportStep = "upload" | "mapping" | "preview" | "duplicates" | "payee-review" | "smart-suggestions" | "result";
 
@@ -43,8 +44,8 @@ export default function ImportPage() {
   const [duplicates, setDuplicates] = useState<PotentialDuplicate[]>([]);
   const [skipRows, setSkipRows] = useState<number[]>([]);
 
-  // Payee review state
-  const [payeeNameOverrides, setPayeeNameOverrides] = useState<Record<string, string>>({});
+  // Payee review state (intelligent matching)
+  const [payeeDecisions, setPayeeDecisions] = useState<PayeeAssignmentDecision[]>([]);
 
   // Result state
   const [importResult, setImportResult] = useState<ImportExecuteResponse | null>(null);
@@ -113,8 +114,8 @@ export default function ImportPage() {
         break;
 
       case "payee-review":
-        // After payee review, go to smart suggestions with payee overrides
-        setPayeeNameOverrides(data.payeeNameOverrides || {});
+        // After payee review, store decisions and go to smart suggestions
+        setPayeeDecisions(data || []);
         setCurrentStep("smart-suggestions");
         break;
 
@@ -330,12 +331,10 @@ export default function ImportPage() {
           )}
 
           {currentStep === "payee-review" && (
-            <PayeeReviewStep
+            <EnhancedPayeeReviewStep
               file={file!}
               fileType={fileType!}
               accountId={accountId}
-              csvPreview={csvPreview}
-              ofxPreview={ofxPreview}
               columnMapping={columnMapping}
               skipRows={skipRows}
               onComplete={handleStepComplete}
@@ -353,7 +352,7 @@ export default function ImportPage() {
               ofxPreview={ofxPreview}
               columnMapping={columnMapping}
               skipRows={skipRows}
-              payeeNameOverrides={payeeNameOverrides}
+              payeeDecisions={payeeDecisions}
               onComplete={handleStepComplete}
               onBack={handleBack}
               onError={setError}

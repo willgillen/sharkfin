@@ -8,6 +8,7 @@ import {
   CSVColumnMapping,
   CategorizationRule
 } from "@/types";
+import { PayeeAssignmentDecision } from "@/types/intelligent-matching";
 import { importsAPI, rulesAPI } from "@/lib/api";
 
 interface SmartRuleSuggestionsStepProps {
@@ -18,7 +19,7 @@ interface SmartRuleSuggestionsStepProps {
   csvPreview?: any;
   ofxPreview?: any;
   skipRows?: number[];
-  payeeNameOverrides?: Record<string, string>;
+  payeeDecisions?: PayeeAssignmentDecision[];
   onComplete: (step: string, data: any) => void;
   onBack: () => void;
   onError: (error: string) => void;
@@ -32,7 +33,7 @@ export default function SmartRuleSuggestionsStep({
   csvPreview,
   ofxPreview,
   skipRows = [],
-  payeeNameOverrides = {},
+  payeeDecisions = [],
   onComplete,
   onBack,
   onError,
@@ -186,12 +187,18 @@ export default function SmartRuleSuggestionsStep({
         }
       }
 
-      // Execute import (duplicates already handled in previous step)
+      // Execute import with intelligent payee decisions
       let result;
+      const importRequest = {
+        account_id: accountId,
+        skip_rows: skipRows,
+        payee_assignments: payeeDecisions,
+      };
+
       if (fileType === "csv" && columnMapping) {
-        result = await importsAPI.executeCSVImport(file, accountId, columnMapping, skipRows, payeeNameOverrides);
+        result = await importsAPI.executeCSVImportWithDecisions(file, columnMapping, importRequest);
       } else {
-        result = await importsAPI.executeOFXImport(file, accountId, skipRows, payeeNameOverrides);
+        result = await importsAPI.executeOFXImportWithDecisions(file, importRequest);
       }
 
       onComplete("smart-suggestions", {
