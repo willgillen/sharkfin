@@ -9,6 +9,10 @@ import {
   AnalyzeImportForRulesRequest,
   AnalyzeImportForRulesResponse,
 } from "@/types";
+import {
+  IntelligentPayeeAnalysisResponse,
+  ImportWithPayeeDecisionsRequest,
+} from "@/types/intelligent-matching";
 
 export const importsAPI = {
   async previewCSV(file: File): Promise<CSVPreviewResponse> {
@@ -81,13 +85,15 @@ export const importsAPI = {
     file: File,
     accountId: number,
     columnMapping: CSVColumnMapping,
-    skipRows: number[]
+    skipRows: number[],
+    payeeNameOverrides: Record<string, string> = {}
   ): Promise<ImportExecuteResponse> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("account_id", accountId.toString());
     formData.append("column_mapping", JSON.stringify(columnMapping));
     formData.append("skip_rows", JSON.stringify(skipRows));
+    formData.append("payee_name_overrides", JSON.stringify(payeeNameOverrides));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
       "/api/v1/imports/csv/execute",
@@ -102,12 +108,14 @@ export const importsAPI = {
   async executeOFXImport(
     file: File,
     accountId: number,
-    skipRows: number[]
+    skipRows: number[],
+    payeeNameOverrides: Record<string, string> = {}
   ): Promise<ImportExecuteResponse> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("account_id", accountId.toString());
     formData.append("skip_rows", JSON.stringify(skipRows));
+    formData.append("payee_name_overrides", JSON.stringify(payeeNameOverrides));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
       "/api/v1/imports/ofx/execute",
@@ -138,6 +146,43 @@ export const importsAPI = {
     return data;
   },
 
+  async analyzePayees(transactions: Array<Record<string, any>>): Promise<any> {
+    const { data } = await apiClient.post(
+      "/api/v1/imports/analyze-payees",
+      { transactions }
+    );
+    return data;
+  },
+
+  async analyzeAllCSVPayees(file: File, columnMapping: CSVColumnMapping): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("column_mapping", JSON.stringify(columnMapping));
+
+    const { data } = await apiClient.post(
+      "/api/v1/imports/csv/analyze-all-payees",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
+  },
+
+  async analyzeAllOFXPayees(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await apiClient.post(
+      "/api/v1/imports/ofx/analyze-all-payees",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
+  },
+
   async downloadFile(importId: number): Promise<void> {
     const response = await apiClient.get(`/api/v1/imports/${importId}/download`, {
       responseType: 'blob'
@@ -164,5 +209,81 @@ export const importsAPI = {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
+  },
+
+  // ========================================================================
+  // INTELLIGENT PAYEE MATCHING METHODS
+  // ========================================================================
+
+  async analyzeCSVPayeesIntelligent(
+    file: File,
+    columnMapping: CSVColumnMapping
+  ): Promise<IntelligentPayeeAnalysisResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("column_mapping", JSON.stringify(columnMapping));
+
+    const { data } = await apiClient.post<IntelligentPayeeAnalysisResponse>(
+      "/api/v1/imports/csv/analyze-payees-intelligent",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
+  },
+
+  async analyzeOFXPayeesIntelligent(
+    file: File
+  ): Promise<IntelligentPayeeAnalysisResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await apiClient.post<IntelligentPayeeAnalysisResponse>(
+      "/api/v1/imports/ofx/analyze-payees-intelligent",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
+  },
+
+  async executeCSVImportWithDecisions(
+    file: File,
+    columnMapping: CSVColumnMapping,
+    request: ImportWithPayeeDecisionsRequest
+  ): Promise<ImportExecuteResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("column_mapping", JSON.stringify(columnMapping));
+    formData.append("request_data", JSON.stringify(request));
+
+    const { data } = await apiClient.post<ImportExecuteResponse>(
+      "/api/v1/imports/csv/execute-with-payee-decisions",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
+  },
+
+  async executeOFXImportWithDecisions(
+    file: File,
+    request: ImportWithPayeeDecisionsRequest
+  ): Promise<ImportExecuteResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("request_data", JSON.stringify(request));
+
+    const { data } = await apiClient.post<ImportExecuteResponse>(
+      "/api/v1/imports/ofx/execute-with-payee-decisions",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" }
+      }
+    );
+    return data;
   }
 };

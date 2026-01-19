@@ -18,6 +18,7 @@ interface SmartRuleSuggestionsStepProps {
   csvPreview?: any;
   ofxPreview?: any;
   skipRows?: number[];
+  payeeNameOverrides?: Record<string, string>;
   onComplete: (step: string, data: any) => void;
   onBack: () => void;
   onError: (error: string) => void;
@@ -31,6 +32,7 @@ export default function SmartRuleSuggestionsStep({
   csvPreview,
   ofxPreview,
   skipRows = [],
+  payeeNameOverrides = {},
   onComplete,
   onBack,
   onError,
@@ -187,9 +189,9 @@ export default function SmartRuleSuggestionsStep({
       // Execute import (duplicates already handled in previous step)
       let result;
       if (fileType === "csv" && columnMapping) {
-        result = await importsAPI.executeCSVImport(file, accountId, columnMapping, skipRows);
+        result = await importsAPI.executeCSVImport(file, accountId, columnMapping, skipRows, payeeNameOverrides);
       } else {
-        result = await importsAPI.executeOFXImport(file, accountId, skipRows);
+        result = await importsAPI.executeOFXImport(file, accountId, skipRows, payeeNameOverrides);
       }
 
       onComplete("smart-suggestions", {

@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import FileUploadStep from "@/components/import/FileUploadStep";
 import ColumnMappingStep from "@/components/import/ColumnMappingStep";
 import PreviewStep from "@/components/import/PreviewStep";
+import PayeeReviewStep from "@/components/import/PayeeReviewStep";
 import SmartRuleSuggestionsStep from "@/components/import/SmartRuleSuggestionsStep";
 import DuplicateReviewStep from "@/components/import/DuplicateReviewStep";
 import ImportResultStep from "@/components/import/ImportResultStep";
@@ -19,7 +20,7 @@ import {
   CategorizationRule
 } from "@/types";
 
-type ImportStep = "upload" | "mapping" | "preview" | "smart-suggestions" | "duplicates" | "result";
+type ImportStep = "upload" | "mapping" | "preview" | "duplicates" | "payee-review" | "smart-suggestions" | "result";
 
 export default function ImportPage() {
   const router = useRouter();
@@ -41,6 +42,9 @@ export default function ImportPage() {
   // Duplicate detection state
   const [duplicates, setDuplicates] = useState<PotentialDuplicate[]>([]);
   const [skipRows, setSkipRows] = useState<number[]>([]);
+
+  // Payee review state
+  const [payeeNameOverrides, setPayeeNameOverrides] = useState<Record<string, string>>({});
 
   // Result state
   const [importResult, setImportResult] = useState<ImportExecuteResponse | null>(null);
@@ -95,23 +99,29 @@ export default function ImportPage() {
           setCurrentStep("duplicates");
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.log("No duplicates found - routing to smart suggestions");
+            console.log("No duplicates found - routing to payee review");
           }
-          // No duplicates, go to smart suggestions
-          setCurrentStep("smart-suggestions");
+          // No duplicates, go to payee review
+          setCurrentStep("payee-review");
         }
+        break;
+
+      case "duplicates":
+        // After duplicates, go to payee review with skip rows
+        setSkipRows(data.skipRows || []);
+        setCurrentStep("payee-review");
+        break;
+
+      case "payee-review":
+        // After payee review, go to smart suggestions with payee overrides
+        setPayeeNameOverrides(data.payeeNameOverrides || {});
+        setCurrentStep("smart-suggestions");
         break;
 
       case "smart-suggestions":
         // After smart suggestions, proceed to import
         setImportResult(data.result);
         setCurrentStep("result");
-        break;
-
-      case "duplicates":
-        // After duplicates, go to smart suggestions with skip rows
-        setSkipRows(data.skipRows || []);
-        setCurrentStep("smart-suggestions");
         break;
     }
   };
@@ -131,6 +141,10 @@ export default function ImportPage() {
         }
         break;
       case "smart-suggestions":
+        // Go back to payee review
+        setCurrentStep("payee-review");
+        break;
+      case "payee-review":
         // Go back to duplicates if we have them, otherwise preview
         if (duplicates.length > 0) {
           setCurrentStep("duplicates");
@@ -196,17 +210,19 @@ export default function ImportPage() {
                 { id: "upload", name: "Upload File" },
                 { id: "mapping", name: fileType === "csv" ? "Map Columns" : "Preview", disabled: fileType !== "csv" },
                 { id: "preview", name: "Review" },
-                { id: "smart-suggestions", name: "Smart Rules" },
                 { id: "duplicates", name: "Duplicates", disabled: duplicates.length === 0 },
+                { id: "payee-review", name: "Payees" },
+                { id: "smart-suggestions", name: "Smart Rules" },
                 { id: "result", name: "Complete" },
               ].map((step, idx) => {
                 const isCurrent = currentStep === step.id;
                 const isComplete =
                   (step.id === "upload" && !["upload"].includes(currentStep)) ||
-                  (step.id === "mapping" && ["preview", "smart-suggestions", "duplicates", "result"].includes(currentStep)) ||
-                  (step.id === "preview" && ["smart-suggestions", "duplicates", "result"].includes(currentStep)) ||
-                  (step.id === "smart-suggestions" && ["duplicates", "result"].includes(currentStep)) ||
-                  (step.id === "duplicates" && currentStep === "result");
+                  (step.id === "mapping" && ["preview", "duplicates", "payee-review", "smart-suggestions", "result"].includes(currentStep)) ||
+                  (step.id === "preview" && ["duplicates", "payee-review", "smart-suggestions", "result"].includes(currentStep)) ||
+                  (step.id === "duplicates" && ["payee-review", "smart-suggestions", "result"].includes(currentStep)) ||
+                  (step.id === "payee-review" && ["smart-suggestions", "result"].includes(currentStep)) ||
+                  (step.id === "smart-suggestions" && ["result"].includes(currentStep));
 
                 if (step.disabled) return null;
 
@@ -300,8 +316,21 @@ export default function ImportPage() {
             />
           )}
 
-          {currentStep === "smart-suggestions" && (
-            <SmartRuleSuggestionsStep
+          {currentStep === "duplicates" && (
+            <DuplicateReviewStep
+              file={file!}
+              fileType={fileType!}
+              accountId={accountId}
+              duplicates={duplicates}
+              columnMapping={columnMapping}
+              onComplete={handleStepComplete}
+              onBack={handleBack}
+              onError={setError}
+            />
+          )}
+
+          {currentStep === "payee-review" && (
+            <PayeeReviewStep
               file={file!}
               fileType={fileType!}
               accountId={accountId}
@@ -315,13 +344,16 @@ export default function ImportPage() {
             />
           )}
 
-          {currentStep === "duplicates" && (
-            <DuplicateReviewStep
+          {currentStep === "smart-suggestions" && (
+            <SmartRuleSuggestionsStep
               file={file!}
               fileType={fileType!}
               accountId={accountId}
-              duplicates={duplicates}
+              csvPreview={csvPreview}
+              ofxPreview={ofxPreview}
               columnMapping={columnMapping}
+              skipRows={skipRows}
+              payeeNameOverrides={payeeNameOverrides}
               onComplete={handleStepComplete}
               onBack={handleBack}
               onError={setError}

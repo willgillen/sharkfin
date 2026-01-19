@@ -10,7 +10,9 @@ by removing common noise patterns like:
 - Location indicators (street addresses, city/state)
 """
 import re
-from typing import Optional, Tuple
+import json
+import os
+from typing import Optional, Tuple, List
 from sqlalchemy.orm import Session
 from app.models.payee import Payee
 from Levenshtein import ratio
@@ -19,6 +21,43 @@ from Levenshtein import ratio
 class PayeeExtractionService:
     def __init__(self, db: Session):
         self.db = db
+        self.known_merchants = self._load_known_merchants()
+
+    def _load_known_merchants(self) -> List[Tuple[str, str]]:
+        """
+        Load known merchant patterns from JSON config file.
+
+        Returns:
+            List of tuples: [(pattern, canonical_name), ...]
+        """
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'config',
+            'known_merchants.json'
+        )
+
+        try:
+            with open(config_path, 'r') as f:
+                data = json.load(f)
+                merchants = []
+                for merchant in data.get('merchants', []):
+                    pattern = merchant.get('pattern')
+                    name = merchant.get('name')
+                    if pattern and name:
+                        merchants.append((pattern, name))
+                return merchants
+        except FileNotFoundError:
+            # If config file doesn't exist, log warning and return empty list
+            print(f"Warning: Known merchants config not found at {config_path}")
+            return []
+        except json.JSONDecodeError as e:
+            # If JSON is invalid, log error and return empty list
+            print(f"Error parsing known merchants config: {e}")
+            return []
+        except Exception as e:
+            # Catch any other errors
+            print(f"Error loading known merchants config: {e}")
+            return []
 
     def extract_payee_name(self, description: str) -> Tuple[str, float]:
         """
@@ -32,6 +71,13 @@ class PayeeExtractionService:
             return ("", 0.0)
 
         original = description.strip()
+
+        # STEP 0: Check for well-known merchants FIRST (highest priority)
+        for pattern, merchant_name in self.known_merchants:
+            if re.search(pattern, original, re.IGNORECASE):
+                # Found a well-known merchant - return immediately with high confidence
+                return (merchant_name, 0.95)
+
         cleaned = original
         confidence = 0.5  # Base confidence
 
@@ -157,20 +203,26 @@ class PayeeExtractionService:
         - Long alphanumeric strings (8+ chars)
         - Codes with asterisks: *ABC123
         - Codes in various formats
+        - Long numeric transaction IDs (10+ digits)
+        - ACH entry descriptors (ENTRY PAYROLL, ENTRY DESC, etc.)
         """
         patterns = [
             r'\*[A-Z0-9]{6,}',                    # "*ABC123DEF"
             r'\s+[A-Z0-9]{8,}\s*$',               # Long alphanumeric at end
             r'\s+-\s+[A-Z0-9]{6,}\s*$',           # "- ABC123XYZ" at end
+            r'\s+ENTRY\s+(PAYROLL|DESC|DESCRIPTION|ID)(\s+\d+)?',  # ACH entry descriptors with optional ID
+            r'\s+\d{10,}',                        # Long numeric IDs (10+ digits) anywhere
         ]
 
-        for pattern in patterns:
-            match = re.search(pattern, text)
-            if match:
-                cleaned = re.sub(pattern, '', text).strip()
-                return (cleaned, True)
+        any_match = False
+        cleaned = text
 
-        return (text, False)
+        for pattern in patterns:
+            if re.search(pattern, cleaned, re.IGNORECASE):
+                cleaned = re.sub(pattern, ' ', cleaned, flags=re.IGNORECASE).strip()
+                any_match = True
+
+        return (cleaned, any_match)
 
     def _remove_url_suffixes(self, text: str) -> Tuple[str, bool]:
         """
@@ -207,6 +259,8 @@ class PayeeExtractionService:
         - Street addresses
         - Common location words
         - Alphanumeric location codes (XX1801, 5812)
+        - Person names at end (for ACH payroll: "WILLIAM GILLEN" or "William Gillen")
+          Matches exactly 2 words that look like names (3-15 letters each)
         """
         patterns = [
             r'\s+\d+\s+(ST|AVE|BLVD|RD|LN|DR|CT|WAY)\s*$',  # Street addresses at end
@@ -215,12 +269,13 @@ class PayeeExtractionService:
             r'\s+\d{4,}\s+[A-Z]{2,4}\s*$',                   # "5812 CEDA" (number + city abbrev)
             r'\s+[A-Z]{2}\d{4,}\s+[A-Z]{2}\s*$',            # "XX1801 TX" (alphanumeric + state)
             r'\s+\d{4,}\s*$',                                # Generic 4+ digit codes at end (like 5812)
+            r'\s+[A-Z][A-Za-z]{2,14}\s+[A-Z][A-Za-z]{2,14}\s*$',  # Person names: "WILLIAM GILLEN" or "William Gillen" (3-15 letters each)
         ]
 
         for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
+            match = re.search(pattern, text)
             if match:
-                cleaned = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+                cleaned = re.sub(pattern, '', text).strip()
                 return (cleaned, True)
 
         return (text, False)

@@ -1,0 +1,184 @@
+{
+  "merchants": [
+    {
+      "pattern": "\\bUBER\\b",
+      "name": "Uber",
+      "category": "transportation"
+    },
+    {
+      "pattern": "\\bLYFT\\b",
+      "name": "Lyft",
+      "category": "transportation"
+    },
+    {
+      "pattern": "\\bSHELL\\b",
+      "name": "Shell",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\bCHEVRON\\b",
+      "name": "Chevron",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\bEXXON\\b",
+      "name": "Exxon",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\bMOBIL\\b",
+      "name": "Mobil",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\bBP\\b",
+      "name": "BP",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\b76\\b",
+      "name": "76",
+      "category": "gas"
+    },
+    {
+      "pattern": "\\bSTARBUCKS\\b",
+      "name": "Starbucks",
+      "category": "restaurant"
+    },
+    {
+      "pattern": "\\bMCDONALD",
+      "name": "McDonald's",
+      "category": "fast_food"
+    },
+    {
+      "pattern": "\\bCHIPOTLE\\b",
+      "name": "Chipotle",
+      "category": "fast_food"
+    },
+    {
+      "pattern": "\\bSUBWAY\\b",
+      "name": "Subway",
+      "category": "fast_food"
+    },
+    {
+      "pattern": "\\bPANERA\\b",
+      "name": "Panera",
+      "category": "fast_food"
+    },
+    {
+      "pattern": "\\bTACO\\s*BELL\\b",
+      "name": "Taco Bell",
+      "category": "fast_food"
+    },
+    {
+      "pattern": "\\bTORCHY",
+      "name": "Torchy's",
+      "category": "restaurant"
+    },
+    {
+      "pattern": "\\bCHUY",
+      "name": "Chuy's",
+      "category": "restaurant"
+    },
+    {
+      "pattern": "\\bATT\\*?\\s*BILL",
+      "name": "AT&T",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bAT&T\\b",
+      "name": "AT&T",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bVERIZON\\b",
+      "name": "Verizon",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bCOMCAST\\b",
+      "name": "Comcast",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bATMOS\\s*ENERGY\\b",
+      "name": "Atmos Energy",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bPG&E\\b",
+      "name": "PG&E",
+      "category": "utilities"
+    },
+    {
+      "pattern": "\\bNETFLIX\\b",
+      "name": "Netflix",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bSPOTIFY\\b",
+      "name": "Spotify",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bAPPLE\\.COM\\b",
+      "name": "Apple",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bGOOGLE\\b",
+      "name": "Google",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bANTHROPIC\\b",
+      "name": "Anthropic",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bCLAUDE\\.AI\\b",
+      "name": "Claude AI",
+      "category": "subscription"
+    },
+    {
+      "pattern": "AWS\\.AMAZON\\b",
+      "name": "AWS",
+      "category": "subscription"
+    },
+    {
+      "pattern": "\\bWALMART\\b",
+      "name": "Walmart",
+      "category": "grocery"
+    },
+    {
+      "pattern": "\\bTARGET\\b",
+      "name": "Target",
+      "category": "retail"
+    },
+    {
+      "pattern": "\\bWHOLE\\s*FOODS\\b",
+      "name": "Whole Foods",
+      "category": "grocery"
+    },
+    {
+      "pattern": "\\bKROGER\\b",
+      "name": "Kroger",
+      "category": "grocery"
+    },
+    {
+      "pattern": "\\bCOSTCO\\b",
+      "name": "Costco",
+      "category": "grocery"
+    },
+    {
+      "pattern": "\\bAMAZON\\b",
+      "name": "Amazon",
+      "category": "retail"
+    },
+    {
+      "pattern": "\\bHCTRA\\b",
+      "name": "HCTRA Toll Tag",
+      "category": "transportation"
+    }
+  ]
+}

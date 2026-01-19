@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Index, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -39,6 +39,14 @@ class Payee(Base):
     transaction_count = Column(Integer, default=0, nullable=False)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Intelligent matching fields
+    primary_pattern_id = Column(Integer, nullable=True)  # Foreign key added in migration
+    auto_match_confidence = Column(
+        Numeric(precision=3, scale=2),
+        nullable=False,
+        default=0.75
+    )
+
     # Timestamps
     created_at = Column(
         DateTime(timezone=True),
@@ -55,6 +63,18 @@ class Payee(Base):
     user = relationship("User", back_populates="payees")
     default_category = relationship("Category")
     transactions = relationship("Transaction", back_populates="payee_entity")
+    patterns = relationship(
+        "PayeeMatchingPattern",
+        back_populates="payee",
+        foreign_keys="PayeeMatchingPattern.payee_id",
+        cascade="all, delete-orphan"
+    )
+    primary_pattern = relationship(
+        "PayeeMatchingPattern",
+        primaryjoin="Payee.primary_pattern_id == PayeeMatchingPattern.id",
+        foreign_keys=[primary_pattern_id],
+        post_update=True
+    )
 
     # Table args for indexes
     __table_args__ = (

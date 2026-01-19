@@ -73,6 +73,7 @@ class ImportExecuteRequest(BaseModel):
     account_id: int
     column_mapping: Optional[CSVColumnMapping] = None
     skip_rows: List[int] = Field(default_factory=list)  # Rows to skip (duplicates)
+    payee_name_overrides: Dict[str, str] = Field(default_factory=dict, description="Map of suggested_name -> final_name for payee overrides")
 
 
 class ImportExecuteResponse(BaseModel):
@@ -135,3 +136,22 @@ class AnalyzeImportForRulesResponse(BaseModel):
     suggestions: List[SmartRuleSuggestionResponse]
     total_transactions_analyzed: int
     total_suggestions: int
+
+
+# Payee Analysis during Import
+class PayeeAnalysisItem(BaseModel):
+    """Individual payee extraction result."""
+    original: str = Field(..., description="Original transaction description")
+    suggested: str = Field(..., description="Extracted/suggested payee name")
+    confidence: float = Field(..., description="Extraction confidence score")
+
+
+class AnalyzePayeesRequest(BaseModel):
+    """Request to analyze and extract payees from transactions."""
+    transactions: List[Dict[str, Any]]
+
+
+class AnalyzePayeesResponse(BaseModel):
+    """Response with extracted payee information."""
+    payees: List[PayeeAnalysisItem]
+    total_transactions_analyzed: int

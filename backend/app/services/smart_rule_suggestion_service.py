@@ -37,65 +37,11 @@ class SmartRuleSuggestionService:
 
     This service examines transaction data from imports and uses pattern
     recognition and merchant detection to suggest useful categorization rules.
+
+    Note: Merchant detection is now handled by PayeeExtractionService using
+    the known_merchants.json config file. This service relies on that for
+    intelligent payee extraction and merchant recognition.
     """
-
-    # Common merchant patterns to detect
-    MERCHANT_PATTERNS = [
-        # Online retailers
-        (r'\bAMAZON\b', 'Amazon', 'online_retail'),
-        (r'\bWALMART\b', 'Walmart', 'retail'),
-        (r'\bTARGET\b', 'Target', 'retail'),
-        (r'\bCOSTCO\b', 'Costco', 'wholesale'),
-
-        # Grocery stores
-        (r'\bWHOLE\s*FOODS\b', 'Whole Foods', 'grocery'),
-        (r'\bH-E-B\b', 'H-E-B', 'grocery'),
-        (r'\bSAFEWAY\b', 'Safeway', 'grocery'),
-        (r'\bKROGER\b', 'Kroger', 'grocery'),
-        (r'\bPUBLIX\b', 'Publix', 'grocery'),
-        (r'\bTRADER\s*JOE', 'Trader Joe\'s', 'grocery'),
-        (r'\bRANDALLS\b', 'Randalls', 'grocery'),
-
-        # Gas stations
-        (r'\bSHELL\b', 'Shell', 'gas'),
-        (r'\bCHEVRON\b', 'Chevron', 'gas'),
-        (r'\bEXXON\b', 'Exxon', 'gas'),
-        (r'\bMOBIL\b', 'Mobil', 'gas'),
-        (r'\bBP\b', 'BP', 'gas'),
-        (r'\b76\b', '76', 'gas'),
-
-        # Restaurants & Fast Food
-        (r'\bSTARBUCKS\b', 'Starbucks', 'restaurant'),
-        (r'\bMCDONALD', 'McDonald\'s', 'fast_food'),
-        (r'\bCHIPOTLE\b', 'Chipotle', 'fast_food'),
-        (r'\bSUBWAY\b', 'Subway', 'fast_food'),
-        (r'\bPANERA\b', 'Panera', 'fast_food'),
-        (r'\bTACO\s*BELL\b', 'Taco Bell', 'fast_food'),
-        (r'\bTORCHY', 'Torchy\'s', 'restaurant'),
-        (r'\bCHUY', 'Chuy\'s', 'restaurant'),
-
-        # Utilities & Telecom
-        (r'\bPG&E\b', 'PG&E', 'utilities'),
-        (r'\bATT\*?\s*BILL', 'AT&T', 'utilities'),
-        (r'\bAT&T\b', 'AT&T', 'utilities'),
-        (r'\bVERIZON\b', 'Verizon', 'utilities'),
-        (r'\bCOMCAST\b', 'Comcast', 'utilities'),
-        (r'\bATMOS\s*ENERGY\b', 'Atmos Energy', 'utilities'),
-
-        # Subscriptions & Tech
-        (r'\bNETFLIX\b', 'Netflix', 'subscription'),
-        (r'\bSPOTIFY\b', 'Spotify', 'subscription'),
-        (r'\bAPPLE\.COM\b', 'Apple', 'subscription'),
-        (r'\bGOOGLE\b', 'Google', 'subscription'),
-        (r'\bANTHROPIC\b', 'Anthropic', 'subscription'),
-        (r'\bCLAUDE\.AI\b', 'Claude AI', 'subscription'),
-        (r'AWS\.AMAZON\b', 'AWS', 'subscription'),
-
-        # Transportation
-        (r'\bUBER\b', 'Uber', 'transportation'),
-        (r'\bLYFT\b', 'Lyft', 'transportation'),
-        (r'\bHCTRA\b', 'HCTRA Toll Tag', 'transportation'),
-    ]
 
     def __init__(self, db=None):
         self.extraction_service = PayeeExtractionService(db) if db else None
@@ -109,6 +55,10 @@ class SmartRuleSuggestionService:
         """
         Analyze import transaction data and suggest rules.
 
+        This now relies entirely on PayeeExtractionService for merchant detection
+        and payee name extraction. The extraction service handles well-known
+        merchants from the known_merchants.json config file.
+
         Args:
             transactions: List of transaction dicts with 'description', 'payee', 'amount'
             min_occurrences: Minimum times a pattern must appear
@@ -117,113 +67,12 @@ class SmartRuleSuggestionService:
         Returns:
             List of SmartRuleSuggestion objects
         """
-        suggestions = []
+        # Find common patterns using PayeeExtractionService
+        # This handles both well-known merchants and other recurring payees
+        suggestions = self._find_common_patterns(transactions, min_occurrences, min_confidence)
 
-        # Step 1: Detect known merchants from descriptions
-        merchant_suggestions = self._detect_merchants(transactions, min_occurrences)
-        suggestions.extend(merchant_suggestions)
-
-        # Step 2: Find common patterns in descriptions/payees
-        pattern_suggestions = self._find_common_patterns(transactions, min_occurrences, min_confidence)
-
-        # Filter out patterns already covered by merchant detection
-        # Check if patterns match the same transactions (>80% overlap = duplicate)
-        for pattern_suggestion in pattern_suggestions:
-            is_duplicate = False
-            pattern_rows = set(pattern_suggestion.matching_rows)
-
-            for existing_suggestion in suggestions:
-                existing_rows = set(existing_suggestion.matching_rows)
-
-                # Calculate overlap: intersection / smaller set
-                if len(pattern_rows) > 0 and len(existing_rows) > 0:
-                    intersection = len(pattern_rows & existing_rows)
-                    smaller_set_size = min(len(pattern_rows), len(existing_rows))
-                    overlap_ratio = intersection / smaller_set_size
-
-                    # If >80% of transactions overlap, consider it a duplicate
-                    if overlap_ratio > 0.8:
-                        is_duplicate = True
-                        break
-
-            if not is_duplicate:
-                suggestions.append(pattern_suggestion)
-
-        # Step 3: Sort by confidence and number of matches
+        # Sort by confidence and number of matches
         suggestions.sort(key=lambda s: (s.confidence, len(s.matching_rows)), reverse=True)
-
-        return suggestions
-
-    def _detect_merchants(
-        self,
-        transactions: List[Dict],
-        min_occurrences: int
-    ) -> List[SmartRuleSuggestion]:
-        """
-        Detect known merchants from transaction descriptions.
-        Uses PayeeExtractionService to clean merchant names.
-        """
-        suggestions = []
-        merchant_matches = defaultdict(list)
-
-        # Find all transactions matching each merchant pattern
-        for idx, txn in enumerate(transactions):
-            description = (txn.get('description') or '').upper()
-            payee = (txn.get('payee') or '').upper()
-
-            # Check description and payee against known patterns
-            text_to_check = f"{description} {payee}"
-
-            for pattern, merchant_name, category_hint in self.MERCHANT_PATTERNS:
-                if re.search(pattern, text_to_check, re.IGNORECASE):
-                    # Use extraction service to clean the description if available
-                    extracted_name = None
-                    extraction_confidence = None
-
-                    if self.extraction_service:
-                        original_desc = txn.get('description', '')
-                        if original_desc:
-                            extracted_name, extraction_confidence = self.extraction_service.extract_payee_name(original_desc)
-
-                    merchant_matches[merchant_name].append({
-                        'index': idx,
-                        'description': txn.get('description', ''),
-                        'payee': txn.get('payee', ''),
-                        'category_hint': category_hint,
-                        'extracted_name': extracted_name,
-                        'extraction_confidence': extraction_confidence
-                    })
-
-        # Create suggestions for merchants that appear enough times
-        for merchant_name, matches in merchant_matches.items():
-            if len(matches) >= min_occurrences:
-                matching_rows = [m['index'] for m in matches]
-                sample_descriptions = [m['description'] or m['payee'] for m in matches[:3]]
-
-                # High confidence for known merchants
-                base_confidence = min(0.95, 0.7 + (len(matches) * 0.05))
-
-                # Use the first extracted name and average extraction confidence
-                extracted_name = matches[0].get('extracted_name')
-                extraction_confidences = [m.get('extraction_confidence') for m in matches if m.get('extraction_confidence')]
-                avg_extraction_confidence = sum(extraction_confidences) / len(extraction_confidences) if extraction_confidences else None
-
-                # Boost overall confidence if extraction confidence is high
-                if avg_extraction_confidence and avg_extraction_confidence > 0.7:
-                    base_confidence = min(0.98, base_confidence + 0.05)
-
-                suggestion = SmartRuleSuggestion(
-                    suggested_name=f"Auto: {merchant_name}",
-                    payee_pattern=merchant_name.upper(),
-                    payee_match_type="contains",
-                    matching_rows=matching_rows,
-                    sample_descriptions=sample_descriptions,
-                    confidence=base_confidence,
-                    detected_merchant=merchant_name,
-                    extracted_payee_name=extracted_name,
-                    extraction_confidence=avg_extraction_confidence
-                )
-                suggestions.append(suggestion)
 
         return suggestions
 

@@ -19,12 +19,25 @@ from app.schemas.imports import (
     AnalyzeImportForRulesRequest,
     AnalyzeImportForRulesResponse,
     SmartRuleSuggestionResponse,
+    AnalyzePayeesRequest,
+    AnalyzePayeesResponse,
+    PayeeAnalysisItem,
+)
+from app.schemas.intelligent_matching import (
+    IntelligentPayeeAnalysisResponse,
+    IntelligentAnalysisSummarySchema,
+    TransactionPayeeAnalysisSchema,
+    AlternativeMatchSchema,
+    ImportWithPayeeDecisionsRequest,
+    PayeeAssignmentDecision,
 )
 from app.services.import_service import ImportService
 from app.services.ofx_service import OFXService
 from app.services.duplicate_detection_service import DuplicateDetectionService
 from app.services.smart_rule_suggestion_service import SmartRuleSuggestionService
 from app.services.payee_service import PayeeService
+from app.services.payee_extraction_service import PayeeExtractionService
+from app.services.intelligent_payee_matching_service import IntelligentPayeeMatchingService
 import json
 
 router = APIRouter()
@@ -90,6 +103,119 @@ async def preview_ofx(
         transaction_count=len(result['transactions']),
         sample_transactions=result['transactions'][:5]
     )
+
+
+@router.post("/ofx/analyze-all-payees", response_model=AnalyzePayeesResponse)
+async def analyze_all_ofx_payees(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Parse OFX/QFX file and analyze ALL transactions for payee extraction.
+
+    This returns payee analysis for the FULL file, not just a sample.
+    Used by the PayeeReviewStep in the import wizard.
+    """
+    if not (file.filename.endswith('.ofx') or file.filename.endswith('.qfx')):
+        raise HTTPException(status_code=400, detail="File must be OFX or QFX format")
+
+    contents = await file.read()
+
+    try:
+        result = OFXService.parse_ofx(contents)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse OFX file: {str(e)}")
+
+    # Extract payees from ALL transactions
+    extraction_service = PayeeExtractionService(db)
+    payee_items = []
+
+    for txn in result['transactions']:
+        description = txn.get('description', '')
+        payee = txn.get('payee', '')
+
+        text_to_extract = description or payee
+
+        if not text_to_extract or text_to_extract.strip() == '':
+            continue
+
+        extracted_name, confidence = extraction_service.extract_payee_name(text_to_extract)
+
+        if extracted_name:
+            payee_items.append(
+                PayeeAnalysisItem(
+                    original=text_to_extract,
+                    suggested=extracted_name,
+                    confidence=confidence
+                )
+            )
+
+    return AnalyzePayeesResponse(
+        payees=payee_items,
+        total_transactions_analyzed=len(result['transactions'])
+    )
+
+
+@router.post("/csv/analyze-all-payees", response_model=AnalyzePayeesResponse)
+async def analyze_all_csv_payees(
+    file: UploadFile = File(...),
+    column_mapping: str = Form(...),  # JSON string
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Parse CSV file and analyze ALL transactions for payee extraction.
+
+    This returns payee analysis for the FULL file, not just a sample.
+    Used by the PayeeReviewStep in the import wizard.
+    """
+    contents = await file.read()
+
+    try:
+        # Parse column mapping from JSON string
+        mapping_dict = json.loads(column_mapping)
+        column_map = CSVColumnMapping(**mapping_dict)
+
+        service = ImportService(db)
+        df = service.parse_csv(contents)
+
+        # Map CSV to transactions (gets ALL rows)
+        mapped_transactions = service.map_csv_to_transactions(df, column_map)
+
+        # Extract payees from ALL transactions
+        extraction_service = PayeeExtractionService(db)
+        payee_items = []
+
+        for txn_data in mapped_transactions:
+            description = txn_data.get('description', '')
+            payee = txn_data.get('payee', '')
+
+            text_to_extract = description or payee
+
+            if not text_to_extract or text_to_extract.strip() == '':
+                continue
+
+            extracted_name, confidence = extraction_service.extract_payee_name(text_to_extract)
+
+            if extracted_name:
+                payee_items.append(
+                    PayeeAnalysisItem(
+                        original=text_to_extract,
+                        suggested=extracted_name,
+                        confidence=confidence
+                    )
+                )
+
+        return AnalyzePayeesResponse(
+            payees=payee_items,
+            total_transactions_analyzed=len(mapped_transactions)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to analyze payees: {str(e)}"
+        )
 
 
 @router.post("/csv/detect-duplicates", response_model=DuplicatesResponse)
@@ -190,6 +316,7 @@ async def execute_csv_import(
     account_id: int = Form(...),
     column_mapping: str = Form(...),  # JSON string
     skip_rows: str = Form(default="[]"),  # JSON array of row numbers to skip
+    payee_name_overrides: str = Form(default="{}"),  # JSON object of suggested_name -> final_name
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -209,6 +336,7 @@ async def execute_csv_import(
         mapping_dict = json.loads(column_mapping)
         column_map = CSVColumnMapping(**mapping_dict)
         skip_row_list = json.loads(skip_rows)
+        payee_overrides = json.loads(payee_name_overrides)
 
         service = ImportService(db)
         df = service.parse_csv(contents)
@@ -230,17 +358,29 @@ async def execute_csv_import(
         imported_count = 0
         error_count = 0
         payee_service = PayeeService(db)
+        extraction_service = PayeeExtractionService(db)
 
         for trans_data in mapped_transactions:
             try:
-                # Handle payee entity creation
+                # Handle payee entity creation with overrides
                 payee_id = None
-                if trans_data.get('payee'):
-                    payee = payee_service.get_or_create(
+                description = trans_data.get('description', '')
+                payee = trans_data.get('payee', '')
+                text_to_extract = description or payee
+
+                if text_to_extract and text_to_extract.strip():
+                    # Extract canonical name using SAME logic as analyze-all-payees
+                    extracted_name, _ = extraction_service.extract_payee_name(text_to_extract)
+
+                    # Apply user override if exists
+                    final_payee_name = payee_overrides.get(extracted_name, extracted_name)
+
+                    # Create or get payee with final name
+                    payee_entity = payee_service.get_or_create(
                         user_id=current_user.id,
-                        canonical_name=trans_data['payee']
+                        canonical_name=final_payee_name
                     )
-                    payee_id = payee.id
+                    payee_id = payee_entity.id
 
                 # Create transaction
                 transaction = Transaction(
@@ -308,6 +448,7 @@ async def execute_ofx_import(
     file: UploadFile = File(...),
     account_id: int = Form(...),
     skip_rows: str = Form(default="[]"),  # JSON array of row numbers to skip
+    payee_name_overrides: str = Form(default="{}"),  # JSON object of suggested_name -> final_name
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -324,6 +465,7 @@ async def execute_ofx_import(
 
     try:
         skip_row_list = json.loads(skip_rows)
+        payee_overrides = json.loads(payee_name_overrides)
 
         ofx_service = OFXService()
         parsed = ofx_service.parse_ofx(contents)
@@ -346,20 +488,32 @@ async def execute_ofx_import(
         imported_count = 0
         error_count = 0
         payee_service = PayeeService(db)
+        extraction_service = PayeeExtractionService(db)
 
         for idx, trans_data in enumerate(transactions):
             if idx in skip_row_list:
                 continue
 
             try:
-                # Handle payee entity creation
+                # Handle payee entity creation with overrides
                 payee_id = None
-                if trans_data.get('payee'):
-                    payee = payee_service.get_or_create(
+                description = trans_data.get('description', '')
+                payee = trans_data.get('payee', '')
+                text_to_extract = description or payee
+
+                if text_to_extract and text_to_extract.strip():
+                    # Extract canonical name using SAME logic as analyze-all-payees
+                    extracted_name, _ = extraction_service.extract_payee_name(text_to_extract)
+
+                    # Apply user override if exists
+                    final_payee_name = payee_overrides.get(extracted_name, extracted_name)
+
+                    # Create or get payee with final name
+                    payee_entity = payee_service.get_or_create(
                         user_id=current_user.id,
-                        canonical_name=trans_data['payee']
+                        canonical_name=final_payee_name
                     )
-                    payee_id = payee.id
+                    payee_id = payee_entity.id
 
                 # Create transaction
                 transaction = Transaction(
@@ -586,6 +740,55 @@ async def analyze_import_for_rules(
     )
 
 
+@router.post("/analyze-payees", response_model=AnalyzePayeesResponse)
+async def analyze_payees(
+    request: AnalyzePayeesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze transactions and extract payee information.
+
+    This endpoint uses the PayeeExtractionService to extract clean payee names
+    from transaction descriptions. It returns the original description, suggested
+    payee name, and confidence score for each transaction.
+
+    This is used in the import wizard to show users what payees will be created
+    and allow them to edit the names before import.
+    """
+    extraction_service = PayeeExtractionService(db)
+
+    payee_items = []
+
+    for txn in request.transactions:
+        # Get description or payee field
+        description = txn.get('description', '')
+        payee = txn.get('payee', '')
+
+        # Use description as primary source (that's where payee info is in CSV)
+        text_to_extract = description or payee
+
+        if not text_to_extract or text_to_extract.strip() == '':
+            continue
+
+        # Extract payee name with confidence
+        extracted_name, confidence = extraction_service.extract_payee_name(text_to_extract)
+
+        if extracted_name and len(extracted_name) >= 2:
+            payee_items.append(
+                PayeeAnalysisItem(
+                    original=text_to_extract,
+                    suggested=extracted_name,
+                    confidence=confidence
+                )
+            )
+
+    return AnalyzePayeesResponse(
+        payees=payee_items,
+        total_transactions_analyzed=len(request.transactions)
+    )
+
+
 @router.get("/{import_id}/download")
 async def download_import_file(
     import_id: int,
@@ -640,3 +843,477 @@ async def download_import_file(
             'Content-Disposition': f'attachment; filename="{filename}"'
         }
     )
+
+
+# ============================================================================
+# INTELLIGENT PAYEE MATCHING ENDPOINTS
+# ============================================================================
+
+@router.post("/csv/analyze-payees-intelligent", response_model=IntelligentPayeeAnalysisResponse)
+async def analyze_csv_payees_intelligent(
+    file: UploadFile = File(...),
+    column_mapping: str = Form(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze CSV transactions using intelligent payee matching.
+
+    Uses three-tier matching strategy:
+    1. Known merchants (high confidence)
+    2. Learned patterns (variable confidence)
+    3. Fuzzy matching to existing payees (0.70+ threshold)
+
+    Returns analysis with HIGH/LOW/NO_MATCH classifications for UI display.
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be CSV format")
+
+    contents = await file.read()
+
+    try:
+        # Parse column mapping
+        mapping_dict = json.loads(column_mapping)
+        mapping = CSVColumnMapping(**mapping_dict)
+
+        # Parse CSV transactions
+        service = ImportService(db)
+        parsed_transactions = service.parse_csv(contents, mapping)
+
+        # Run intelligent analysis
+        matching_service = IntelligentPayeeMatchingService(db)
+        analyses = matching_service.analyze_transactions_for_import(
+            user_id=current_user.id,
+            transactions=parsed_transactions
+        )
+
+        # Convert to Pydantic schemas
+        analysis_schemas = [
+            TransactionPayeeAnalysisSchema(
+                transaction_index=a.transaction_index,
+                original_description=a.original_description,
+                extracted_payee_name=a.extracted_payee_name,
+                extraction_confidence=a.extraction_confidence,
+                match_type=a.match_type,
+                matched_payee_id=a.matched_payee_id,
+                matched_payee_name=a.matched_payee_name,
+                match_confidence=a.match_confidence,
+                match_reason=a.match_reason,
+                alternative_matches=[
+                    AlternativeMatchSchema(
+                        payee_id=alt.payee_id,
+                        payee_name=alt.payee_name,
+                        confidence=alt.confidence
+                    )
+                    for alt in a.alternative_matches
+                ]
+            )
+            for a in analyses
+        ]
+
+        # Generate summary
+        high_confidence_count = len([a for a in analyses if a.match_type == 'HIGH_CONFIDENCE'])
+        low_confidence_count = len([a for a in analyses if a.match_type == 'LOW_CONFIDENCE'])
+        no_match_count = len([a for a in analyses if a.match_type == 'NO_MATCH'])
+
+        # Count which existing payees were matched
+        payee_match_counts = {}
+        for a in analyses:
+            if a.matched_payee_id:
+                if a.matched_payee_id not in payee_match_counts:
+                    payee_match_counts[a.matched_payee_id] = {
+                        'payee_id': a.matched_payee_id,
+                        'name': a.matched_payee_name,
+                        'count': 0
+                    }
+                payee_match_counts[a.matched_payee_id]['count'] += 1
+
+        summary = IntelligentAnalysisSummarySchema(
+            high_confidence_matches=high_confidence_count,
+            low_confidence_matches=low_confidence_count,
+            new_payees_needed=no_match_count,
+            total_transactions=len(analyses),
+            existing_payees_matched=list(payee_match_counts.values())
+        )
+
+        return IntelligentPayeeAnalysisResponse(
+            analyses=analysis_schemas,
+            summary=summary
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to analyze CSV payees: {str(e)}"
+        )
+
+
+@router.post("/ofx/analyze-payees-intelligent", response_model=IntelligentPayeeAnalysisResponse)
+async def analyze_ofx_payees_intelligent(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze OFX/QFX transactions using intelligent payee matching.
+
+    Uses three-tier matching strategy:
+    1. Known merchants (high confidence)
+    2. Learned patterns (variable confidence)
+    3. Fuzzy matching to existing payees (0.70+ threshold)
+
+    Returns analysis with HIGH/LOW/NO_MATCH classifications for UI display.
+    """
+    if not (file.filename.endswith('.ofx') or file.filename.endswith('.qfx')):
+        raise HTTPException(status_code=400, detail="File must be OFX or QFX format")
+
+    contents = await file.read()
+
+    try:
+        # Parse OFX transactions
+        ofx_service = OFXService(db)
+        parsed_transactions = ofx_service.parse_ofx_file(contents)
+
+        # Run intelligent analysis
+        matching_service = IntelligentPayeeMatchingService(db)
+        analyses = matching_service.analyze_transactions_for_import(
+            user_id=current_user.id,
+            transactions=parsed_transactions
+        )
+
+        # Convert to Pydantic schemas
+        analysis_schemas = [
+            TransactionPayeeAnalysisSchema(
+                transaction_index=a.transaction_index,
+                original_description=a.original_description,
+                extracted_payee_name=a.extracted_payee_name,
+                extraction_confidence=a.extraction_confidence,
+                match_type=a.match_type,
+                matched_payee_id=a.matched_payee_id,
+                matched_payee_name=a.matched_payee_name,
+                match_confidence=a.match_confidence,
+                match_reason=a.match_reason,
+                alternative_matches=[
+                    AlternativeMatchSchema(
+                        payee_id=alt.payee_id,
+                        payee_name=alt.payee_name,
+                        confidence=alt.confidence
+                    )
+                    for alt in a.alternative_matches
+                ]
+            )
+            for a in analyses
+        ]
+
+        # Generate summary
+        high_confidence_count = len([a for a in analyses if a.match_type == 'HIGH_CONFIDENCE'])
+        low_confidence_count = len([a for a in analyses if a.match_type == 'LOW_CONFIDENCE'])
+        no_match_count = len([a for a in analyses if a.match_type == 'NO_MATCH'])
+
+        # Count which existing payees were matched
+        payee_match_counts = {}
+        for a in analyses:
+            if a.matched_payee_id:
+                if a.matched_payee_id not in payee_match_counts:
+                    payee_match_counts[a.matched_payee_id] = {
+                        'payee_id': a.matched_payee_id,
+                        'name': a.matched_payee_name,
+                        'count': 0
+                    }
+                payee_match_counts[a.matched_payee_id]['count'] += 1
+
+        summary = IntelligentAnalysisSummarySchema(
+            high_confidence_matches=high_confidence_count,
+            low_confidence_matches=low_confidence_count,
+            new_payees_needed=no_match_count,
+            total_transactions=len(analyses),
+            existing_payees_matched=list(payee_match_counts.values())
+        )
+
+        return IntelligentPayeeAnalysisResponse(
+            analyses=analysis_schemas,
+            summary=summary
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to analyze OFX payees: {str(e)}"
+        )
+
+
+@router.post("/csv/execute-with-payee-decisions", response_model=ImportExecuteResponse)
+async def execute_csv_import_with_decisions(
+    file: UploadFile = File(...),
+    column_mapping: str = Form(...),
+    request_data: str = Form(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute CSV import using user's payee decisions from intelligent analysis.
+
+    Flow:
+    1. Create any new payees based on user's decisions
+    2. Create initial patterns for new payees (learning)
+    3. Import transactions with assigned payee_ids
+    4. Strengthen patterns for accepted matches
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be CSV format")
+
+    contents = await file.read()
+
+    try:
+        # Parse inputs
+        mapping_dict = json.loads(column_mapping)
+        mapping = CSVColumnMapping(**mapping_dict)
+        request_dict = json.loads(request_data)
+        request = ImportWithPayeeDecisionsRequest(**request_dict)
+
+        # Verify account belongs to user
+        account = db.query(Account).filter(
+            Account.id == request.account_id,
+            Account.user_id == current_user.id
+        ).first()
+
+        if not account:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        # Parse CSV transactions
+        import_service = ImportService(db)
+        parsed_transactions = import_service.parse_csv(contents, mapping)
+
+        # Services
+        payee_service = PayeeService(db)
+        matching_service = IntelligentPayeeMatchingService(db)
+
+        # Step 1: Create new payees and patterns
+        new_payees = {}  # Map transaction_index -> payee_id
+        for decision in request.payee_assignments:
+            if decision.new_payee_name:
+                # User wants to create new payee
+                payee = payee_service.get_or_create(
+                    user_id=current_user.id,
+                    canonical_name=decision.new_payee_name
+                )
+                new_payees[decision.transaction_index] = payee.id
+
+                # Create initial pattern if requested
+                if decision.create_pattern:
+                    matching_service.create_pattern_from_match(
+                        user_id=current_user.id,
+                        payee_id=payee.id,
+                        description=decision.original_description,
+                        pattern_type='description_contains',
+                        source='import_learning'
+                    )
+
+        # Step 2: Build payee override map for import
+        payee_overrides = {}  # Map extracted_name -> final_payee_id
+        for idx, txn in enumerate(parsed_transactions):
+            if idx in request.skip_rows:
+                continue
+
+            # Find decision for this transaction
+            decision = next(
+                (d for d in request.payee_assignments if d.transaction_index == idx),
+                None
+            )
+
+            if decision:
+                # Use user's decision
+                if decision.payee_id:
+                    # User selected existing payee
+                    payee_overrides[str(idx)] = decision.payee_id
+
+                    # Strengthen pattern if requested
+                    if decision.create_pattern:
+                        matching_service.create_pattern_from_match(
+                            user_id=current_user.id,
+                            payee_id=decision.payee_id,
+                            description=decision.original_description,
+                            pattern_type='description_contains',
+                            source='import_learning'
+                        )
+                elif idx in new_payees:
+                    # New payee was created
+                    payee_overrides[str(idx)] = new_payees[idx]
+
+        # Step 3: Execute import
+        result = import_service.import_csv(
+            user_id=current_user.id,
+            account_id=request.account_id,
+            csv_data=contents,
+            column_mapping=mapping,
+            skip_rows=request.skip_rows,
+            filename=file.filename
+        )
+
+        # Override payees based on user decisions
+        # We need to update transactions after import
+        for idx, txn in enumerate(parsed_transactions):
+            if str(idx) in payee_overrides:
+                payee_id = payee_overrides[str(idx)]
+                # Find the transaction that was created
+                # This is a bit hacky - we should improve the import service to handle this better
+                # For now, we'll match by date and amount
+                trans_date = txn.get('date')
+                trans_amount = txn.get('amount')
+
+                if trans_date and trans_amount:
+                    transaction = db.query(Transaction).filter(
+                        Transaction.user_id == current_user.id,
+                        Transaction.account_id == request.account_id,
+                        Transaction.date == trans_date,
+                        Transaction.amount == trans_amount
+                    ).order_by(Transaction.id.desc()).first()
+
+                    if transaction:
+                        transaction.payee_id = payee_id
+
+        db.commit()
+
+        return result
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute CSV import: {str(e)}"
+        )
+
+
+@router.post("/ofx/execute-with-payee-decisions", response_model=ImportExecuteResponse)
+async def execute_ofx_import_with_decisions(
+    file: UploadFile = File(...),
+    request_data: str = Form(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute OFX/QFX import using user's payee decisions from intelligent analysis.
+
+    Flow:
+    1. Create any new payees based on user's decisions
+    2. Create initial patterns for new payees (learning)
+    3. Import transactions with assigned payee_ids
+    4. Strengthen patterns for accepted matches
+    """
+    if not (file.filename.endswith('.ofx') or file.filename.endswith('.qfx')):
+        raise HTTPException(status_code=400, detail="File must be OFX or QFX format")
+
+    contents = await file.read()
+
+    try:
+        # Parse request
+        request_dict = json.loads(request_data)
+        request = ImportWithPayeeDecisionsRequest(**request_dict)
+
+        # Verify account belongs to user
+        account = db.query(Account).filter(
+            Account.id == request.account_id,
+            Account.user_id == current_user.id
+        ).first()
+
+        if not account:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        # Parse OFX transactions
+        ofx_service = OFXService(db)
+        parsed_transactions = ofx_service.parse_ofx_file(contents)
+
+        # Services
+        payee_service = PayeeService(db)
+        matching_service = IntelligentPayeeMatchingService(db)
+
+        # Step 1: Create new payees and patterns
+        new_payees = {}  # Map transaction_index -> payee_id
+        for decision in request.payee_assignments:
+            if decision.new_payee_name:
+                # User wants to create new payee
+                payee = payee_service.get_or_create(
+                    user_id=current_user.id,
+                    canonical_name=decision.new_payee_name
+                )
+                new_payees[decision.transaction_index] = payee.id
+
+                # Create initial pattern if requested
+                if decision.create_pattern:
+                    matching_service.create_pattern_from_match(
+                        user_id=current_user.id,
+                        payee_id=payee.id,
+                        description=decision.original_description,
+                        pattern_type='description_contains',
+                        source='import_learning'
+                    )
+
+        # Step 2: Build payee override map for import
+        payee_overrides = {}  # Map extracted_name -> final_payee_id
+        for idx, txn in enumerate(parsed_transactions):
+            if idx in request.skip_rows:
+                continue
+
+            # Find decision for this transaction
+            decision = next(
+                (d for d in request.payee_assignments if d.transaction_index == idx),
+                None
+            )
+
+            if decision:
+                # Use user's decision
+                if decision.payee_id:
+                    # User selected existing payee
+                    payee_overrides[str(idx)] = decision.payee_id
+
+                    # Strengthen pattern if requested
+                    if decision.create_pattern:
+                        matching_service.create_pattern_from_match(
+                            user_id=current_user.id,
+                            payee_id=decision.payee_id,
+                            description=decision.original_description,
+                            pattern_type='description_contains',
+                            source='import_learning'
+                        )
+                elif idx in new_payees:
+                    # New payee was created
+                    payee_overrides[str(idx)] = new_payees[idx]
+
+        # Step 3: Execute import
+        result = ofx_service.import_ofx(
+            user_id=current_user.id,
+            account_id=request.account_id,
+            ofx_data=contents,
+            skip_rows=request.skip_rows,
+            filename=file.filename
+        )
+
+        # Override payees based on user decisions
+        for idx, txn in enumerate(parsed_transactions):
+            if str(idx) in payee_overrides:
+                payee_id = payee_overrides[str(idx)]
+                # Find the transaction that was created
+                trans_date = txn.get('date')
+                trans_amount = txn.get('amount')
+
+                if trans_date and trans_amount:
+                    transaction = db.query(Transaction).filter(
+                        Transaction.user_id == current_user.id,
+                        Transaction.account_id == request.account_id,
+                        Transaction.date == trans_date,
+                        Transaction.amount == trans_amount
+                    ).order_by(Transaction.id.desc()).first()
+
+                    if transaction:
+                        transaction.payee_id = payee_id
+
+        db.commit()
+
+        return result
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute OFX import: {str(e)}"
+        )

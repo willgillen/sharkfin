@@ -26,6 +26,7 @@ class User(Base):
     import_history = relationship("ImportHistory", back_populates="user", cascade="all, delete-orphan")
     categorization_rules = relationship("CategorizationRule", back_populates="user", cascade="all, delete-orphan")
     payees = relationship("Payee", back_populates="user", cascade="all, delete-orphan")
+    payee_patterns = relationship("PayeeMatchingPattern", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}')>"
