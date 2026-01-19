@@ -122,6 +122,24 @@ export default function EnhancedPayeeReviewStep({
     );
   };
 
+  const handleGroupedPayeeNameChange = (transactionIndices: number[], name: string) => {
+    // Update all transactions in this group with the new payee name
+    const updatedAssignments = new Map(assignments);
+
+    transactionIndices.forEach((txIndex) => {
+      const assignment = updatedAssignments.get(txIndex);
+      if (assignment) {
+        updatedAssignments.set(txIndex, {
+          ...assignment,
+          selectedNewPayeeName: name,
+          selectedPayeeId: null,
+        });
+      }
+    });
+
+    setAssignments(updatedAssignments);
+  };
+
   const handleContinue = () => {
     // Build payee decisions from user's selections
     const decisions: PayeeAssignmentDecision[] = [];
@@ -181,6 +199,41 @@ export default function EnhancedPayeeReviewStep({
   );
   const newPayeeAssignments = Array.from(assignments.values()).filter(
     (a) => a.matchType === "NO_MATCH"
+  );
+
+  // Group new payees by extracted name (like old PayeeReviewStep)
+  interface PayeeGroup {
+    suggestedName: string;
+    finalName: string; // User's edited name (starts as suggestedName)
+    transactionIndices: number[];
+    sampleDescriptions: string[];
+    transactionCount: number;
+  }
+
+  const payeeGroups = new Map<string, PayeeGroup>();
+
+  newPayeeAssignments.forEach((assignment) => {
+    const suggestedName = assignment.extractedName || assignment.selectedNewPayeeName || "";
+    const existing = payeeGroups.get(suggestedName);
+
+    if (existing) {
+      existing.transactionIndices.push(assignment.transactionIndex);
+      existing.sampleDescriptions.push(assignment.originalDescription);
+      existing.transactionCount++;
+    } else {
+      payeeGroups.set(suggestedName, {
+        suggestedName,
+        finalName: assignment.selectedNewPayeeName || suggestedName, // Use edited name if exists
+        transactionIndices: [assignment.transactionIndex],
+        sampleDescriptions: [assignment.originalDescription],
+        transactionCount: 1,
+      });
+    }
+  });
+
+  // Sort groups by transaction count (most common first)
+  const sortedPayeeGroups = Array.from(payeeGroups.values()).sort(
+    (a, b) => b.transactionCount - a.transactionCount
   );
 
   return (
@@ -338,8 +391,8 @@ export default function EnhancedPayeeReviewStep({
         </div>
       )}
 
-      {/* NEW PAYEES SECTION */}
-      {newPayeeAssignments.length > 0 && (
+      {/* NEW PAYEES SECTION - GROUPED */}
+      {sortedPayeeGroups.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg">
           <div
             className="flex items-center justify-between p-4 cursor-pointer"
@@ -350,7 +403,7 @@ export default function EnhancedPayeeReviewStep({
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
               </svg>
               <h3 className="font-medium text-blue-900">
-                New Payees ({newPayeeAssignments.length})
+                New Payees ({sortedPayeeGroups.length})
               </h3>
             </div>
             <svg
@@ -365,23 +418,46 @@ export default function EnhancedPayeeReviewStep({
 
           {newPayeesExpanded && (
             <div className="p-4 space-y-3 border-t border-blue-200">
-              {newPayeeAssignments.map((assignment) => (
-                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
-                    <p className="text-sm truncate" title={assignment.originalDescription}>
-                      {assignment.originalDescription}
-                    </p>
+              {sortedPayeeGroups.map((group, idx) => (
+                <div key={`${group.suggestedName}-${idx}`} className="p-4 bg-white rounded border">
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Suggested Payee Name ({group.transactionCount} transaction{group.transactionCount > 1 ? 's' : ''})
+                      </label>
+                      <p className="text-sm font-medium text-gray-900">{group.suggestedName}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Final Payee Name (editable)
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        value={group.finalName}
+                        onChange={(e) => handleGroupedPayeeNameChange(group.transactionIndices, e.target.value)}
+                        placeholder="Enter payee name"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">New Payee Name (editable)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      value={assignment.selectedNewPayeeName || ""}
-                      onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
-                      placeholder="Enter payee name"
-                    />
+
+                  {/* Show sample transaction descriptions */}
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Sample Transactions:
+                    </label>
+                    <ul className="space-y-1">
+                      {group.sampleDescriptions.slice(0, 3).map((desc, descIdx) => (
+                        <li key={descIdx} className="text-xs text-gray-600 truncate" title={desc}>
+                          • {desc}
+                        </li>
+                      ))}
+                      {group.transactionCount > 3 && (
+                        <li className="text-xs text-gray-500 italic">
+                          ... and {group.transactionCount - 3} more
+                        </li>
+                      )}
+                    </ul>
                   </div>
                 </div>
               ))}
