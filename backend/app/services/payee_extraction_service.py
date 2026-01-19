@@ -83,7 +83,7 @@ class PayeeExtractionService:
 
         # Apply extraction patterns in order of specificity
 
-        # 1. Payment processor prefixes
+        # 1. Payment processor prefixes (includes ACH COMPANY, ENTRY descriptors)
         cleaned, processor_match = self._remove_processor_prefixes(cleaned)
         if processor_match:
             confidence += 0.2
@@ -91,27 +91,37 @@ class PayeeExtractionService:
         # 2. Expand abbreviations (BEFORE transaction ID removal to avoid losing important words)
         cleaned = self._expand_abbreviations(cleaned)
 
-        # 3. Remove store/location numbers
+        # 3. Remove phone numbers (before removing other numbers)
+        cleaned, phone_removed = self._remove_phone_numbers(cleaned)
+        if phone_removed:
+            confidence += 0.05
+
+        # 4. Remove MCC codes and store numbers
         cleaned, number_removed = self._remove_store_numbers(cleaned)
         if number_removed:
             confidence += 0.1
 
-        # 4. Remove transaction IDs and codes
+        # 5. Remove transaction IDs and codes
         cleaned, id_removed = self._remove_transaction_ids(cleaned)
         if id_removed:
             confidence += 0.1
 
-        # 4. Remove URL suffixes
+        # 6. Remove URL suffixes
         cleaned, url_removed = self._remove_url_suffixes(cleaned)
         if url_removed:
             confidence += 0.05
 
-        # 5. Remove location indicators
+        # 7. Remove location indicators (cities, states, addresses)
         cleaned, location_removed = self._remove_location_indicators(cleaned)
         if location_removed:
             confidence += 0.05
 
-        # 6. Clean up whitespace and standardize
+        # 8. Remove person names at end (for ACH transactions)
+        cleaned, person_removed = self._remove_person_names(cleaned)
+        if person_removed:
+            confidence += 0.05
+
+        # 9. Clean up whitespace and standardize
         cleaned = self._normalize_whitespace(cleaned)
 
         # Adjust confidence based on result quality
@@ -140,6 +150,7 @@ class PayeeExtractionService:
         - ACH WITHDRAWAL COMPANY ...
         - PAYMENT TO ...
         - ONLINE PAYMENT TO ...
+        - Bill payment/Dividend Deposit prefixes
         """
         patterns = [
             r'^SQ\s*\*\s*',                             # Square: "SQ *" or "SQ*"
@@ -155,9 +166,12 @@ class PayeeExtractionService:
             r'^ACH\s+CREDIT\s+',                        # ACH credits
             r'^ONLINE\s+PAYMENT\s+TO\s+',               # Online payments
             r'^PAYMENT\s+TO\s+',                        # Payments
-            r'^DEBIT\s+CARD\s+PURCHASE\s*-?\s*',        # Debit card
+            r'^BILL\s+PAYMENT\s+(WITHDRAWAL\s+)?',      # Bill payments
+            r'^DEBIT\s+CARD\s+PURCHASE\s*(RETURN\s+)?(\s*ADJUSTMENT\s*)?(\s*-?\s*)?',  # Debit card (including returns)
             r'^CREDIT\s+CARD\s+PURCHASE\s*-?\s*',       # Credit card
             r'^POS\s+PURCHASE\s*-?\s*',                 # POS purchases
+            r'^DIVIDEND\s+DEPOSIT\s*',                  # Dividend deposits
+            r'^RETURN\s+ADJUSTMENT\s+',                 # Return adjustments
         ]
 
         for pattern in patterns:
@@ -170,13 +184,14 @@ class PayeeExtractionService:
 
     def _remove_store_numbers(self, text: str) -> Tuple[str, bool]:
         """
-        Remove store/location numbers.
+        Remove store/location numbers and MCC codes.
 
         Patterns:
         - #1234
         - # 1234
         - STORE 1234
         - LOCATION 456
+        - MCC codes like "5812", "5999", "5921" (4-digit merchant category codes)
         - Trailing numbers like "WALMART 01234"
         """
         patterns = [
@@ -184,7 +199,10 @@ class PayeeExtractionService:
             r'\s+STORE\s+\d+\s*$',                # "STORE 1234" at end
             r'\s+LOCATION\s+\d+\s*$',             # "LOCATION 456" at end
             r'\s+LOC\s+\d+\s*$',                  # "LOC 789" at end
-            r'\s+\d{4,}\s*$',                     # 4+ digits at end (store IDs)
+            r'\s+\d{4}\s+\d{4,}',                 # Two groups of numbers: "5812 CEDAR" -> removes "5812"
+            r'\s+\d{4}\s+[A-Z]{2}\s*$',           # MCC code + state: "5921 TX" at end
+            r'\s+[A-Z]{2,15}\s+\d{4,}\s*$',       # Word + digits: "AUSTINLKLNE 5311", "MTG PYMTS 0607"
+            r'\s+\d{4,}\s*$',                     # 4+ digits at end (store IDs/MCC codes)
         ]
 
         any_match = False
@@ -207,13 +225,17 @@ class PayeeExtractionService:
         - Codes with asterisks: *ABC123
         - Codes in various formats
         - Long numeric transaction IDs (10+ digits)
-        - ACH entry descriptors (ENTRY PAYROLL, ENTRY DESC, etc.)
+        - ACH entry descriptors (ENTRY PAYROLL, ENTRY TRANSFER, ENTRY ELECBILL, etc.)
         """
+        # Common ACH ENTRY descriptors to remove
+        entry_descriptors = r'(PAYROLL|TRANSFER|AUTO\s+PAY|ELECBILL|MTG\s+PYMTS|' \
+                           r'STUDENT\s+LN|SYF\s+PAYMNT|ACH\s+PMT|UTILITY\s+BILL)'
+
         patterns = [
             r'\*[A-Z0-9]{6,}',                    # "*ABC123DEF"
             r'\s+[A-Z0-9]{8,}\s*$',               # Long alphanumeric at end
             r'\s+-\s+[A-Z0-9]{6,}\s*$',           # "- ABC123XYZ" at end
-            r'\s+ENTRY\s+(PAYROLL|DESC|DESCRIPTION|ID)(\s+\d+)?',  # ACH entry descriptors with optional ID
+            r'\s+ENTRY\s+' + entry_descriptors,   # ACH entry descriptors (specific types only)
             r'\s+\d{10,}',                        # Long numeric IDs (10+ digits) anywhere
         ]
 
@@ -267,23 +289,83 @@ class PayeeExtractionService:
         """
         # Common US city names to remove (case-insensitive)
         common_cities = r'(HOUSTON|DALLAS|AUSTIN|ATLANTA|SEATTLE|DENVER|PHOENIX|' \
-                       r'CHICAGO|BOSTON|PORTLAND|MIAMI|ORLANDO|DETROIT|CLEVELAND)'
+                       r'CHICAGO|BOSTON|PORTLAND|MIAMI|ORLANDO|DETROIT|CLEVELAND|' \
+                       r'LEANDER|LEAND|CEDAR|ROCKEFELLER)'  # Include abbreviated/truncated cities
+
+        # Street/location patterns
+        street_suffixes = r'(ST|AVE|BLVD|RD|LN|DR|CT|WAY|PARK|PLAZA|STREET|AVENUE)'
 
         patterns = [
-            r'\s+\d+\s+(ST|AVE|BLVD|RD|LN|DR|CT|WAY)\s*$',  # Street addresses at end
+            r'\s+\d+\s+' + street_suffixes + r'\s*$',        # Street addresses at end
             r'\s+[A-Z]{2}\s+\d{5}\s*$',                      # "CA 12345" (state + zip)
             r'\s+\d{5}\s*$',                                 # Zip code at end
-            r'\s+\d{4,}\s+[A-Z]{2,4}\s*$',                   # "5812 CEDA" (number + city abbrev)
+            r'\s+\d{4,}\s+' + street_suffixes + r'(\s+[A-Z]+)?',  # "4899 ROCKEFELLER PLAZA"
+            r'\s+\d{4,}\s+[A-Z]{2,10}\s*$',                   # "5812 CEDAR" (number + city abbrev)
             r'\s+[A-Z]{2}\d{4,}\s+[A-Z]{2}\s*$',            # "XX1801 TX" (alphanumeric + state)
             r'\s+\d{4,}\s*$',                                # Generic 4+ digit codes at end (like 5812)
             r'\s+[A-Z][A-Za-z]{2,14}\s+[A-Z]{2}\s*$',       # "AUSTIN TX" or "Houston Tx" (city + state)
             r'\s+' + common_cities + r'\s*$',                 # Common city names at end
+            r'\s+[A-Z]{2}\s*$',                              # State abbreviation alone at end (PA, TX, NY, CA)
         ]
 
         any_match = False
         cleaned = text
 
         # Apply ALL patterns (not just first match)
+        for pattern in patterns:
+            if re.search(pattern, cleaned, re.IGNORECASE):
+                cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE).strip()
+                any_match = True
+
+        return (cleaned, any_match)
+
+    def _remove_phone_numbers(self, text: str) -> Tuple[str, bool]:
+        """
+        Remove phone numbers in various formats.
+
+        Patterns:
+        - 8099 8553894043 (space-separated)
+        - 18669321801 (11 digits starting with 1)
+        - 8553894043 (10 digits)
+        - 555-1234 or 555.1234
+        """
+        patterns = [
+            r'\s+\d{4}\s+\d{10,11}',              # "8099 8553894043" or "5921 18669321801"
+            r'\s+\d{11}\s*',                       # "18669321801" (11 digits)
+            r'\s+\d{10}\s*',                       # "8553894043" (10 digits)
+            r'\s+\d{3}[-\.]\d{4}',                # "555-1234" or "555.1234"
+        ]
+
+        any_match = False
+        cleaned = text
+
+        for pattern in patterns:
+            if re.search(pattern, cleaned):
+                cleaned = re.sub(pattern, ' ', cleaned).strip()
+                any_match = True
+
+        return (cleaned, any_match)
+
+    def _remove_person_names(self, text: str) -> Tuple[str, bool]:
+        """
+        Remove person names at end of ACH transactions.
+
+        Patterns:
+        - "WILLIAM GILLEN" (two capitalized words)
+        - "GILLEN WILLIAM A" (last name first + middle initial)
+        - "William Gillen" (title case)
+
+        Only matches at the END of the string to avoid removing merchant names.
+        """
+        patterns = [
+            # Two or three capitalized words at end (3-15 letters each)
+            # But NOT common merchant words
+            r'\s+(?!ENTRY|COMPANY|PAYMENT|WITHDRAWAL|DEPOSIT)[A-Z][A-Za-z]{2,14}\s+(?!ENTRY|COMPANY|PAYMENT|WITHDRAWAL|DEPOSIT)[A-Z][A-Za-z]{2,14}(\s+[A-Z])?(\s+ACH\s+TRANSACTION)?\s*$',
+        ]
+
+        any_match = False
+        cleaned = text
+
         for pattern in patterns:
             if re.search(pattern, cleaned, re.IGNORECASE):
                 cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE).strip()
@@ -302,21 +384,27 @@ class PayeeExtractionService:
             # Financial institutions
             r'\bSCHW\b': 'Schwab',
             r'\bSCHWAB\s*BA\b': 'Schwab Bank',
+            r'\bSCHWAB\s+BANK\b': 'Schwab Bank',
             r'\bCHARLES\s+SCHW\b': 'Charles Schwab',
             r'\bMERCEDESBENZ\s*FINANCIA?\b': 'Mercedes-Benz Financial',
+            r'\bMBFSCOM\b': 'Mercedes-Benz Financial',
             r'\bAMERICAN\s+EXPRESS\b': 'American Express',
             r'\bAMEX\b': 'American Express',
 
             # Government/Utilities
-            r'\bDEPT\s+EDUC\b': 'Department of Education',
-            r'\bPEDERNALE?S?\b': 'Pedernales Electric',
+            r'\bDEPT\s+EDUC(ATION)?\b': 'Department of Education',
+            r'\bDEPT\s+EDUCATION\b': 'Department of Education',
+            r'\bPEDERNALE?S?ELEC\b': 'Pedernales Electric',
             r'\bPED\s+ELEC\b': 'Pedernales Electric',
+
+            # Retailers
+            r'\bGOODWILL\s+\d+\b': 'Goodwill',  # "GOODWILL 1260" -> "Goodwill"
 
             # Common business abbreviations
             r'\bFREEDOM\s+E\b': 'Freedom',  # Truncated company name
 
             # Transaction types to clean
-            r'\bDIVIDEND\s+DEPOSIT\b': 'Investment Dividend',
+            r'\bDIVIDEND\s+DEPOSIT\b': 'Investment',
         }
 
         for pattern, replacement in abbreviations.items():
@@ -329,6 +417,7 @@ class PayeeExtractionService:
         Normalize whitespace and clean up formatting.
         - Remove multiple spaces
         - Trim whitespace
+        - Remove common trailing payment/ACH terms
         - Title case for consistency
         """
         # Replace multiple spaces with single space
@@ -336,6 +425,13 @@ class PayeeExtractionService:
 
         # Trim
         text = text.strip()
+
+        # Remove common payment/ACH suffixes that might remain
+        trailing_terms = r'\s+(EPAYMENT|ER\s+AM|GILLENSTEPHANIE|ACH\s+TRANSACTION)\s*$'
+        text = re.sub(trailing_terms, '', text, flags=re.IGNORECASE).strip()
+
+        # Remove trailing digits with 4-digit codes (like "0607", "5999")
+        text = re.sub(r'\s+\d{4}\s*$', '', text).strip()
 
         # Remove trailing punctuation
         text = re.sub(r'[,.\-_]+$', '', text).strip()
