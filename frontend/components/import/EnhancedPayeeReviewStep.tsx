@@ -1,19 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { importsAPI } from "@/lib/api/imports";
 import { CSVColumnMapping } from "@/types";
 import {
@@ -179,10 +166,9 @@ export default function EnhancedPayeeReviewStep({
 
   if (!analysis) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>Failed to load payee analysis. Please try again.</AlertDescription>
-      </Alert>
+      <div className="rounded-md bg-red-50 p-4">
+        <p className="text-sm text-red-800">Failed to load payee analysis. Please try again.</p>
+      </div>
     );
   }
 
@@ -200,228 +186,224 @@ export default function EnhancedPayeeReviewStep({
   return (
     <div className="space-y-6">
       {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Intelligent Payee Matching Results</CardTitle>
-          <CardDescription>
-            We&apos;ve analyzed {analysis.summary.total_transactions} transactions and matched them
-            to your existing payees using patterns and fuzzy matching.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-green-600">
-                {analysis.summary.high_confidence_matches}
-              </div>
-              <div className="text-sm text-gray-600">High Confidence Matches</div>
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900">Intelligent Payee Matching Results</h3>
+        <p className="mt-2 text-sm text-gray-600">
+          We analyzed {analysis.summary.total_transactions} transactions and matched them to your existing payees.
+        </p>
+
+        <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-green-600">
+              {analysis.summary.high_confidence_matches}
             </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-yellow-600">
-                {analysis.summary.low_confidence_matches}
-              </div>
-              <div className="text-sm text-gray-600">Review Recommended</div>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600">
-                {analysis.summary.new_payees_needed}
-              </div>
-              <div className="text-sm text-gray-600">New Payees</div>
-            </div>
+            <div className="text-sm text-gray-600">High Confidence</div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-yellow-600">
+              {analysis.summary.low_confidence_matches}
+            </div>
+            <div className="text-sm text-gray-600">Review Recommended</div>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-blue-600">
+              {analysis.summary.new_payees_needed}
+            </div>
+            <div className="text-sm text-gray-600">New Payees</div>
+          </div>
+        </div>
+      </div>
 
       {/* HIGH CONFIDENCE SECTION */}
       {highConfidenceAssignments.length > 0 && (
-        <Card className="border-green-200 bg-green-50/30">
-          <CardHeader className="cursor-pointer" onClick={() => setHighConfidenceExpanded(!highConfidenceExpanded)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <CardTitle className="text-green-700">
-                  High Confidence Matches ({highConfidenceAssignments.length})
-                </CardTitle>
-              </div>
-              {highConfidenceExpanded ? (
-                <ChevronUp className="h-5 w-5 text-green-600" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-green-600" />
-              )}
+        <div className="bg-green-50 border border-green-200 rounded-lg">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => setHighConfidenceExpanded(!highConfidenceExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+              <h3 className="font-medium text-green-900">
+                High Confidence Matches ({highConfidenceAssignments.length})
+              </h3>
             </div>
-            <CardDescription className="text-green-600">
-              These transactions were matched with {">"}85% confidence. Auto-selected but you can change them.
-            </CardDescription>
-          </CardHeader>
+            <svg
+              className={`h-5 w-5 text-green-600 transform transition-transform ${highConfidenceExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
           {highConfidenceExpanded && (
-            <CardContent className="space-y-4">
+            <div className="p-4 space-y-3 border-t border-green-200">
               {highConfidenceAssignments.map((assignment) => (
-                <PayeeAssignmentRow
-                  key={assignment.transactionIndex}
-                  assignment={assignment}
-                  onPayeeSelect={handlePayeeSelect}
-                  onNewPayeeNameChange={handleNewPayeeNameChange}
-                />
+                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                    <p className="text-sm truncate" title={assignment.originalDescription}>
+                      {assignment.originalDescription}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={assignment.selectedPayeeId?.toString() || ""}
+                      onChange={(e) => handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value={assignment.matchedPayeeId?.toString()}>
+                        {assignment.matchedPayeeName} (Suggested)
+                      </option>
+                      {assignment.alternativeMatches.map((alt) => (
+                        <option key={alt.payee_id} value={alt.payee_id.toString()}>
+                          {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               ))}
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
       )}
 
       {/* LOW CONFIDENCE SECTION */}
       {lowConfidenceAssignments.length > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50/30">
-          <CardHeader className="cursor-pointer" onClick={() => setLowConfidenceExpanded(!lowConfidenceExpanded)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600" />
-                <CardTitle className="text-yellow-700">
-                  Review Recommended ({lowConfidenceAssignments.length})
-                </CardTitle>
-              </div>
-              {lowConfidenceExpanded ? (
-                <ChevronUp className="h-5 w-5 text-yellow-600" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-yellow-600" />
-              )}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => setLowConfidenceExpanded(!lowConfidenceExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+              </svg>
+              <h3 className="font-medium text-yellow-900">
+                Review Recommended ({lowConfidenceAssignments.length})
+              </h3>
             </div>
-            <CardDescription className="text-yellow-700">
-              These transactions were matched with 70-84% confidence. Please review the suggested matches.
-            </CardDescription>
-          </CardHeader>
+            <svg
+              className={`h-5 w-5 text-yellow-600 transform transition-transform ${lowConfidenceExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
           {lowConfidenceExpanded && (
-            <CardContent className="space-y-4">
+            <div className="p-4 space-y-3 border-t border-yellow-200">
               {lowConfidenceAssignments.map((assignment) => (
-                <PayeeAssignmentRow
-                  key={assignment.transactionIndex}
-                  assignment={assignment}
-                  onPayeeSelect={handlePayeeSelect}
-                  onNewPayeeNameChange={handleNewPayeeNameChange}
-                />
+                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                    <p className="text-sm truncate" title={assignment.originalDescription}>
+                      {assignment.originalDescription}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={assignment.selectedPayeeId?.toString() || ""}
+                      onChange={(e) => handlePayeeSelect(assignment.transactionIndex, e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value={assignment.matchedPayeeId?.toString()}>
+                        {assignment.matchedPayeeName} (Suggested)
+                      </option>
+                      {assignment.alternativeMatches.map((alt) => (
+                        <option key={alt.payee_id} value={alt.payee_id.toString()}>
+                          {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               ))}
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
       )}
 
       {/* NEW PAYEES SECTION */}
       {newPayeeAssignments.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50/30">
-          <CardHeader className="cursor-pointer" onClick={() => setNewPayeesExpanded(!newPayeesExpanded)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-blue-700">
-                  New Payees ({newPayeeAssignments.length})
-                </CardTitle>
-              </div>
-              {newPayeesExpanded ? (
-                <ChevronUp className="h-5 w-5 text-blue-600" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-blue-600" />
-              )}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => setNewPayeesExpanded(!newPayeesExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+              </svg>
+              <h3 className="font-medium text-blue-900">
+                New Payees ({newPayeeAssignments.length})
+              </h3>
             </div>
-            <CardDescription className="text-blue-600">
-              These transactions don&apos;t match any existing payees. Edit the suggested names or create new.
-            </CardDescription>
-          </CardHeader>
+            <svg
+              className={`h-5 w-5 text-blue-600 transform transition-transform ${newPayeesExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
           {newPayeesExpanded && (
-            <CardContent className="space-y-4">
+            <div className="p-4 space-y-3 border-t border-blue-200">
               {newPayeeAssignments.map((assignment) => (
-                <PayeeAssignmentRow
-                  key={assignment.transactionIndex}
-                  assignment={assignment}
-                  onPayeeSelect={handlePayeeSelect}
-                  onNewPayeeNameChange={handleNewPayeeNameChange}
-                />
+                <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                    <p className="text-sm truncate" title={assignment.originalDescription}>
+                      {assignment.originalDescription}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">New Payee Name (editable)</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={assignment.selectedNewPayeeName || ""}
+                      onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
+                      placeholder="Enter payee name"
+                    />
+                  </div>
+                </div>
               ))}
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
       )}
 
       {/* Navigation Buttons */}
       <div className="flex justify-between pt-6">
-        <Button variant="outline" onClick={onBack}>
+        <button
+          onClick={onBack}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        >
           Back
-        </Button>
-        <Button onClick={handleContinue}>
+        </button>
+        <button
+          onClick={handleContinue}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+        >
           Continue to Import
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Row component for individual payee assignment
-function PayeeAssignmentRow({
-  assignment,
-  onPayeeSelect,
-  onNewPayeeNameChange,
-}: {
-  assignment: PayeeAssignment;
-  onPayeeSelect: (transactionIndex: number, payeeId: number | null) => void;
-  onNewPayeeNameChange: (transactionIndex: number, name: string) => void;
-}) {
-  const isNewPayee = assignment.matchType === "NO_MATCH";
-  const hasMatch = assignment.matchedPayeeId !== undefined;
-
-  return (
-    <div className="grid grid-cols-2 gap-4 p-4 bg-white rounded-lg border">
-      <div className="space-y-1">
-        <Label className="text-xs text-gray-500">Transaction</Label>
-        <p className="text-sm font-medium truncate" title={assignment.originalDescription}>
-          {assignment.originalDescription}
-        </p>
-        {hasMatch && (
-          <p className="text-xs text-gray-500">
-            {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs text-gray-500">
-          {isNewPayee ? "New Payee Name (editable)" : "Payee"}
-        </Label>
-
-        {isNewPayee ? (
-          <Input
-            value={assignment.selectedNewPayeeName || ""}
-            onChange={(e) => onNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
-            placeholder="Enter payee name"
-            className="w-full"
-          />
-        ) : (
-          <Select
-            value={assignment.selectedPayeeId?.toString() || ""}
-            onValueChange={(value) =>
-              onPayeeSelect(assignment.transactionIndex, value ? Number(value) : null)
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select payee" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* Matched payee (if any) */}
-              {assignment.matchedPayeeId && (
-                <SelectItem value={assignment.matchedPayeeId.toString()}>
-                  {assignment.matchedPayeeName} (Suggested)
-                </SelectItem>
-              )}
-
-              {/* Alternative matches */}
-              {assignment.alternativeMatches.map((alt) => (
-                <SelectItem key={alt.payee_id} value={alt.payee_id.toString()}>
-                  {alt.payee_name} ({Math.round(alt.confidence * 100)}%)
-                </SelectItem>
-              ))}
-
-              {/* Option to create new */}
-              <SelectItem value="new">+ Create New Payee</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+        </button>
       </div>
     </div>
   );
