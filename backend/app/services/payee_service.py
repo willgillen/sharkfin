@@ -504,3 +504,253 @@ class PayeeService:
             "first_transaction_date": min(dates) if dates else None,
             "last_transaction_date": max(dates) if dates else None
         }
+
+    # ========================================================================
+    # Pattern Management Methods
+    # ========================================================================
+
+    def get_patterns(
+        self,
+        payee_id: int,
+        user_id: int
+    ) -> List:
+        """
+        Get all matching patterns for a payee.
+
+        Args:
+            payee_id: ID of payee
+            user_id: User ID (for ownership check)
+
+        Returns:
+            List of PayeeMatchingPattern entities
+        """
+        from app.models.payee_matching_pattern import PayeeMatchingPattern
+
+        # Verify payee exists and belongs to user
+        payee = self.get_by_id(payee_id, user_id)
+        if not payee:
+            return []
+
+        return self.db.query(PayeeMatchingPattern).filter(
+            PayeeMatchingPattern.payee_id == payee_id,
+            PayeeMatchingPattern.user_id == user_id
+        ).order_by(
+            PayeeMatchingPattern.confidence_score.desc(),
+            PayeeMatchingPattern.match_count.desc()
+        ).all()
+
+    def create_pattern(
+        self,
+        payee_id: int,
+        user_id: int,
+        pattern_type: str,
+        pattern_value: str,
+        confidence_score: float = 0.80
+    ):
+        """
+        Create a new matching pattern for a payee.
+
+        Args:
+            payee_id: ID of payee
+            user_id: User ID (for ownership check)
+            pattern_type: Type of pattern (description_contains, exact_match, etc.)
+            pattern_value: The pattern text to match
+            confidence_score: Initial confidence score (0.0 to 1.0)
+
+        Returns:
+            Created PayeeMatchingPattern or None if payee not found
+        """
+        from app.models.payee_matching_pattern import PayeeMatchingPattern
+        from decimal import Decimal
+
+        # Verify payee exists and belongs to user
+        payee = self.get_by_id(payee_id, user_id)
+        if not payee:
+            return None
+
+        # Check if pattern already exists
+        existing = self.db.query(PayeeMatchingPattern).filter(
+            PayeeMatchingPattern.payee_id == payee_id,
+            PayeeMatchingPattern.pattern_type == pattern_type,
+            PayeeMatchingPattern.pattern_value == pattern_value
+        ).first()
+
+        if existing:
+            # Update existing pattern
+            existing.confidence_score = Decimal(str(confidence_score))
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+
+        # Create new pattern
+        pattern = PayeeMatchingPattern(
+            payee_id=payee_id,
+            user_id=user_id,
+            pattern_type=pattern_type,
+            pattern_value=pattern_value,
+            confidence_score=Decimal(str(confidence_score)),
+            source='user_created',
+            match_count=0
+        )
+        self.db.add(pattern)
+        self.db.commit()
+        self.db.refresh(pattern)
+        return pattern
+
+    def get_pattern_by_id(
+        self,
+        pattern_id: int,
+        user_id: int
+    ):
+        """
+        Get a pattern by ID with user ownership check.
+
+        Args:
+            pattern_id: ID of pattern
+            user_id: User ID (for ownership check)
+
+        Returns:
+            PayeeMatchingPattern or None if not found/not owned
+        """
+        from app.models.payee_matching_pattern import PayeeMatchingPattern
+
+        return self.db.query(PayeeMatchingPattern).filter(
+            PayeeMatchingPattern.id == pattern_id,
+            PayeeMatchingPattern.user_id == user_id
+        ).first()
+
+    def update_pattern(
+        self,
+        pattern_id: int,
+        user_id: int,
+        pattern_type: Optional[str] = None,
+        pattern_value: Optional[str] = None,
+        confidence_score: Optional[float] = None
+    ):
+        """
+        Update a pattern's fields.
+
+        Args:
+            pattern_id: ID of pattern
+            user_id: User ID (for ownership check)
+            pattern_type: Optional new pattern type
+            pattern_value: Optional new pattern value
+            confidence_score: Optional new confidence score
+
+        Returns:
+            Updated PayeeMatchingPattern or None if not found
+        """
+        from decimal import Decimal
+
+        pattern = self.get_pattern_by_id(pattern_id, user_id)
+        if not pattern:
+            return None
+
+        if pattern_type is not None:
+            pattern.pattern_type = pattern_type
+        if pattern_value is not None:
+            pattern.pattern_value = pattern_value
+        if confidence_score is not None:
+            pattern.confidence_score = Decimal(str(confidence_score))
+
+        self.db.commit()
+        self.db.refresh(pattern)
+        return pattern
+
+    def delete_pattern(self, pattern_id: int, user_id: int) -> bool:
+        """
+        Delete a pattern.
+
+        Args:
+            pattern_id: ID of pattern
+            user_id: User ID (for ownership check)
+
+        Returns:
+            True if deleted, False if not found/not owned
+        """
+        pattern = self.get_pattern_by_id(pattern_id, user_id)
+        if not pattern:
+            return False
+
+        self.db.delete(pattern)
+        self.db.commit()
+        return True
+
+    def test_pattern(
+        self,
+        pattern_type: str,
+        pattern_value: str,
+        description: str
+    ) -> dict:
+        """
+        Test if a pattern matches a given description.
+
+        Args:
+            pattern_type: Type of pattern
+            pattern_value: The pattern text
+            description: Transaction description to test against
+
+        Returns:
+            Dict with match result and details
+        """
+        import re
+        from difflib import SequenceMatcher
+
+        matches = False
+        match_details = None
+
+        if pattern_type == "description_contains":
+            # Case-insensitive substring search
+            matches = pattern_value.upper() in description.upper()
+            if matches:
+                match_details = f"Found '{pattern_value}' in description"
+            else:
+                match_details = f"'{pattern_value}' not found in description"
+
+        elif pattern_type == "exact_match":
+            # Extract payee name first, then compare
+            from app.services.payee_extraction_service import PayeeExtractionService
+            extraction_service = PayeeExtractionService()
+            extracted_name, _ = extraction_service.extract_payee_name(description)
+            matches = extracted_name.upper() == pattern_value.upper()
+            if matches:
+                match_details = f"Exact match: extracted '{extracted_name}'"
+            else:
+                match_details = f"No match: extracted '{extracted_name}' vs pattern '{pattern_value}'"
+
+        elif pattern_type == "fuzzy_match_base":
+            # Levenshtein similarity
+            from app.services.payee_extraction_service import PayeeExtractionService
+            extraction_service = PayeeExtractionService()
+            extracted_name, _ = extraction_service.extract_payee_name(description)
+
+            ratio = SequenceMatcher(
+                None,
+                pattern_value.upper(),
+                extracted_name.upper()
+            ).ratio()
+
+            matches = ratio >= 0.80
+            match_details = f"Similarity: {ratio:.1%} (threshold: 80%)"
+
+        elif pattern_type == "description_regex":
+            try:
+                matches = bool(re.search(pattern_value, description, re.IGNORECASE))
+                if matches:
+                    match_details = f"Regex matched"
+                else:
+                    match_details = f"Regex did not match"
+            except re.error as e:
+                matches = False
+                match_details = f"Invalid regex: {str(e)}"
+
+        else:
+            match_details = f"Unknown pattern type: {pattern_type}"
+
+        return {
+            "matches": matches,
+            "pattern_type": pattern_type,
+            "pattern_value": pattern_value,
+            "description": description,
+            "match_details": match_details
+        }

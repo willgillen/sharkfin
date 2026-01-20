@@ -596,3 +596,321 @@ class TestPayeeAPI:
         assert payee is not None
         assert payee["default_category_id"] == test_category.id
         assert payee["default_category_name"] == test_category.name  # This is the fix!
+
+
+class TestPayeePatternAPI:
+    """Test suite for Payee Pattern Management API endpoints."""
+
+    def test_get_patterns_empty(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test getting patterns for payee with no patterns."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Pattern Test Payee"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Get patterns
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/patterns",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 0
+
+    def test_create_pattern(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test creating a new pattern for a payee."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Uber"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create a pattern
+        response = client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "UBER",
+                "confidence_score": "0.90"
+            },
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["payee_id"] == payee_id
+        assert data["pattern_type"] == "description_contains"
+        assert data["pattern_value"] == "UBER"
+        assert float(data["confidence_score"]) == 0.90
+        assert data["source"] == "user_created"
+        assert data["match_count"] == 0
+
+    def test_create_pattern_short_value_fails(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test that patterns with short values are rejected for description_contains."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "AT&T"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Try to create a pattern with value < 4 chars
+        response = client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "AT",
+                "confidence_score": "0.80"
+            },
+            headers=auth_headers
+        )
+        assert response.status_code == 400
+        assert "at least 4 characters" in response.json()["detail"]
+
+    def test_create_pattern_invalid_type_fails(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test that invalid pattern types are rejected."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Test Payee"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Try to create a pattern with invalid type
+        response = client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "invalid_type",
+                "pattern_value": "TEST",
+                "confidence_score": "0.80"
+            },
+            headers=auth_headers
+        )
+        assert response.status_code == 400
+        assert "Invalid pattern type" in response.json()["detail"]
+
+    def test_create_pattern_payee_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """Test creating pattern for non-existent payee."""
+        response = client.post(
+            "/api/v1/payees/99999/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "TEST",
+                "confidence_score": "0.80"
+            },
+            headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_get_patterns_after_create(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test listing patterns after creating some."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Starbucks"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create multiple patterns
+        client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "STARBUCKS",
+                "confidence_score": "0.95"
+            },
+            headers=auth_headers
+        )
+        client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "exact_match",
+                "pattern_value": "Starbucks",
+                "confidence_score": "0.85"
+            },
+            headers=auth_headers
+        )
+
+        # Get patterns
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/patterns",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 2
+        # Should be sorted by confidence descending
+        assert float(data[0]["confidence_score"]) >= float(data[1]["confidence_score"])
+
+    def test_update_pattern(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test updating a pattern."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Amazon"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create a pattern
+        pattern_response = client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "AMAZON",
+                "confidence_score": "0.80"
+            },
+            headers=auth_headers
+        )
+        pattern_id = pattern_response.json()["id"]
+
+        # Update the pattern
+        response = client.put(
+            f"/api/v1/payees/patterns/{pattern_id}",
+            json={
+                "confidence_score": "0.95"
+            },
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["id"] == pattern_id
+        assert float(data["confidence_score"]) == 0.95
+        assert data["pattern_value"] == "AMAZON"  # Unchanged
+
+    def test_update_pattern_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """Test updating non-existent pattern."""
+        response = client.put(
+            "/api/v1/payees/patterns/99999",
+            json={"confidence_score": "0.90"},
+            headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_delete_pattern(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test deleting a pattern."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Delete Test"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create a pattern
+        pattern_response = client.post(
+            f"/api/v1/payees/{payee_id}/patterns",
+            json={
+                "pattern_type": "description_contains",
+                "pattern_value": "DELTEST",
+                "confidence_score": "0.80"
+            },
+            headers=auth_headers
+        )
+        pattern_id = pattern_response.json()["id"]
+
+        # Delete the pattern
+        response = client.delete(
+            f"/api/v1/payees/patterns/{pattern_id}",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["message"] == "Pattern deleted successfully"
+
+        # Verify it's gone
+        patterns_response = client.get(
+            f"/api/v1/payees/{payee_id}/patterns",
+            headers=auth_headers
+        )
+        assert len(patterns_response.json()) == 0
+
+    def test_delete_pattern_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """Test deleting non-existent pattern."""
+        response = client.delete(
+            "/api/v1/payees/patterns/99999",
+            headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_test_pattern_contains(
+        self, client: TestClient, auth_headers
+    ):
+        """Test the pattern testing endpoint for description_contains."""
+        response = client.post(
+            "/api/v1/payees/patterns/test",
+            params={
+                "pattern_type": "description_contains",
+                "pattern_value": "UBER"
+            },
+            json={"description": "UBER TRIP 12345 SF CA"},
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["matches"] is True
+        assert data["pattern_type"] == "description_contains"
+        assert "Found 'UBER'" in data["match_details"]
+
+    def test_test_pattern_no_match(
+        self, client: TestClient, auth_headers
+    ):
+        """Test the pattern testing endpoint when no match."""
+        response = client.post(
+            "/api/v1/payees/patterns/test",
+            params={
+                "pattern_type": "description_contains",
+                "pattern_value": "LYFT"
+            },
+            json={"description": "UBER TRIP 12345 SF CA"},
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["matches"] is False
+
+    def test_test_pattern_invalid_type(
+        self, client: TestClient, auth_headers
+    ):
+        """Test pattern testing with invalid pattern type."""
+        response = client.post(
+            "/api/v1/payees/patterns/test",
+            params={
+                "pattern_type": "invalid_type",
+                "pattern_value": "TEST"
+            },
+            json={"description": "TEST DESCRIPTION"},
+            headers=auth_headers
+        )
+        assert response.status_code == 400

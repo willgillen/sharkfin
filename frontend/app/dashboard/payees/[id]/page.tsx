@@ -4,8 +4,31 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { payeesAPI, categoriesAPI } from "@/lib/api";
-import { Payee, PayeeUpdate, Category, PayeeTransaction, PayeeStats } from "@/types";
+import {
+  Payee,
+  PayeeUpdate,
+  Category,
+  PayeeTransaction,
+  PayeeStats,
+  PayeePattern,
+  PayeePatternCreate,
+  PatternType,
+} from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+
+const PATTERN_TYPE_LABELS: Record<PatternType, string> = {
+  description_contains: "Contains",
+  exact_match: "Exact Match",
+  fuzzy_match_base: "Fuzzy Match",
+  description_regex: "Regex",
+};
+
+const PATTERN_TYPE_DESCRIPTIONS: Record<PatternType, string> = {
+  description_contains: "Matches if the pattern text appears anywhere in the transaction description (case-insensitive)",
+  exact_match: "Matches if the extracted payee name exactly matches the pattern",
+  fuzzy_match_base: "Matches if the extracted name is at least 80% similar to the pattern",
+  description_regex: "Advanced: matches using a regular expression pattern",
+};
 
 export default function EditPayeePage() {
   const router = useRouter();
@@ -17,9 +40,25 @@ export default function EditPayeePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<PayeeTransaction[]>([]);
   const [stats, setStats] = useState<PayeeStats | null>(null);
+  const [patterns, setPatterns] = useState<PayeePattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Pattern form state
+  const [showAddPattern, setShowAddPattern] = useState(false);
+  const [newPattern, setNewPattern] = useState<PayeePatternCreate>({
+    pattern_type: "description_contains",
+    pattern_value: "",
+    confidence_score: "0.80",
+  });
+  const [patternError, setPatternError] = useState("");
+  const [savingPattern, setSavingPattern] = useState(false);
+
+  // Test pattern state
+  const [testDescription, setTestDescription] = useState("");
+  const [testResult, setTestResult] = useState<{ matches: boolean; details: string } | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const [formData, setFormData] = useState<PayeeUpdate>({
     canonical_name: "",
@@ -44,17 +83,19 @@ export default function EditPayeePage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [payeeData, categoriesData, transactionsData, statsData] = await Promise.all([
+      const [payeeData, categoriesData, transactionsData, statsData, patternsData] = await Promise.all([
         payeesAPI.getById(payeeId),
         categoriesAPI.getAll(),
         payeesAPI.getTransactions(payeeId, 25),
         payeesAPI.getStats(payeeId),
+        payeesAPI.getPatterns(payeeId),
       ]);
 
       setPayee(payeeData);
       setCategories(categoriesData);
       setTransactions(transactionsData);
       setStats(statsData);
+      setPatterns(patternsData);
 
       // Populate form with existing data
       setFormData({
@@ -100,6 +141,70 @@ export default function EditPayeePage() {
     router.push("/dashboard/payees");
   };
 
+  const handleAddPattern = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPattern(true);
+    setPatternError("");
+
+    try {
+      const pattern = await payeesAPI.createPattern(payeeId, newPattern);
+      setPatterns([pattern, ...patterns]);
+      setShowAddPattern(false);
+      setNewPattern({
+        pattern_type: "description_contains",
+        pattern_value: "",
+        confidence_score: "0.80",
+      });
+      setTestResult(null);
+      setTestDescription("");
+    } catch (err: any) {
+      setPatternError(err.response?.data?.detail || "Failed to create pattern");
+    } finally {
+      setSavingPattern(false);
+    }
+  };
+
+  const handleDeletePattern = async (patternId: number) => {
+    if (!confirm("Are you sure you want to delete this pattern? This may affect future transaction matching.")) {
+      return;
+    }
+
+    try {
+      await payeesAPI.deletePattern(patternId);
+      setPatterns(patterns.filter((p) => p.id !== patternId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to delete pattern");
+    }
+  };
+
+  const handleTestPattern = async () => {
+    if (!testDescription.trim() || !newPattern.pattern_value.trim()) {
+      return;
+    }
+
+    setTesting(true);
+    setTestResult(null);
+
+    try {
+      const result = await payeesAPI.testPattern(
+        newPattern.pattern_type,
+        newPattern.pattern_value,
+        testDescription
+      );
+      setTestResult({
+        matches: result.matches,
+        details: result.match_details || "",
+      });
+    } catch (err: any) {
+      setTestResult({
+        matches: false,
+        details: err.response?.data?.detail || "Test failed",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const formatCurrency = (amount: string | number) => {
     const num = typeof amount === "string" ? parseFloat(amount) : amount;
     return new Intl.NumberFormat("en-US", {
@@ -114,6 +219,35 @@ export default function EditPayeePage() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const getSourceBadge = (source: string) => {
+    switch (source) {
+      case "import_learning":
+        return (
+          <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+            Learned
+          </span>
+        );
+      case "user_created":
+        return (
+          <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">
+            Manual
+          </span>
+        );
+      case "known_merchant":
+        return (
+          <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">
+            Known
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">
+            {source}
+          </span>
+        );
+    }
   };
 
   if (authLoading || loading) {
@@ -372,6 +506,233 @@ export default function EditPayeePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Matching Patterns Section */}
+        <div className="mt-6 bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Matching Patterns</h3>
+              <p className="text-sm text-gray-500">
+                Patterns used to automatically match transactions to this payee during import
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddPattern(!showAddPattern)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            >
+              {showAddPattern ? "Cancel" : "+ Add Pattern"}
+            </button>
+          </div>
+
+          {/* Add Pattern Form */}
+          {showAddPattern && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <form onSubmit={handleAddPattern} className="space-y-4">
+                {patternError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800">{patternError}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pattern Type
+                    </label>
+                    <select
+                      value={newPattern.pattern_type}
+                      onChange={(e) =>
+                        setNewPattern({ ...newPattern, pattern_type: e.target.value as PatternType })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm"
+                    >
+                      {(Object.keys(PATTERN_TYPE_LABELS) as PatternType[]).map((type) => (
+                        <option key={type} value={type}>
+                          {PATTERN_TYPE_LABELS[type]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {PATTERN_TYPE_DESCRIPTIONS[newPattern.pattern_type as PatternType]}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pattern Value
+                    </label>
+                    <input
+                      type="text"
+                      value={newPattern.pattern_value}
+                      onChange={(e) => setNewPattern({ ...newPattern, pattern_value: e.target.value })}
+                      placeholder="e.g., UBER, STARBUCKS"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm"
+                      required
+                    />
+                    {newPattern.pattern_type === "description_contains" && (
+                      <p className="mt-1 text-xs text-gray-500">Must be at least 4 characters</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confidence Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={newPattern.confidence_score}
+                      onChange={(e) => setNewPattern({ ...newPattern, confidence_score: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">0.85+ = high confidence</p>
+                  </div>
+                </div>
+
+                {/* Test Pattern Section */}
+                <div className="border-t pt-4 mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Test Pattern (Optional)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={testDescription}
+                      onChange={(e) => setTestDescription(e.target.value)}
+                      placeholder="Enter a sample transaction description to test..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestPattern}
+                      disabled={testing || !testDescription.trim() || !newPattern.pattern_value.trim()}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      {testing ? "Testing..." : "Test"}
+                    </button>
+                  </div>
+                  {testResult && (
+                    <div
+                      className={`mt-2 p-2 rounded-md text-sm ${
+                        testResult.matches
+                          ? "bg-green-50 text-green-800 border border-green-200"
+                          : "bg-yellow-50 text-yellow-800 border border-yellow-200"
+                      }`}
+                    >
+                      <span className="font-medium">
+                        {testResult.matches ? "Match!" : "No Match"}
+                      </span>
+                      {testResult.details && <span className="ml-2">- {testResult.details}</span>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddPattern(false);
+                      setPatternError("");
+                      setTestResult(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPattern}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {savingPattern ? "Creating..." : "Create Pattern"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Patterns List */}
+          {patterns.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pattern Value
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Confidence
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Matches
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {patterns.map((pattern) => (
+                    <tr key={pattern.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-900">
+                          {PATTERN_TYPE_LABELS[pattern.pattern_type as PatternType] || pattern.pattern_type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-sm bg-gray-100 px-2 py-1 rounded text-gray-800">
+                          {pattern.pattern_value}
+                        </code>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`text-sm font-medium ${
+                            parseFloat(pattern.confidence_score) >= 0.85
+                              ? "text-green-600"
+                              : parseFloat(pattern.confidence_score) >= 0.70
+                              ? "text-yellow-600"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          {(parseFloat(pattern.confidence_score) * 100).toFixed(0)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {pattern.match_count}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {getSourceBadge(pattern.source)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => handleDeletePattern(pattern.id)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No matching patterns yet.</p>
+              <p className="text-sm mt-1">
+                Patterns are automatically learned when you import transactions, or you can add them manually.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Recent Transactions Section */}

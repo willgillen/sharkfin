@@ -271,20 +271,20 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] Frontend: Display stats card on payee edit page
 - [x] Tests: `test_payee_spending_stats()`
 
-#### Phase B: Matching Patterns (13.4)
+#### Phase B: Matching Patterns (13.4) ✅ COMPLETED
 
-##### 13.4 Payee Matching Patterns Management
-- [ ] Add API endpoint: `GET /api/v1/payees/{id}/patterns`
-- [ ] Add API endpoint: `POST /api/v1/payees/{id}/patterns`
-- [ ] Add API endpoint: `PUT /api/v1/payee-patterns/{id}`
-- [ ] Add API endpoint: `DELETE /api/v1/payee-patterns/{id}`
-- [ ] Frontend: Patterns section on payee edit page
-  - [ ] List existing patterns with type, value, confidence, match count
-  - [ ] Add new pattern form (type dropdown, value input)
-  - [ ] Edit pattern inline
-  - [ ] Delete pattern with confirmation
-  - [ ] Test pattern against sample description
-- [ ] Tests: `test_payee_pattern_crud()`, `test_pattern_test_endpoint()`
+##### 13.4 Payee Matching Patterns Management ✅
+- [x] Add API endpoint: `GET /api/v1/payees/{id}/patterns`
+- [x] Add API endpoint: `POST /api/v1/payees/{id}/patterns`
+- [x] Add API endpoint: `PUT /api/v1/payees/patterns/{id}`
+- [x] Add API endpoint: `DELETE /api/v1/payees/patterns/{id}`
+- [x] Add API endpoint: `POST /api/v1/payees/patterns/test`
+- [x] Frontend: Patterns section on payee edit page
+  - [x] List existing patterns with type, value, confidence, match count
+  - [x] Add new pattern form (type dropdown, value input, confidence score)
+  - [x] Delete pattern with confirmation
+  - [x] Test pattern against sample description before creating
+- [x] Tests: 13 pattern endpoint tests (CRUD, validation, test endpoint)
 
 #### Phase C: Visual Identity (13.5-13.6)
 

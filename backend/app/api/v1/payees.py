@@ -6,7 +6,9 @@ from app.api import deps
 from app.models.user import User
 from app.schemas.payee import (
     Payee, PayeeCreate, PayeeUpdate, PayeeWithCategory,
-    PayeeTransaction, PayeeStats
+    PayeeTransaction, PayeeStats,
+    PayeePattern, PayeePatternCreate, PayeePatternUpdate,
+    PatternTestRequest, PatternTestResult
 )
 from app.services.payee_service import PayeeService
 
@@ -270,3 +272,188 @@ def delete_payee(
         raise HTTPException(status_code=404, detail="Payee not found")
 
     return {"message": "Payee deleted successfully"}
+
+
+# ============================================================================
+# Pattern Management Endpoints
+# ============================================================================
+
+@router.get("/{payee_id}/patterns", response_model=List[PayeePattern])
+def get_payee_patterns(
+    payee_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> List[PayeePattern]:
+    """
+    Get all matching patterns for a specific payee.
+
+    Returns patterns sorted by confidence score (highest first).
+
+    Pattern types:
+    - **description_contains**: Substring match in transaction description
+    - **exact_match**: Exact match of extracted payee name
+    - **fuzzy_match_base**: Base name for fuzzy Levenshtein matching
+    - **description_regex**: Regex pattern match (advanced)
+    """
+    service = PayeeService(db)
+
+    # Verify payee exists first
+    payee = service.get_by_id(payee_id, current_user.id)
+    if not payee:
+        raise HTTPException(status_code=404, detail="Payee not found")
+
+    patterns = service.get_patterns(payee_id, current_user.id)
+    return patterns
+
+
+@router.post("/{payee_id}/patterns", response_model=PayeePattern)
+def create_payee_pattern(
+    payee_id: int,
+    pattern_data: PayeePatternCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> PayeePattern:
+    """
+    Create a new matching pattern for a payee.
+
+    If a pattern with the same type and value already exists, it will be
+    updated with the new confidence score instead of creating a duplicate.
+
+    Pattern types:
+    - **description_contains**: Substring match (case-insensitive)
+    - **exact_match**: Exact match of extracted payee name
+    - **fuzzy_match_base**: Base for fuzzy matching (80% similarity threshold)
+    - **description_regex**: Regex pattern (advanced users)
+    """
+    service = PayeeService(db)
+
+    # Verify payee exists first
+    payee = service.get_by_id(payee_id, current_user.id)
+    if not payee:
+        raise HTTPException(status_code=404, detail="Payee not found")
+
+    # Validate pattern type
+    valid_types = ["description_contains", "exact_match", "fuzzy_match_base", "description_regex"]
+    if pattern_data.pattern_type not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid pattern type. Must be one of: {', '.join(valid_types)}"
+        )
+
+    # Validate pattern value length for description_contains
+    if (pattern_data.pattern_type == "description_contains" and
+            len(pattern_data.pattern_value) < 4):
+        raise HTTPException(
+            status_code=400,
+            detail="Pattern value must be at least 4 characters for description_contains type"
+        )
+
+    pattern = service.create_pattern(
+        payee_id=payee_id,
+        user_id=current_user.id,
+        pattern_type=pattern_data.pattern_type,
+        pattern_value=pattern_data.pattern_value,
+        confidence_score=float(pattern_data.confidence_score)
+    )
+
+    return pattern
+
+
+@router.put("/patterns/{pattern_id}", response_model=PayeePattern)
+def update_payee_pattern(
+    pattern_id: int,
+    pattern_data: PayeePatternUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> PayeePattern:
+    """
+    Update an existing matching pattern.
+
+    Can update:
+    - pattern_type
+    - pattern_value
+    - confidence_score
+    """
+    service = PayeeService(db)
+
+    # Validate pattern type if provided
+    if pattern_data.pattern_type is not None:
+        valid_types = ["description_contains", "exact_match", "fuzzy_match_base", "description_regex"]
+        if pattern_data.pattern_type not in valid_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid pattern type. Must be one of: {', '.join(valid_types)}"
+            )
+
+    pattern = service.update_pattern(
+        pattern_id=pattern_id,
+        user_id=current_user.id,
+        pattern_type=pattern_data.pattern_type,
+        pattern_value=pattern_data.pattern_value,
+        confidence_score=float(pattern_data.confidence_score) if pattern_data.confidence_score else None
+    )
+
+    if not pattern:
+        raise HTTPException(status_code=404, detail="Pattern not found")
+
+    return pattern
+
+
+@router.delete("/patterns/{pattern_id}")
+def delete_payee_pattern(
+    pattern_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> dict:
+    """
+    Delete a matching pattern.
+
+    This will NOT affect existing transactions, only future matching.
+    """
+    service = PayeeService(db)
+    success = service.delete_pattern(pattern_id, current_user.id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Pattern not found")
+
+    return {"message": "Pattern deleted successfully"}
+
+
+@router.post("/patterns/test", response_model=PatternTestResult)
+def test_pattern(
+    pattern_type: str = Query(
+        ...,
+        description="Pattern type to test"
+    ),
+    pattern_value: str = Query(
+        ...,
+        description="Pattern value to test"
+    ),
+    test_data: PatternTestRequest = ...,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> PatternTestResult:
+    """
+    Test a pattern against a transaction description.
+
+    Useful for previewing whether a pattern will match before creating it.
+
+    Returns whether the pattern matches and details about the match.
+    """
+    service = PayeeService(db)
+
+    # Validate pattern type
+    valid_types = ["description_contains", "exact_match", "fuzzy_match_base", "description_regex"]
+    if pattern_type not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid pattern type. Must be one of: {', '.join(valid_types)}"
+        )
+
+    result = service.test_pattern(
+        pattern_type=pattern_type,
+        pattern_value=pattern_value,
+        description=test_data.description
+    )
+
+    return PatternTestResult(**result)

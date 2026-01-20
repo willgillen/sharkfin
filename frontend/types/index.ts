@@ -184,6 +184,41 @@ export interface PayeeStats {
   last_transaction_date: string | null;
 }
 
+// Payee matching patterns
+export type PatternType = "description_contains" | "exact_match" | "fuzzy_match_base" | "description_regex";
+
+export interface PayeePattern {
+  id: number;
+  payee_id: number;
+  pattern_type: PatternType;
+  pattern_value: string;
+  confidence_score: string;
+  match_count: number;
+  last_matched_at: string | null;
+  source: string;
+  created_at: string;
+}
+
+export interface PayeePatternCreate {
+  pattern_type: PatternType;
+  pattern_value: string;
+  confidence_score?: string;
+}
+
+export interface PayeePatternUpdate {
+  pattern_type?: PatternType;
+  pattern_value?: string;
+  confidence_score?: string;
+}
+
+export interface PatternTestResult {
+  matches: boolean;
+  pattern_type: string;
+  pattern_value: string;
+  description: string;
+  match_details: string | null;
+}
+
 // Transaction types
 export enum TransactionType {
   DEBIT = "debit",

@@ -6,7 +6,11 @@ import {
   PayeeWithCategory,
   PayeeSuggestion,
   PayeeTransaction,
-  PayeeStats
+  PayeeStats,
+  PayeePattern,
+  PayeePatternCreate,
+  PayeePatternUpdate,
+  PatternTestResult
 } from "@/types";
 
 export const payeesAPI = {
@@ -55,6 +59,47 @@ export const payeesAPI = {
 
   async getStats(id: number): Promise<PayeeStats> {
     const { data } = await apiClient.get<PayeeStats>(`/api/v1/payees/${id}/stats`);
+    return data;
+  },
+
+  // Pattern management
+  async getPatterns(payeeId: number): Promise<PayeePattern[]> {
+    const { data } = await apiClient.get<PayeePattern[]>(
+      `/api/v1/payees/${payeeId}/patterns`
+    );
+    return data;
+  },
+
+  async createPattern(payeeId: number, patternData: PayeePatternCreate): Promise<PayeePattern> {
+    const { data } = await apiClient.post<PayeePattern>(
+      `/api/v1/payees/${payeeId}/patterns`,
+      patternData
+    );
+    return data;
+  },
+
+  async updatePattern(patternId: number, patternData: PayeePatternUpdate): Promise<PayeePattern> {
+    const { data } = await apiClient.put<PayeePattern>(
+      `/api/v1/payees/patterns/${patternId}`,
+      patternData
+    );
+    return data;
+  },
+
+  async deletePattern(patternId: number): Promise<void> {
+    await apiClient.delete(`/api/v1/payees/patterns/${patternId}`);
+  },
+
+  async testPattern(
+    patternType: string,
+    patternValue: string,
+    description: string
+  ): Promise<PatternTestResult> {
+    const { data } = await apiClient.post<PatternTestResult>(
+      `/api/v1/payees/patterns/test`,
+      { description },
+      { params: { pattern_type: patternType, pattern_value: patternValue } }
+    );
     return data;
   },
 };
