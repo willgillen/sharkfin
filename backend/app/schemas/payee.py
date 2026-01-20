@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, date
+from decimal import Decimal
 
 
 class PayeeBase(BaseModel):
@@ -42,6 +43,37 @@ class Payee(PayeeBase):
 class PayeeWithCategory(Payee):
     """Payee with default category details for autocomplete."""
     default_category_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayeeTransaction(BaseModel):
+    """Schema for a transaction in the payee's transaction list."""
+    id: int
+    date: date
+    amount: Decimal
+    type: str
+    account_id: int
+    account_name: str
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayeeStats(BaseModel):
+    """Schema for payee spending statistics."""
+    total_spent_all_time: Decimal = Field(default=Decimal("0.00"))
+    total_spent_this_month: Decimal = Field(default=Decimal("0.00"))
+    total_spent_this_year: Decimal = Field(default=Decimal("0.00"))
+    total_income_all_time: Decimal = Field(default=Decimal("0.00"))
+    average_transaction_amount: Optional[Decimal] = None
+    transaction_count: int = 0
+    first_transaction_date: Optional[date] = None
+    last_transaction_date: Optional[date] = None
 
     class Config:
         from_attributes = True

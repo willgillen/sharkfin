@@ -12,7 +12,7 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Development Progress Checklist
 
-**Last Updated**: January 17, 2026
+**Last Updated**: January 19, 2026
 **Current Phase**: Phase 2 - Advanced Features (Payee Entity System & Rules Engine Integration)
 
 ### Phase 1: MVP Foundation ✅ COMPLETED
@@ -245,16 +245,50 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Tests: `test_rollback_deletes_created_payees()`, `test_rollback_prevents_if_transactions_modified()`
 
 ### Week 13: Payee System Enhancements
-**Priority**: Medium - Visual Identity & Polish
+**Priority**: Medium-High - Payee Management & Visual Identity
 
-#### 13.1 Fix Category Display Bug
-- [ ] Fix payee list to show category name instead of "Category: 4"
-- [ ] Add eager loading for `default_category` relationship
-- [ ] Return `default_category_name` in API response
-- [ ] Add link to category page
-- [ ] Tests: `test_payee_list_includes_category_name()`
+#### Phase A: Foundation (13.1-13.3) ✅ COMPLETED
 
-#### 13.2 Brand Logo Icon System
+##### 13.1 Fix Category Display Bug ✅
+- [x] Fix payee list to show category name instead of "Category: 4"
+- [x] Add eager loading for `default_category` relationship
+- [x] Return `default_category_name` in API response
+- [x] Add link to category page
+- [x] Tests: `test_payee_list_includes_category_name()`
+
+##### 13.2 Recent Transactions List on Payee Page ✅
+- [x] Add API endpoint: `GET /api/v1/payees/{id}/transactions?limit=50`
+- [x] Show last 25-50 transactions for the payee on edit page
+- [x] Display date, amount, account, category, description
+- [x] Link each transaction to transaction detail/edit
+- [x] Tests: `test_get_payee_transactions()`
+
+##### 13.3 Spending Summary & Analytics ✅
+- [x] Add API endpoint: `GET /api/v1/payees/{id}/stats`
+- [x] Return: total_spent_all_time, total_this_month, total_this_year
+- [x] Return: average_transaction_amount, transaction_count
+- [x] Return: first_transaction_date, last_transaction_date
+- [x] Frontend: Display stats card on payee edit page
+- [x] Tests: `test_payee_spending_stats()`
+
+#### Phase B: Matching Patterns (13.4)
+
+##### 13.4 Payee Matching Patterns Management
+- [ ] Add API endpoint: `GET /api/v1/payees/{id}/patterns`
+- [ ] Add API endpoint: `POST /api/v1/payees/{id}/patterns`
+- [ ] Add API endpoint: `PUT /api/v1/payee-patterns/{id}`
+- [ ] Add API endpoint: `DELETE /api/v1/payee-patterns/{id}`
+- [ ] Frontend: Patterns section on payee edit page
+  - [ ] List existing patterns with type, value, confidence, match count
+  - [ ] Add new pattern form (type dropdown, value input)
+  - [ ] Edit pattern inline
+  - [ ] Delete pattern with confirmation
+  - [ ] Test pattern against sample description
+- [ ] Tests: `test_payee_pattern_crud()`, `test_pattern_test_endpoint()`
+
+#### Phase C: Visual Identity (13.5-13.6)
+
+##### 13.5 Brand Logo Icon System
 - [ ] Simple Icons (open-source): 2000+ brand SVGs
   - Download Simple Icons SVG set (~3000 brands)
   - Store in frontend/public/brand-icons/
@@ -265,7 +299,7 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Fallback to manual URL entry
 - [ ] Tests: `test_logo_suggestion_for_walmart()`, `test_payee_creation_with_auto_logo()`
 
-#### 13.3 Emoji Icon Fallback System
+##### 13.6 Emoji Icon Fallback System
 - [ ] Create `EmojiSuggestionService` with keyword → emoji mapping
 - [ ] 200+ keyword mappings (fire🔥, pizza🍕, coffee☕, grocery🛒, gas⛽, etc.)
 - [ ] Install `emoji-picker-react` library
@@ -274,6 +308,36 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Update rendering logic to handle emoji prefix
 - [ ] Default emoji for unknown payees: 🏪
 - [ ] Tests: `test_emoji_suggestion_for_fireplaces_r_us()`, `test_default_emoji_for_unknown_payee()`
+
+#### Phase D: Advanced Features (13.7-13.10)
+
+##### 13.7 Payee Aliases
+- [ ] Add `payee_aliases` table (payee_id, alias_name, created_at)
+- [ ] API endpoints for alias CRUD
+- [ ] Frontend: Aliases section on payee edit page
+- [ ] During import, check aliases for matching
+- [ ] Tests: `test_payee_alias_matching()`
+
+##### 13.8 Merge Payees
+- [ ] Add API endpoint: `POST /api/v1/payees/{id}/merge`
+- [ ] Accept target_payee_id, migrate all transactions
+- [ ] Merge patterns and aliases to target payee
+- [ ] Delete source payee after merge
+- [ ] Frontend: "Merge into another payee" button with search
+- [ ] Tests: `test_merge_payees_migrates_transactions()`
+
+##### 13.9 Similar Payees Detection
+- [ ] Add API endpoint: `GET /api/v1/payees/{id}/similar`
+- [ ] Use fuzzy matching to find similar payee names
+- [ ] Frontend: "Similar payees" suggestion on edit page
+- [ ] Quick merge button for obvious duplicates
+- [ ] Tests: `test_similar_payees_detection()`
+
+##### 13.10 Orphaned Payees Cleanup
+- [ ] Add API endpoint: `GET /api/v1/payees/orphaned`
+- [ ] Return payees with 0 transactions
+- [ ] Frontend: "Cleanup" section in payee list with bulk delete
+- [ ] Tests: `test_orphaned_payees_detection()`
 
 ### Week 14: Transaction UX Improvements
 **Priority**: Medium - User Experience Enhancements

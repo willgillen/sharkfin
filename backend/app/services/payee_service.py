@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 import re
 
@@ -100,12 +100,14 @@ class PayeeService:
             limit: Maximum number of results
 
         Returns:
-            List of matching Payee entities
+            List of matching Payee entities (with default_category eager loaded)
         """
         query_upper = query.upper()
 
-        # Build the search query
-        db_query = self.db.query(Payee).filter(Payee.user_id == user_id)
+        # Build the search query with eager loading of default_category
+        db_query = self.db.query(Payee).options(
+            joinedload(Payee.default_category)
+        ).filter(Payee.user_id == user_id)
 
         if query:
             # Search in canonical_name (case-insensitive)
@@ -183,9 +185,11 @@ class PayeeService:
             limit: Maximum number of records to return
 
         Returns:
-            List of Payee entities
+            List of Payee entities (with default_category eager loaded)
         """
-        return self.db.query(Payee).filter(
+        return self.db.query(Payee).options(
+            joinedload(Payee.default_category)
+        ).filter(
             Payee.user_id == user_id
         ).order_by(
             Payee.transaction_count.desc(),
@@ -365,3 +369,138 @@ class PayeeService:
 
         # Truncate to 200 chars
         return text[:200]
+
+    def get_transactions(
+        self,
+        payee_id: int,
+        user_id: int,
+        limit: int = 50
+    ) -> List[dict]:
+        """
+        Get recent transactions for a payee.
+
+        Args:
+            payee_id: ID of payee
+            user_id: User ID (for ownership check)
+            limit: Maximum number of transactions to return
+
+        Returns:
+            List of transaction dicts with account and category names
+        """
+        from app.models.transaction import Transaction
+        from app.models.account import Account
+        from app.models.category import Category
+
+        # Verify payee exists and belongs to user
+        payee = self.get_by_id(payee_id, user_id)
+        if not payee:
+            return []
+
+        # Query transactions for this payee
+        transactions = self.db.query(Transaction).options(
+            joinedload(Transaction.account),
+            joinedload(Transaction.category)
+        ).filter(
+            Transaction.payee_id == payee_id,
+            Transaction.user_id == user_id
+        ).order_by(
+            Transaction.date.desc(),
+            Transaction.created_at.desc()
+        ).limit(limit).all()
+
+        # Build response
+        results = []
+        for txn in transactions:
+            results.append({
+                "id": txn.id,
+                "date": txn.date,
+                "amount": txn.amount,
+                "type": txn.type.value,
+                "account_id": txn.account_id,
+                "account_name": txn.account.name if txn.account else "Unknown",
+                "category_id": txn.category_id,
+                "category_name": txn.category.name if txn.category else None,
+                "description": txn.description
+            })
+
+        return results
+
+    def get_stats(self, payee_id: int, user_id: int) -> Optional[dict]:
+        """
+        Get spending statistics for a payee.
+
+        Args:
+            payee_id: ID of payee
+            user_id: User ID (for ownership check)
+
+        Returns:
+            Dict with spending statistics or None if payee not found
+        """
+        from app.models.transaction import Transaction, TransactionType
+        from datetime import date
+        from decimal import Decimal
+
+        # Verify payee exists and belongs to user
+        payee = self.get_by_id(payee_id, user_id)
+        if not payee:
+            return None
+
+        # Get current month and year
+        today = date.today()
+        first_of_month = date(today.year, today.month, 1)
+        first_of_year = date(today.year, 1, 1)
+
+        # Base query for this payee's transactions
+        base_query = self.db.query(Transaction).filter(
+            Transaction.payee_id == payee_id,
+            Transaction.user_id == user_id
+        )
+
+        # Get all transactions to calculate stats
+        all_transactions = base_query.all()
+
+        if not all_transactions:
+            return {
+                "total_spent_all_time": Decimal("0.00"),
+                "total_spent_this_month": Decimal("0.00"),
+                "total_spent_this_year": Decimal("0.00"),
+                "total_income_all_time": Decimal("0.00"),
+                "average_transaction_amount": None,
+                "transaction_count": 0,
+                "first_transaction_date": None,
+                "last_transaction_date": None
+            }
+
+        # Calculate stats
+        total_spent = Decimal("0.00")
+        total_income = Decimal("0.00")
+        total_this_month = Decimal("0.00")
+        total_this_year = Decimal("0.00")
+        dates = []
+
+        for txn in all_transactions:
+            dates.append(txn.date)
+
+            if txn.type == TransactionType.DEBIT:
+                total_spent += txn.amount
+                if txn.date >= first_of_month:
+                    total_this_month += txn.amount
+                if txn.date >= first_of_year:
+                    total_this_year += txn.amount
+            elif txn.type == TransactionType.CREDIT:
+                total_income += txn.amount
+
+        transaction_count = len(all_transactions)
+        total_amount = total_spent + total_income
+        avg_amount = total_amount / transaction_count if transaction_count > 0 else None
+
+        return {
+            "total_spent_all_time": total_spent,
+            "total_spent_this_month": total_this_month,
+            "total_spent_this_year": total_this_year,
+            "total_income_all_time": total_income,
+            "average_transaction_amount": avg_amount,
+            "transaction_count": transaction_count,
+            "first_transaction_date": min(dates) if dates else None,
+            "last_transaction_date": max(dates) if dates else None
+        }

@@ -337,3 +337,262 @@ class TestPayeeAPI:
             json={"canonical_name": "Test"}
         )
         assert response.status_code == 401
+
+    def test_get_payee_transactions(
+        self, client: TestClient, auth_headers, test_category, db_session
+    ):
+        """Test getting transactions for a payee."""
+        from app.models.transaction import Transaction, TransactionType
+        from app.models.account import Account
+        from app.models.user import User
+        from datetime import date
+
+        # Get the test user
+        user = db_session.query(User).first()
+
+        # Create an account
+        account = Account(
+            user_id=user.id,
+            name="Test Checking",
+            type="checking",
+            current_balance=1000.00,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={
+                "canonical_name": "Test Store",
+                "default_category_id": test_category.id
+            },
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create transactions for this payee
+        for i in range(5):
+            txn = Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                payee_id=payee_id,
+                category_id=test_category.id,
+                type=TransactionType.DEBIT,
+                amount=25.00 + i,
+                date=date(2026, 1, 15 - i),
+                description=f"Purchase {i + 1}"
+            )
+            db_session.add(txn)
+        db_session.commit()
+
+        # Get transactions
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/transactions?limit=10",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 5
+        # Should be sorted by date descending
+        assert data[0]["date"] == "2026-01-15"
+        assert data[0]["account_name"] == "Test Checking"
+        assert data[0]["category_name"] == test_category.name
+        assert data[0]["type"] == "debit"
+
+    def test_get_payee_transactions_empty(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test getting transactions for payee with no transactions."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Empty Payee"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Get transactions
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/transactions",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert len(data) == 0
+
+    def test_get_payee_transactions_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """Test getting transactions for non-existent payee."""
+        response = client.get(
+            "/api/v1/payees/99999/transactions",
+            headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_get_payee_stats(
+        self, client: TestClient, auth_headers, test_category, db_session
+    ):
+        """Test getting spending stats for a payee."""
+        from app.models.transaction import Transaction, TransactionType
+        from app.models.account import Account
+        from app.models.user import User
+        from datetime import date
+        from decimal import Decimal
+
+        # Get the test user
+        user = db_session.query(User).first()
+
+        # Create an account
+        account = Account(
+            user_id=user.id,
+            name="Test Checking",
+            type="checking",
+            current_balance=1000.00,
+            currency="USD"
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Stats Store"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Create transactions - some this month, some older
+        today = date.today()
+        this_month_start = date(today.year, today.month, 1)
+        this_year_start = date(today.year, 1, 1)
+
+        # Transaction this month
+        txn1 = Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            payee_id=payee_id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("50.00"),
+            date=this_month_start,
+            description="This month purchase"
+        )
+        db_session.add(txn1)
+
+        # Transaction this year but last month
+        if today.month > 1:
+            old_date = date(today.year, today.month - 1, 15)
+        else:
+            old_date = date(today.year - 1, 12, 15)
+
+        txn2 = Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            payee_id=payee_id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("100.00"),
+            date=old_date,
+            description="Last month purchase"
+        )
+        db_session.add(txn2)
+
+        # A credit transaction
+        txn3 = Transaction(
+            user_id=user.id,
+            account_id=account.id,
+            payee_id=payee_id,
+            type=TransactionType.CREDIT,
+            amount=Decimal("25.00"),
+            date=this_month_start,
+            description="Refund"
+        )
+        db_session.add(txn3)
+        db_session.commit()
+
+        # Get stats
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/stats",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["transaction_count"] == 3
+        assert float(data["total_spent_all_time"]) == 150.00  # 50 + 100
+        assert float(data["total_spent_this_month"]) == 50.00  # Only txn1
+        assert float(data["total_income_all_time"]) == 25.00  # txn3
+        assert data["first_transaction_date"] is not None
+        assert data["last_transaction_date"] is not None
+        assert data["average_transaction_amount"] is not None
+
+    def test_get_payee_stats_empty(
+        self, client: TestClient, auth_headers, db_session
+    ):
+        """Test getting stats for payee with no transactions."""
+        # Create a payee
+        create_response = client.post(
+            "/api/v1/payees",
+            json={"canonical_name": "Empty Stats Payee"},
+            headers=auth_headers
+        )
+        payee_id = create_response.json()["id"]
+
+        # Get stats
+        response = client.get(
+            f"/api/v1/payees/{payee_id}/stats",
+            headers=auth_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["transaction_count"] == 0
+        assert float(data["total_spent_all_time"]) == 0.0
+        assert float(data["total_spent_this_month"]) == 0.0
+        assert float(data["total_spent_this_year"]) == 0.0
+        assert data["first_transaction_date"] is None
+        assert data["last_transaction_date"] is None
+
+    def test_get_payee_stats_not_found(
+        self, client: TestClient, auth_headers
+    ):
+        """Test getting stats for non-existent payee."""
+        response = client.get(
+            "/api/v1/payees/99999/stats",
+            headers=auth_headers
+        )
+        assert response.status_code == 404
+
+    def test_payee_list_includes_category_name(
+        self, client: TestClient, auth_headers, test_category, db_session
+    ):
+        """Test that payee list includes default_category_name (13.1 fix)."""
+        # Create a payee with a default category
+        create_response = client.post(
+            "/api/v1/payees",
+            json={
+                "canonical_name": "Category Test Payee",
+                "default_category_id": test_category.id
+            },
+            headers=auth_headers
+        )
+        assert create_response.status_code == 200
+
+        # Get payee list
+        response = client.get("/api/v1/payees", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+
+        # Find our payee
+        payee = next(
+            (p for p in data if p["canonical_name"] == "Category Test Payee"),
+            None
+        )
+        assert payee is not None
+        assert payee["default_category_id"] == test_category.id
+        assert payee["default_category_name"] == test_category.name  # This is the fix!

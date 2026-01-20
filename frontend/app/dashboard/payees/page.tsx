@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { payeesAPI } from "@/lib/api";
-import { Payee } from "@/types";
+import { PayeeWithCategory } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function PayeesPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [payees, setPayees] = useState<Payee[]>([]);
+  const [payees, setPayees] = useState<PayeeWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -164,8 +164,13 @@ export default function PayeesPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {payee.default_category_id ? (
-                        <span className="text-sm text-gray-900">Category ID: {payee.default_category_id}</span>
+                      {payee.default_category_name ? (
+                        <button
+                          onClick={() => router.push(`/dashboard/categories`)}
+                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {payee.default_category_name}
+                        </button>
                       ) : (
                         <span className="text-sm text-gray-400">None</span>
                       )}

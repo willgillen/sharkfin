@@ -1,13 +1,21 @@
 import apiClient from "./client";
-import { Payee, PayeeCreate, PayeeUpdate, PayeeWithCategory, PayeeSuggestion } from "@/types";
+import {
+  Payee,
+  PayeeCreate,
+  PayeeUpdate,
+  PayeeWithCategory,
+  PayeeSuggestion,
+  PayeeTransaction,
+  PayeeStats
+} from "@/types";
 
 export const payeesAPI = {
   async getAll(params?: {
     skip?: number;
     limit?: number;
     q?: string;
-  }): Promise<Payee[]> {
-    const { data } = await apiClient.get<Payee[]>("/api/v1/payees", { params });
+  }): Promise<PayeeWithCategory[]> {
+    const { data } = await apiClient.get<PayeeWithCategory[]>("/api/v1/payees", { params });
     return data;
   },
 
@@ -34,6 +42,19 @@ export const payeesAPI = {
     const { data } = await apiClient.get<PayeeWithCategory[]>("/api/v1/payees/autocomplete", {
       params: { q: query, limit },
     });
+    return data;
+  },
+
+  async getTransactions(id: number, limit: number = 50): Promise<PayeeTransaction[]> {
+    const { data } = await apiClient.get<PayeeTransaction[]>(
+      `/api/v1/payees/${id}/transactions`,
+      { params: { limit } }
+    );
+    return data;
+  },
+
+  async getStats(id: number): Promise<PayeeStats> {
+    const { data } = await apiClient.get<PayeeStats>(`/api/v1/payees/${id}/stats`);
     return data;
   },
 };

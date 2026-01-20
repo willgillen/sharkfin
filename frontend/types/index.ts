@@ -159,6 +159,31 @@ export interface PayeeSuggestion {
   default_category_name: string | null;
 }
 
+// Payee transaction list item
+export interface PayeeTransaction {
+  id: number;
+  date: string;
+  amount: string;
+  type: string;
+  account_id: number;
+  account_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  description: string | null;
+}
+
+// Payee spending statistics
+export interface PayeeStats {
+  total_spent_all_time: string;
+  total_spent_this_month: string;
+  total_spent_this_year: string;
+  total_income_all_time: string;
+  average_transaction_amount: string | null;
+  transaction_count: number;
+  first_transaction_date: string | null;
+  last_transaction_date: string | null;
+}
+
 // Transaction types
 export enum TransactionType {
   DEBIT = "debit",
