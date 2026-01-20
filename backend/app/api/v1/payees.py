@@ -8,9 +8,11 @@ from app.schemas.payee import (
     Payee, PayeeCreate, PayeeUpdate, PayeeWithCategory,
     PayeeTransaction, PayeeStats,
     PayeePattern, PayeePatternCreate, PayeePatternUpdate,
-    PatternTestRequest, PatternTestResult
+    PatternTestRequest, PatternTestResult,
+    IconSuggestion, IconParsed
 )
 from app.services.payee_service import PayeeService
+from app.services.payee_icon_service import payee_icon_service
 
 router = APIRouter()
 
@@ -457,3 +459,59 @@ def test_pattern(
     )
 
     return PatternTestResult(**result)
+
+
+# ============================================================================
+# Icon Suggestion Endpoints
+# ============================================================================
+
+@router.get("/icons/suggest", response_model=IconSuggestion)
+def suggest_icon(
+    name: str = Query(..., min_length=1, description="Payee name to suggest icon for"),
+    current_user: User = Depends(deps.get_current_user),
+) -> IconSuggestion:
+    """
+    Suggest an icon (brand logo or emoji) for a payee name.
+
+    - First attempts to match against 500+ known brand names
+    - Falls back to emoji suggestions based on keywords
+    - Returns CDN URL for brand logos or emoji format for emojis
+
+    The returned `icon_value` can be stored directly in the payee's `logo_url` field.
+    Brand icons: Full CDN URL (e.g., "https://cdn.simpleicons.org/starbucks/006241")
+    Emoji icons: "emoji:{char}" format (e.g., "emoji:☕")
+    """
+    result = payee_icon_service.suggest_icon(name)
+    return IconSuggestion(**result)
+
+
+@router.get("/icons/parse", response_model=IconParsed)
+def parse_icon(
+    logo_url: Optional[str] = Query(None, description="Logo URL to parse"),
+    current_user: User = Depends(deps.get_current_user),
+) -> IconParsed:
+    """
+    Parse a stored logo_url into its display components.
+
+    - For brand logos: returns the CDN URL
+    - For emojis: extracts the emoji character
+    - For custom URLs: returns as-is
+    - For empty/null: returns the default emoji
+
+    Use this to determine how to render a payee's icon in the UI.
+    """
+    result = payee_icon_service.parse_logo_url(logo_url)
+    return IconParsed(**result)
+
+
+@router.get("/icons/brands", response_model=List[dict])
+def list_brands(
+    current_user: User = Depends(deps.get_current_user),
+) -> List[dict]:
+    """
+    Get a list of all available brand icons.
+
+    Returns brands with their Simple Icons slugs and CDN URLs.
+    Useful for documentation or brand picker UI.
+    """
+    return payee_icon_service.get_all_brands()

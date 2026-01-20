@@ -219,6 +219,25 @@ export interface PatternTestResult {
   match_details: string | null;
 }
 
+// Payee icon types
+export type IconType = "brand" | "emoji" | "custom" | "none";
+
+export interface IconSuggestion {
+  icon_type: "brand" | "emoji";
+  icon_value: string;
+  brand_color: string | null;
+  matched_term: string | null;
+  confidence: number;
+  slug?: string;
+  emoji?: string;
+}
+
+export interface IconParsed {
+  type: IconType;
+  value: string | null;
+  display_value: string;
+}
+
 // Transaction types
 export enum TransactionType {
   DEBIT = "debit",

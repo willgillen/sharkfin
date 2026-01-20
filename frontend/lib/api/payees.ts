@@ -10,7 +10,9 @@ import {
   PayeePattern,
   PayeePatternCreate,
   PayeePatternUpdate,
-  PatternTestResult
+  PatternTestResult,
+  IconSuggestion,
+  IconParsed
 } from "@/types";
 
 export const payeesAPI = {
@@ -99,6 +101,30 @@ export const payeesAPI = {
       `/api/v1/payees/patterns/test`,
       { description },
       { params: { pattern_type: patternType, pattern_value: patternValue } }
+    );
+    return data;
+  },
+
+  // Icon suggestion
+  async suggestIcon(name: string): Promise<IconSuggestion> {
+    const { data } = await apiClient.get<IconSuggestion>(
+      `/api/v1/payees/icons/suggest`,
+      { params: { name } }
+    );
+    return data;
+  },
+
+  async parseIcon(logoUrl: string | null): Promise<IconParsed> {
+    const { data } = await apiClient.get<IconParsed>(
+      `/api/v1/payees/icons/parse`,
+      { params: { logo_url: logoUrl } }
+    );
+    return data;
+  },
+
+  async listBrands(): Promise<Array<{ name: string; slug: string; color: string; url: string }>> {
+    const { data } = await apiClient.get<Array<{ name: string; slug: string; color: string; url: string }>>(
+      `/api/v1/payees/icons/brands`
     );
     return data;
   },

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { payeesAPI } from "@/lib/api";
 import { PayeeWithCategory } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PayeeIcon } from "@/components/payees/PayeeIcon";
 
 export default function PayeesPage() {
   const router = useRouter();
@@ -135,13 +136,12 @@ export default function PayeesPage() {
                   <tr key={payee.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        {payee.logo_url && (
-                          <img
-                            src={payee.logo_url}
-                            alt={payee.canonical_name}
-                            className="w-8 h-8 rounded mr-3"
-                          />
-                        )}
+                        <PayeeIcon
+                          logoUrl={payee.logo_url}
+                          name={payee.canonical_name}
+                          size={36}
+                          className="mr-3"
+                        />
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {payee.canonical_name}

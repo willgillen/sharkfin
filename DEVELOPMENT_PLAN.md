@@ -286,28 +286,29 @@ This application aims to provide feature parity with applications like Mint (now
   - [x] Test pattern against sample description before creating
 - [x] Tests: 13 pattern endpoint tests (CRUD, validation, test endpoint)
 
-#### Phase C: Visual Identity (13.5-13.6)
+#### Phase C: Visual Identity (13.5-13.6) ✅ COMPLETED
 
-##### 13.5 Brand Logo Icon System
-- [ ] Simple Icons (open-source): 2000+ brand SVGs
-  - Download Simple Icons SVG set (~3000 brands)
-  - Store in frontend/public/brand-icons/
-  - Create icon search index
-- [ ] Create `PayeeLogoService` with brand → domain mapping (2000+ brands)
-- [ ] Auto-suggest logo URL on payee creation based on name matching
-- [ ] Frontend: Logo preview with "Use Suggested" button
-- [ ] Fallback to manual URL entry
-- [ ] Tests: `test_logo_suggestion_for_walmart()`, `test_payee_creation_with_auto_logo()`
+##### 13.5 Brand Logo Icon System ✅
+- [x] Simple Icons CDN integration (3000+ brand SVGs)
+  - Use CDN URLs: `https://cdn.simpleicons.org/{slug}/{color}`
+  - No local storage needed - direct CDN links
+- [x] Create `PayeeIconService` with brand → slug mapping (500+ brands)
+  - Retailers, restaurants, tech companies, airlines, gas stations, etc.
+  - Case-insensitive matching with partial name support
+- [x] Auto-suggest logo URL based on payee name matching
+- [x] API endpoints: `/api/v1/payees/icons/suggest`, `/parse`, `/brands`
+- [x] Frontend: PayeeIcon component with brand logo rendering
+- [x] Frontend: IconPicker component with suggestions, preview, and selection
+- [x] Tests: 38 icon service tests (brand matching, emoji fallback, API endpoints)
 
-##### 13.6 Emoji Icon Fallback System
-- [ ] Create `EmojiSuggestionService` with keyword → emoji mapping
-- [ ] 200+ keyword mappings (fire🔥, pizza🍕, coffee☕, grocery🛒, gas⛽, etc.)
-- [ ] Install `emoji-picker-react` library
-- [ ] Frontend: Emoji picker with suggested emojis based on name
-- [ ] Store emoji as `logo_url: "emoji:🔥"`
-- [ ] Update rendering logic to handle emoji prefix
-- [ ] Default emoji for unknown payees: 🏪
-- [ ] Tests: `test_emoji_suggestion_for_fireplaces_r_us()`, `test_default_emoji_for_unknown_payee()`
+##### 13.6 Emoji Icon Fallback System ✅
+- [x] Integrated into `PayeeIconService` with keyword → emoji mapping
+- [x] 200+ keyword mappings (restaurant🍽️, pizza🍕, coffee☕, grocery🛒, gas⛽, etc.)
+- [x] Quick emoji picker with 16 common category emojis
+- [x] Store emoji as `logo_url: "emoji:{emoji}"`
+- [x] PayeeIcon component handles emoji display automatically
+- [x] Default emoji for unknown payees: 🏪
+- [x] Tests: emoji suggestion tests, parse tests, API tests
 
 #### Phase D: Advanced Features (13.7-13.10)
 

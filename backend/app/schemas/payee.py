@@ -136,3 +136,23 @@ class PatternTestResult(BaseModel):
     pattern_value: str
     description: str
     match_details: Optional[str] = None
+
+
+# Icon Suggestion Schemas
+
+class IconSuggestion(BaseModel):
+    """Schema for icon suggestion response."""
+    icon_type: str = Field(..., description="Type of icon: 'brand' or 'emoji'")
+    icon_value: str = Field(..., description="CDN URL for brand, or 'emoji:{char}' for emoji")
+    brand_color: Optional[str] = Field(None, description="Hex color for brand icons (e.g., '#FF0000')")
+    matched_term: Optional[str] = Field(None, description="The term that was matched")
+    confidence: float = Field(..., ge=0, le=1, description="Match confidence score")
+    slug: Optional[str] = Field(None, description="Simple Icons slug for brand icons")
+    emoji: Optional[str] = Field(None, description="Emoji character for emoji icons")
+
+
+class IconParsed(BaseModel):
+    """Schema for parsed logo_url."""
+    type: str = Field(..., description="Type: 'brand', 'emoji', 'custom', or 'none'")
+    value: Optional[str] = Field(None, description="The raw value")
+    display_value: str = Field(..., description="Value to display in UI")
