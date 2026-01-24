@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { transactionsAPI, accountsAPI, categoriesAPI } from "@/lib/api";
+import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI } from "@/lib/api";
 import { Transaction, Account, Category, TransactionType } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuickAddBar from "@/components/transactions/QuickAddBar";
 import { PayeeIconSmall } from "@/components/payees/PayeeIcon";
 import ColumnFilter, { SortOrder } from "@/components/transactions/ColumnFilter";
+import ColumnSelector, { ColumnConfig } from "@/components/transactions/ColumnSelector";
 
 export default function TransactionsPage() {
   const router = useRouter();
@@ -32,6 +33,22 @@ export default function TransactionsPage() {
   const [sortBy, setSortBy] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
+  // Column visibility
+  const AVAILABLE_COLUMNS: ColumnConfig[] = [
+    { id: "star", label: "⭐ Star", required: false },
+    { id: "notes", label: "💬 Notes", required: false },
+    { id: "date", label: "Date", required: true },
+    { id: "description", label: "Description", required: false },
+    { id: "account", label: "Account", required: false },
+    { id: "category", label: "Category", required: false },
+    { id: "amount", label: "Amount", required: true },
+    { id: "actions", label: "Actions", required: false },
+  ];
+
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+    AVAILABLE_COLUMNS.map((c) => c.id)
+  );
+
   // Pagination
   const PAGE_SIZE = 50;
 
@@ -44,8 +61,32 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
+      loadColumnPreferences();
     }
   }, [isAuthenticated]);
+
+  const loadColumnPreferences = async () => {
+    try {
+      const user = await usersAPI.getMe();
+      if (user.ui_preferences?.transactionColumns) {
+        setVisibleColumns(user.ui_preferences.transactionColumns);
+      }
+    } catch (err) {
+      console.error("Failed to load column preferences:", err);
+    }
+  };
+
+  const handleColumnsChange = async (newVisibleColumns: string[]) => {
+    setVisibleColumns(newVisibleColumns);
+
+    try {
+      await usersAPI.updatePreferences({
+        transactionColumns: newVisibleColumns,
+      });
+    } catch (err) {
+      console.error("Failed to save column preferences:", err);
+    }
+  };
 
   // Reload when filters or sorting change
   useEffect(() => {
@@ -166,12 +207,19 @@ export default function TransactionsPage() {
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-          <button
-            onClick={() => router.push("/dashboard/transactions/new")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-          >
-            + Add Transaction
-          </button>
+          <div className="flex items-center gap-3">
+            <ColumnSelector
+              columns={AVAILABLE_COLUMNS}
+              visibleColumns={visibleColumns}
+              onColumnsChange={handleColumnsChange}
+            />
+            <button
+              onClick={() => router.push("/dashboard/transactions/new")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              + Add Transaction
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -252,135 +300,167 @@ export default function TransactionsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                      <button
-                        onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
-                        className={`text-xl hover:scale-110 transition-transform ${
-                          starredFilter === true ? "opacity-100" : "opacity-50"
-                        }`}
-                        title="Filter starred"
-                      >
-                        ⭐
-                      </button>
-                    </th>
-                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                      💬
-                    </th>
-                    <ColumnFilter
-                      label="Date"
-                      sortable
-                      currentSort={sortBy === "date" ? sortOrder : null}
-                      onSort={(order) => {
-                        setSortBy("date");
-                        setSortOrder(order);
-                      }}
-                    />
-                    <ColumnFilter label="Description" />
-                    <ColumnFilter
-                      label="Account"
-                      filterable
-                      filterOptions={accounts.map((a) => ({ label: a.name, value: a.id.toString() }))}
-                      currentFilter={accountFilter}
-                      onFilter={(value) => setAccountFilter(value?.toString() || "")}
-                    />
-                    <ColumnFilter
-                      label="Category"
-                      filterable
-                      filterOptions={categories.map((c) => ({ label: c.name, value: c.id.toString() }))}
-                      currentFilter={categoryFilter}
-                      onFilter={(value) => setCategoryFilter(value?.toString() || "")}
-                    />
-                    <ColumnFilter
-                      label="Amount"
-                      sortable
-                      filterable
-                      align="right"
-                      currentSort={sortBy === "amount" ? sortOrder : null}
-                      onSort={(order) => {
-                        setSortBy("amount");
-                        setSortOrder(order);
-                      }}
-                      filterOptions={[
-                        { label: "📤 Expense", value: TransactionType.DEBIT },
-                        { label: "📥 Income", value: TransactionType.CREDIT },
-                        { label: "🔄 Transfer", value: TransactionType.TRANSFER },
-                      ]}
-                      currentFilter={typeFilter}
-                      onFilter={(value) => setTypeFilter(value?.toString() || "")}
-                    />
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {visibleColumns.includes("star") && (
+                      <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                        <button
+                          onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
+                          className={`text-xl hover:scale-110 transition-transform ${
+                            starredFilter === true ? "opacity-100" : "opacity-50"
+                          }`}
+                          title="Filter starred"
+                        >
+                          ⭐
+                        </button>
+                      </th>
+                    )}
+                    {visibleColumns.includes("notes") && (
+                      <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                        💬
+                      </th>
+                    )}
+                    {visibleColumns.includes("date") && (
+                      <ColumnFilter
+                        label="Date"
+                        sortable
+                        currentSort={sortBy === "date" ? sortOrder : null}
+                        onSort={(order) => {
+                          setSortBy("date");
+                          setSortOrder(order);
+                        }}
+                      />
+                    )}
+                    {visibleColumns.includes("description") && (
+                      <ColumnFilter label="Description" />
+                    )}
+                    {visibleColumns.includes("account") && (
+                      <ColumnFilter
+                        label="Account"
+                        filterable
+                        filterOptions={accounts.map((a) => ({ label: a.name, value: a.id.toString() }))}
+                        currentFilter={accountFilter}
+                        onFilter={(value) => setAccountFilter(value?.toString() || "")}
+                      />
+                    )}
+                    {visibleColumns.includes("category") && (
+                      <ColumnFilter
+                        label="Category"
+                        filterable
+                        filterOptions={categories.map((c) => ({ label: c.name, value: c.id.toString() }))}
+                        currentFilter={categoryFilter}
+                        onFilter={(value) => setCategoryFilter(value?.toString() || "")}
+                      />
+                    )}
+                    {visibleColumns.includes("amount") && (
+                      <ColumnFilter
+                        label="Amount"
+                        sortable
+                        filterable
+                        align="right"
+                        currentSort={sortBy === "amount" ? sortOrder : null}
+                        onSort={(order) => {
+                          setSortBy("amount");
+                          setSortOrder(order);
+                        }}
+                        filterOptions={[
+                          { label: "📤 Expense", value: TransactionType.DEBIT },
+                          { label: "📥 Income", value: TransactionType.CREDIT },
+                          { label: "🔄 Transfer", value: TransactionType.TRANSFER },
+                        ]}
+                        currentFilter={typeFilter}
+                        onFilter={(value) => setTypeFilter(value?.toString() || "")}
+                      />
+                    )}
+                    {visibleColumns.includes("actions") && (
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transactions.map((transaction) => (
                     <tr key={transaction.id} className={`hover:bg-gray-50 ${transaction.is_starred ? 'bg-yellow-50' : ''}`}>
-                      <td className="px-2 py-4 text-center">
-                        <button
-                          onClick={() => handleToggleStar(transaction.id)}
-                          className="text-2xl hover:scale-110 transition-transform"
-                          title={transaction.is_starred ? "Unstar" : "Star"}
-                        >
-                          {transaction.is_starred ? "⭐" : "☆"}
-                        </button>
-                      </td>
-                      <td className="px-2 py-4 text-center">
-                        {transaction.notes && (
-                          <div
-                            className="inline-block text-xl cursor-help"
-                            title={transaction.notes}
+                      {visibleColumns.includes("star") && (
+                        <td className="px-2 py-4 text-center">
+                          <button
+                            onClick={() => handleToggleStar(transaction.id)}
+                            className="text-2xl hover:scale-110 transition-transform"
+                            title={transaction.is_starred ? "Unstar" : "Star"}
                           >
-                            💬
+                            {transaction.is_starred ? "⭐" : "☆"}
+                          </button>
+                        </td>
+                      )}
+                      {visibleColumns.includes("notes") && (
+                        <td className="px-2 py-4 text-center">
+                          {transaction.notes && (
+                            <div
+                              className="inline-block text-xl cursor-help"
+                              title={transaction.notes}
+                            >
+                              💬
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes("date") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatDate(transaction.date)}
+                        </td>
+                      )}
+                      {visibleColumns.includes("description") && (
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {transaction.description}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(transaction.date)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {transaction.description}
-                        </div>
-                        {transaction.payee_name && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <PayeeIconSmall
-                              logoUrl={transaction.payee_logo_url}
-                              name={transaction.payee_name}
-                            />
-                            <span className="text-sm text-gray-500">{transaction.payee_name}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {getAccountName(transaction.account_id)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {getCategoryName(transaction.category_id)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                        <span className={getTransactionTypeColor(transaction.type)}>
-                          {transaction.type === TransactionType.DEBIT && "-"}
-                          {transaction.type === TransactionType.CREDIT && "+"}
-                          {formatCurrency(transaction.amount)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() =>
-                            router.push(`/dashboard/transactions/${transaction.id}`)
-                          }
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(transaction.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </td>
+                          {transaction.payee_name && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <PayeeIconSmall
+                                logoUrl={transaction.payee_logo_url}
+                                name={transaction.payee_name}
+                              />
+                              <span className="text-sm text-gray-500">{transaction.payee_name}</span>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes("account") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {getAccountName(transaction.account_id)}
+                        </td>
+                      )}
+                      {visibleColumns.includes("category") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {getCategoryName(transaction.category_id)}
+                        </td>
+                      )}
+                      {visibleColumns.includes("amount") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                          <span className={getTransactionTypeColor(transaction.type)}>
+                            {transaction.type === TransactionType.DEBIT && "-"}
+                            {transaction.type === TransactionType.CREDIT && "+"}
+                            {formatCurrency(transaction.amount)}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes("actions") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() =>
+                              router.push(`/dashboard/transactions/${transaction.id}`)
+                            }
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(transaction.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -5,6 +5,7 @@ export interface User {
   full_name: string;
   is_active: boolean;
   is_superuser: boolean;
+  ui_preferences: Record<string, any> | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -19,6 +20,7 @@ export interface UserUpdate {
   email?: string;
   full_name?: string;
   password?: string;
+  ui_preferences?: Record<string, any>;
 }
 
 // Authentication types

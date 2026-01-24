@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -19,6 +19,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     password: Optional[str] = None
+    ui_preferences: Optional[Dict[str, Any]] = None
 
 
 class UserInDB(UserBase):
@@ -26,6 +27,7 @@ class UserInDB(UserBase):
     id: int
     is_active: bool
     is_superuser: bool
+    ui_preferences: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

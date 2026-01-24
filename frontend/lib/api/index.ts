@@ -1,5 +1,6 @@
 export { default as apiClient } from "./client";
 export { authAPI } from "./auth";
+export { usersAPI } from "./users";
 export { accountsAPI } from "./accounts";
 export { categoriesAPI } from "./categories";
 export { transactionsAPI } from "./transactions";
