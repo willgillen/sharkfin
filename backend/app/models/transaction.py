@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, Date, Text, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, DateTime, Date, Text, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -42,6 +42,9 @@ class Transaction(Base):
 
     # For transfers
     transfer_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+
+    # Star/flag for important transactions
+    is_starred = Column(Boolean, nullable=False, server_default="false", default=False, index=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

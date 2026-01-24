@@ -20,6 +20,7 @@ class TransactionBase(BaseModel):
     description: Optional[str] = None
     notes: Optional[str] = None
     transfer_account_id: Optional[int] = None
+    is_starred: Optional[bool] = False
 
     @field_validator("amount")
     @classmethod
@@ -58,6 +59,7 @@ class TransactionUpdate(BaseModel):
     description: Optional[str] = None
     notes: Optional[str] = None
     transfer_account_id: Optional[int] = None
+    is_starred: Optional[bool] = False
 
     @field_validator("amount")
     @classmethod

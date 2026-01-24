@@ -27,6 +27,7 @@ def _transaction_to_response(transaction: TransactionModel) -> dict:
         "description": transaction.description,
         "notes": transaction.notes,
         "transfer_account_id": transaction.transfer_account_id,
+        "is_starred": transaction.is_starred,
         "created_at": transaction.created_at,
         "updated_at": transaction.updated_at,
         # Get payee info from linked Payee entity
@@ -90,6 +91,8 @@ def create_transaction(
 def get_transactions(
     account_id: Optional[int] = Query(None, description="Filter by account ID"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    type: Optional[str] = Query(None, description="Filter by transaction type (debit, credit, transfer)"),
+    is_starred: Optional[bool] = Query(None, description="Filter by starred status"),
     start_date: Optional[date] = Query(None, description="Filter transactions on or after this date"),
     end_date: Optional[date] = Query(None, description="Filter transactions on or before this date"),
     skip: int = Query(0, ge=0, description="Number of records to skip for pagination"),
@@ -114,6 +117,12 @@ def get_transactions(
 
     if category_id:
         query = query.filter(TransactionModel.category_id == category_id)
+
+    if type:
+        query = query.filter(TransactionModel.type == type)
+
+    if is_starred is not None:
+        query = query.filter(TransactionModel.is_starred == is_starred)
 
     if start_date:
         query = query.filter(TransactionModel.date >= start_date)
@@ -296,3 +305,31 @@ def get_category_suggestion(
         return {"category_id": result[0]}
 
     return {"category_id": None}
+
+
+@router.patch("/{transaction_id}/star", response_model=Transaction)
+def toggle_star(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Toggle the starred status of a transaction."""
+    transaction = db.query(TransactionModel).options(
+        joinedload(TransactionModel.payee_entity)
+    ).filter(
+        TransactionModel.id == transaction_id,
+        TransactionModel.user_id == current_user.id
+    ).first()
+
+    if not transaction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found"
+        )
+
+    # Toggle the starred status
+    transaction.is_starred = not transaction.is_starred
+    db.commit()
+    db.refresh(transaction)
+
+    return _transaction_to_response(transaction)

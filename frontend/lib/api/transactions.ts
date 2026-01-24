@@ -5,6 +5,8 @@ export const transactionsAPI = {
   async getAll(params?: {
     account_id?: number;
     category_id?: number;
+    type?: string;
+    is_starred?: boolean;
     start_date?: string;
     end_date?: string;
     skip?: number;
@@ -49,6 +51,11 @@ export const transactionsAPI = {
         params: { payee },
       }
     );
+    return data;
+  },
+
+  async toggleStar(id: number): Promise<Transaction> {
+    const { data} = await apiClient.patch<Transaction>(`/api/v1/transactions/${id}/star`);
     return data;
   },
 };

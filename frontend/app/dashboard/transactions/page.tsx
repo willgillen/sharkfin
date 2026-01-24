@@ -25,6 +25,7 @@ export default function TransactionsPage() {
   const [accountFilter, setAccountFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [starredFilter, setStarredFilter] = useState<boolean | undefined>(undefined);
 
   // Pagination
   const PAGE_SIZE = 50;
@@ -46,7 +47,7 @@ export default function TransactionsPage() {
     if (isAuthenticated && !loading) {
       loadData(true);
     }
-  }, [accountFilter, categoryFilter, typeFilter]);
+  }, [accountFilter, categoryFilter, typeFilter, starredFilter]);
 
   const loadData = async (reset: boolean = true) => {
     try {
@@ -66,6 +67,7 @@ export default function TransactionsPage() {
         ...(accountFilter && { account_id: parseInt(accountFilter) }),
         ...(categoryFilter && { category_id: parseInt(categoryFilter) }),
         ...(typeFilter && { type: typeFilter }),
+        ...(starredFilter !== undefined && { is_starred: starredFilter }),
       };
 
       const [txns, accts, cats] = await Promise.all([
@@ -105,6 +107,17 @@ export default function TransactionsPage() {
       setTransactions(transactions.filter((t) => t.id !== id));
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to delete transaction");
+    }
+  };
+
+  const handleToggleStar = async (id: number) => {
+    try {
+      const updatedTransaction = await transactionsAPI.toggleStar(id);
+      setTransactions(transactions.map((t) =>
+        t.id === id ? updatedTransaction : t
+      ));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to toggle star");
     }
   };
 
@@ -167,6 +180,19 @@ export default function TransactionsPage() {
 
         {/* Filters */}
         <div className="mb-6 bg-white shadow rounded-lg p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
+              className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+                starredFilter === true
+                  ? "bg-yellow-500 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              ⭐ Starred{starredFilter === true && ` (${transactions.length})`}
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -221,13 +247,14 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          {(accountFilter || categoryFilter || typeFilter) && (
+          {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined) && (
             <div className="mt-3">
               <button
                 onClick={() => {
                   setAccountFilter("");
                   setCategoryFilter("");
                   setTypeFilter("");
+                  setStarredFilter(undefined);
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
@@ -247,6 +274,9 @@ export default function TransactionsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      ⭐
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
@@ -269,7 +299,16 @@ export default function TransactionsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50">
+                    <tr key={transaction.id} className={`hover:bg-gray-50 ${transaction.is_starred ? 'bg-yellow-50' : ''}`}>
+                      <td className="px-2 py-4 text-center">
+                        <button
+                          onClick={() => handleToggleStar(transaction.id)}
+                          className="text-2xl hover:scale-110 transition-transform"
+                          title={transaction.is_starred ? "Unstar" : "Star"}
+                        >
+                          {transaction.is_starred ? "⭐" : "☆"}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(transaction.date)}
                       </td>
