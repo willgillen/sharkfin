@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Account, AccountCreate, AccountUpdate, AccountType } from "@/types";
+import { Input, Select, Textarea } from "@/components/ui";
 
 interface AccountFormProps {
   account?: Account;
@@ -47,30 +48,26 @@ export default function AccountForm({ account, onSubmit, onCancel }: AccountForm
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Account Name *
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Account Name"
             id="name"
+            name="name"
+            type="text"
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Main Checking, Emergency Savings"
           />
         </div>
 
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-            Account Type *
-          </label>
-          <select
+          <Select
+            label="Account Type"
             id="type"
+            name="type"
             required
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value as AccountType })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={AccountType.CHECKING}>Checking</option>
             <option value={AccountType.SAVINGS}>Savings</option>
@@ -79,79 +76,69 @@ export default function AccountForm({ account, onSubmit, onCancel }: AccountForm
             <option value={AccountType.INVESTMENT}>Investment</option>
             <option value={AccountType.CASH}>Cash</option>
             <option value={AccountType.OTHER}>Other</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
-            Currency
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Currency"
             id="currency"
+            name="currency"
+            type="text"
             value={formData.currency}
             onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="USD"
             maxLength={3}
           />
         </div>
 
         <div>
-          <label htmlFor="institution" className="block text-sm font-medium text-gray-700">
-            Institution
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Institution"
             id="institution"
+            name="institution"
+            type="text"
             value={formData.institution}
             onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Chase, Bank of America"
           />
         </div>
 
         <div>
-          <label htmlFor="account_number" className="block text-sm font-medium text-gray-700">
-            Account Number (Last 4 digits)
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Account Number (Last 4 digits)"
             id="account_number"
+            name="account_number"
+            type="text"
             value={formData.account_number}
             onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="1234"
             maxLength={4}
           />
         </div>
 
         <div>
-          <label htmlFor="current_balance" className="block text-sm font-medium text-gray-700">
-            Current Balance *
-          </label>
-          <input
-            type="number"
+          <Input
+            label="Current Balance"
             id="current_balance"
+            name="current_balance"
+            type="number"
             required
             step="0.01"
             value={formData.current_balance}
             onChange={(e) => setFormData({ ...formData, current_balance: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="0.00"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-            Notes
-          </label>
-          <textarea
+          <Textarea
+            label="Notes"
             id="notes"
+            name="notes"
             rows={3}
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="Optional notes about this account"
           />
         </div>
