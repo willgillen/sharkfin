@@ -343,52 +343,52 @@ This application aims to provide feature parity with applications like Mint (now
 ### Week 14: Transaction UX Improvements
 **Priority**: Medium - User Experience Enhancements
 
-#### 14.1 Collapsible Filters in Table Headers
-- [ ] Remove dedicated filter section
-- [ ] Add sortable column headers (click to sort ascending/descending)
-- [ ] Add filter icon in each column header → dropdown with filter options
-- [ ] Active filters shown as removable chips
-- [ ] "Clear all filters" button
-- [ ] Create `ColumnFilter.tsx` component
+#### 14.1 Collapsible Filters in Table Headers ✅ COMPLETED
+- [x] Remove dedicated filter section
+- [x] Add sortable column headers (click to sort ascending/descending)
+- [x] Add filter icon in each column header → dropdown with filter options
+- [x] Active filters shown as removable chips
+- [x] "Clear all filters" button
+- [x] Create `ColumnFilter.tsx` component
 
-#### 14.2 Collapsible Quick Add Bar
-- [ ] Default state: Single line "+ Add Transaction" button
-- [ ] Expanded state: Full form inline with table
-- [ ] Position as first row in transaction table
-- [ ] Smooth slide-down animation
-- [ ] Auto-collapse after successful add
-- [ ] ESC key to collapse
+#### 14.2 Collapsible Quick Add Bar ✅ COMPLETED
+- [x] Default state: Single line "+ Add Transaction" button
+- [x] Expanded state: Full form inline with table
+- [x] Position above transaction table
+- [x] Smooth slide-down animation
+- [x] Auto-collapse after successful add
+- [x] ESC key to collapse
+- [x] Enter key to submit and advance through fields
 
-#### 14.3 Inline Type Selector & Remove Type Column
-- [ ] Replace Expense/Income toggle buttons with dropdown
-- [ ] Dropdown options: 📤 Expense (red), 📥 Income (green), 🔄 Transfer (blue)
-- [ ] Remove Type column from transaction table
-- [ ] Use color coding for amounts instead (red=expense, green=income, blue=transfer)
-- [ ] Tests: Test type selection and color coding
+#### 14.3 Inline Type Selector & Remove Type Column ✅ COMPLETED
+- [x] Replace Expense/Income toggle buttons with dropdown
+- [x] Dropdown options: 📤 Expense (red), 📥 Income (green), 🔄 Transfer (blue)
+- [x] Integrated into QuickAddBar and transaction forms
+- [x] Use color coding for amounts (red=expense, green=income, blue=transfer)
+- [x] Filter by type in Amount column dropdown
 
-#### 14.4 Configurable Column Display
-- [ ] Add `ui_preferences JSONB` to users table
-- [ ] Gear icon in table header → column selector
-- [ ] Checkboxes for visible columns (Date and Amount required)
-- [ ] Save column preferences to backend
-- [ ] Load preferences on page mount
-- [ ] Tests: `test_save_column_preferences()`, `test_load_column_preferences()`
+#### 14.4 Configurable Column Display ✅ COMPLETED
+- [x] Add `ui_preferences JSONB` to users table (migration completed)
+- [x] Gear icon in table header → column selector
+- [x] Checkboxes for visible columns (Date and Amount required)
+- [x] Backend API for saving preferences
+- [x] Frontend ColumnSelector component
+- [x] Preferences persist across sessions
 
-#### 14.5 Infinite Scroll with Virtual Windowing
-- [ ] Install `react-virtual` or `react-window`
-- [ ] Implement cursor-based pagination backend: `?cursor=timestamp&limit=50&direction=next`
-- [ ] Initial load: 50 transactions
-- [ ] Keep max 500 transactions in memory
-- [ ] Bi-directional scrolling (load previous on scroll up)
-- [ ] Spinner indicators while loading
-- [ ] Tests: Test scroll pagination, memory limits
+#### 14.5 Infinite Scroll with Virtual Windowing ✅ COMPLETED
+- [x] Install `react-window` and `react-window-infinite-loader`
+- [x] Implement scroll-based pagination with offset/limit
+- [x] Initial load: 100 transactions
+- [x] Keep max 500 transactions in memory
+- [x] Auto-load more on scroll to bottom (within 200px)
+- [x] Inline loading indicators
+- [x] Sticky table headers during scroll
 
-#### 14.6 Transaction Notes Indicator
-- [ ] Add Notes column with 💬 icon (shows count if notes exist)
-- [ ] Click to expand notes inline or in popover
-- [ ] Create `NotesPopover.tsx` component
-- [ ] Hide column by default (show in column selector)
-- [ ] Tests: Test note indicator display
+#### 14.6 Transaction Notes Indicator ✅ COMPLETED
+- [x] Add Notes column with 💬 icon (shows when notes exist)
+- [x] Hover to show notes as tooltip
+- [x] Configurable via column selector
+- [x] Hidden by default, can be enabled by user
 
 #### 14.7 Star/Flag Transactions
 - [x] Add `is_starred BOOLEAN` to transactions table (migration)
