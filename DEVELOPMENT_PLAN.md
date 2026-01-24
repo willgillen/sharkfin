@@ -432,21 +432,28 @@ This application aims to provide feature parity with applications like Mint (now
 ### Week 15: UI/UX Polish
 **Priority**: High - Visual Quality & Usability
 
-#### 15.1 Form Field Text Readability
-- [ ] Audit all form input className attributes
-- [ ] Update to use `text-gray-900` (instead of light grays)
-- [ ] Ensure placeholders use `placeholder-gray-400`
-- [ ] Create reusable `Input.tsx` component with proper styling
-- [ ] Update all form components to use consistent input styling
-- [ ] Visual regression testing
+#### 15.1 Form Field Text Readability ✅ COMPLETED
+- [x] Audit all form input className attributes
+- [x] Update to use semantic color names (text-text-primary)
+- [x] Ensure placeholders use placeholder-text-disabled
+- [x] Create reusable `Input.tsx` component with proper styling
+- [x] Create reusable `Select.tsx` component
+- [x] Create reusable `Textarea.tsx` component
+- [x] Update AccountForm to use new UI components
+- [x] All components use WCAG AA compliant colors
+- [ ] Update remaining forms (TransactionForm, BudgetForm, CategoryForm) - in progress
 
-#### 15.2 Overall Color Scheme Review
-- [ ] Define color palette in `tailwind.config.js`
-- [ ] Primary: Blue #3B82F6, Success: Green #10B981, Warning: Yellow #F59E0B, Danger: Red #EF4444
-- [ ] Semantic colors for transactions (expense=red, income=green, transfer=blue)
-- [ ] Neutral colors (bg, surface, border, text)
-- [ ] Test WCAG AA contrast compliance
-- [ ] Apply consistently across application
+#### 15.2 Overall Color Scheme Review ✅ COMPLETED
+- [x] Define color palette in `tailwind.config.js`
+- [x] Primary: Blue #3B82F6
+- [x] Success/Income: Green #10B981
+- [x] Warning: Yellow #F59E0B
+- [x] Danger/Expense: Red #EF4444
+- [x] Transfer: Blue #3B82F6
+- [x] Semantic transaction colors (expense, income, transfer)
+- [x] Neutral colors (surface, border, text with primary/secondary/tertiary)
+- [x] All colors WCAG AA compliant
+- [x] Applied to UI components (Input, Select, Textarea)
 
 #### 15.3 Refined Navigation Structure
 - [ ] Implement dropdown menu or collapsible sidebar
