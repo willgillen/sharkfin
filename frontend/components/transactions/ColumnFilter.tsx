@@ -130,7 +130,7 @@ export default function ColumnFilter({
               </button>
 
               {showFilterDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200">
                   {filterType === "text" ? (
                     <div className="p-3">
                       <input
