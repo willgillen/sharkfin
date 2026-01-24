@@ -9,6 +9,7 @@ interface QuickAddBarProps {
 }
 
 export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [payee, setPayee] = useState("");
   const [amount, setAmount] = useState("");
@@ -120,8 +121,8 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
       setCategoryId(null);
       setDate(new Date().toISOString().split("T")[0]);
 
-      // Focus payee input for next entry
-      payeeInputRef.current?.focus();
+      // Auto-collapse after successful add
+      setTimeout(() => setIsExpanded(false), 1500);
 
       // Notify parent to refresh transaction list
       onTransactionAdded();
@@ -158,11 +159,12 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
       }
     } else if (e.key === "Escape") {
       e.preventDefault();
+      // ESC key to collapse
+      setIsExpanded(false);
       setPayee("");
       setAmount("");
       setCategoryId(null);
       setShowSuggestions(false);
-      payeeInputRef.current?.focus();
     }
   };
 
@@ -175,11 +177,39 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
     }
   });
 
-  return (
-    <div className="bg-white shadow rounded-lg p-4 mb-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Add Transaction</h3>
+  // Auto-focus payee input when expanding
+  useEffect(() => {
+    if (isExpanded) {
+      payeeInputRef.current?.focus();
+    }
+  }, [isExpanded]);
 
-      <div className="grid grid-cols-7 gap-3">
+  return (
+    <div className="bg-white shadow rounded-lg mb-6 overflow-hidden transition-all duration-300">
+      {!isExpanded ? (
+        // Collapsed state: Single line button
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+        >
+          <span className="text-blue-600 text-lg">+</span>
+          Add Transaction
+        </button>
+      ) : (
+        // Expanded state: Full form
+        <div className="p-4 animate-slideDown">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700">Quick Add Transaction</h3>
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              title="Collapse (ESC)"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-3">
         {/* Date */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
@@ -326,13 +356,15 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
         </div>
       </div>
 
-      {error && (
-        <div className="mt-2 text-xs text-red-600">{error}</div>
-      )}
+          {error && (
+            <div className="mt-2 text-xs text-red-600">{error}</div>
+          )}
 
-      <div className="mt-2 text-xs text-gray-500">
-        Tip: Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Enter</kbd> to add, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to clear
-      </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Tip: Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Enter</kbd> to add, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to collapse
+          </div>
+        </div>
+      )}
     </div>
   );
 }
