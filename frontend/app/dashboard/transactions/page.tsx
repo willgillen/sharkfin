@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI } from "@/lib/api";
@@ -51,6 +51,8 @@ export default function TransactionsPage() {
 
   // Pagination
   const PAGE_SIZE = 50;
+  const MAX_TRANSACTIONS = 500; // Keep max 500 in memory
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -97,6 +99,12 @@ export default function TransactionsPage() {
 
   const loadData = async (reset: boolean = true) => {
     try {
+      // Don't load more if we've hit the max limit
+      if (!reset && transactions.length >= MAX_TRANSACTIONS) {
+        setHasMore(false);
+        return;
+      }
+
       if (reset) {
         setLoading(true);
         setTransactions([]);
@@ -122,12 +130,22 @@ export default function TransactionsPage() {
         reset ? categoriesAPI.getAll() : Promise.resolve(categories),
       ]);
 
-      setTransactions(reset ? txns : [...transactions, ...txns]);
+      const newTransactions = reset ? txns : [...transactions, ...txns];
+
+      // Enforce MAX_TRANSACTIONS limit
+      const limitedTransactions = newTransactions.slice(0, MAX_TRANSACTIONS);
+      setTransactions(limitedTransactions);
+
       if (reset) {
         setAccounts(accts);
         setCategories(cats);
       }
-      setHasMore(txns.length === PAGE_SIZE);
+
+      // Check if there are more transactions available
+      const reachedMax = limitedTransactions.length >= MAX_TRANSACTIONS;
+      const noMoreData = txns.length < PAGE_SIZE;
+      setHasMore(!reachedMax && !noMoreData);
+
       setError("");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load data");
@@ -137,11 +155,34 @@ export default function TransactionsPage() {
     }
   };
 
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && transactions.length < MAX_TRANSACTIONS) {
       loadData(false);
     }
-  };
+  }, [loadingMore, hasMore, transactions.length]);
+
+  // Infinite scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!tableContainerRef.current || loadingMore || !hasMore) return;
+
+      const container = tableContainerRef.current;
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+
+      // Load more when scrolled to within 200px of bottom
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        loadMore();
+      }
+    };
+
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [loadMore, loadingMore, hasMore]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this transaction?")) {
@@ -296,7 +337,11 @@ export default function TransactionsPage() {
           </div>
         ) : transactions.length > 0 ? (
           <>
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div
+              ref={tableContainerRef}
+              className="bg-white shadow overflow-auto sm:rounded-lg"
+              style={{ maxHeight: '70vh' }}
+            >
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -465,48 +510,58 @@ export default function TransactionsPage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Inline Loading Indicator for Infinite Scroll */}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-4 border-t">
+                  <svg
+                    className="animate-spin h-5 w-5 text-blue-600 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span className="text-sm text-gray-600">Loading more transactions...</span>
+                </div>
+              )}
+
+              {/* End of list indicator */}
+              {!hasMore && transactions.length >= PAGE_SIZE && (
+                <div className="text-center py-4 border-t">
+                  <p className="text-sm text-gray-500">
+                    All {transactions.length} transactions loaded
+                  </p>
+                </div>
+              )}
+
+              {/* Max limit reached indicator */}
+              {transactions.length >= MAX_TRANSACTIONS && hasMore && (
+                <div className="text-center py-4 border-t bg-yellow-50">
+                  <p className="text-sm text-gray-700">
+                    Showing first {MAX_TRANSACTIONS} transactions. Use filters to narrow results.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Loading...
-                    </>
-                  ) : (
-                    <>Load More Transactions</>
-                  )}
-                </button>
-                <p className="mt-2 text-sm text-gray-500">
-                  Showing {transactions.length} transactions
-                </p>
-              </div>
-            )}
+            {/* Transaction count */}
+            <div className="mt-3 text-center">
+              <p className="text-sm text-gray-500">
+                Showing {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+              </p>
+            </div>
           </>
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow">
