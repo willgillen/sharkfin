@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Category, CategoryCreate, CategoryUpdate, CategoryType } from "@/types";
 import { categoriesAPI } from "@/lib/api";
+import { Input, Select } from "@/components/ui";
 
 interface CategoryFormProps {
   category?: Category;
@@ -65,52 +66,47 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-md bg-danger-50 p-4">
+          <p className="text-sm text-danger-800">{error}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Category Name *
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Category Name"
             id="name"
+            name="name"
+            type="text"
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Groceries, Salary"
           />
         </div>
 
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-            Category Type *
-          </label>
-          <select
+          <Select
+            label="Category Type"
             id="type"
+            name="type"
             required
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value as CategoryType, parent_id: 0 })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={CategoryType.INCOME}>Income</option>
             <option value={CategoryType.EXPENSE}>Expense</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700">
-            Parent Category (Optional)
-          </label>
-          <select
+          <Select
+            label="Parent Category (Optional)"
             id="parent_id"
+            name="parent_id"
             value={formData.parent_id}
             onChange={(e) => setFormData({ ...formData, parent_id: parseInt(e.target.value) })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            helperText="Create subcategories by selecting a parent"
           >
             <option value={0}>None (Top Level)</option>
             {availableParents.map((cat) => (
@@ -118,54 +114,44 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
                 {cat.name}
               </option>
             ))}
-          </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Create subcategories by selecting a parent
-          </p>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="color" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="color" className="block text-sm font-medium text-text-secondary mb-1">
             Color
           </label>
-          <div className="mt-1 flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <input
               type="color"
               id="color"
               value={formData.color}
               onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
+              className="h-10 w-20 border border-border rounded cursor-pointer"
             />
-            <input
+            <Input
               type="text"
               value={formData.color}
               onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="#3b82f6"
               pattern="^#[0-9A-Fa-f]{6}$"
+              helperText="Use hex color format (e.g., #3b82f6)"
             />
           </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Use hex color format (e.g., #3b82f6)
-          </p>
         </div>
 
         <div>
-          <label htmlFor="icon" className="block text-sm font-medium text-gray-700">
-            Icon (Emoji)
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Icon (Emoji)"
             id="icon"
+            name="icon"
+            type="text"
             value={formData.icon}
             onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="🛒"
             maxLength={2}
+            helperText="Optional emoji to represent this category"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Optional emoji to represent this category
-          </p>
         </div>
       </div>
 
@@ -173,14 +159,14 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-border rounded-md shadow-sm text-sm font-medium text-text-secondary bg-surface hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-text-inverse bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
         >
           {loading ? "Saving..." : category ? "Update Category" : "Create Category"}
         </button>

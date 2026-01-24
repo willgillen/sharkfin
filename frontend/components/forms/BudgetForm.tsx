@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Budget, BudgetCreate, BudgetUpdate, BudgetPeriod, Category, CategoryType } from "@/types";
 import { categoriesAPI } from "@/lib/api";
+import { Input, Select } from "@/components/ui";
 
 interface BudgetFormProps {
   budget?: Budget;
