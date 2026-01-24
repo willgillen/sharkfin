@@ -56,7 +56,12 @@ class PayeeService:
 
         # Auto-suggest icon for new payee
         icon_suggestion = payee_icon_service.suggest_icon(normalized_name)
-        logo_url = icon_suggestion.get("icon_value") if icon_suggestion.get("confidence", 0) >= 0.7 else None
+        # Use lower threshold (0.5) for real-world transaction descriptions with store numbers/locations
+        logo_url = (
+            icon_suggestion.get("icon_value")
+            if icon_suggestion.get("confidence", 0) >= 0.5
+            else None
+        )
 
         # Create new payee with auto-suggested icon
         payee = Payee(

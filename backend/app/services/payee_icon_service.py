@@ -1188,8 +1188,19 @@ class PayeeIconService:
             if normalized == matched:
                 confidence = 1.0
             elif matched in normalized:
-                # Partial match - confidence based on how much of name is the brand
-                confidence = len(matched) / len(normalized)
+                # Partial match - use better heuristic that considers word boundaries
+                # If the brand is a complete word(s) in the name, higher confidence
+                import re
+                # Check if brand appears as whole word(s)
+                pattern = r'\b' + re.escape(matched) + r'\b'
+                if re.search(pattern, normalized):
+                    # Brand is a complete word - high confidence
+                    # Base confidence on length ratio but with minimum floor
+                    ratio = len(matched) / len(normalized)
+                    confidence = max(0.70, ratio)  # At least 0.70 for word match
+                else:
+                    # Brand is substring but not complete word - lower confidence
+                    confidence = len(matched) / len(normalized)
             else:
                 # Fuzzy match
                 confidence = SequenceMatcher(None, normalized, matched).ratio()
