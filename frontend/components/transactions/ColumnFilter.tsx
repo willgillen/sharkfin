@@ -22,6 +22,7 @@ interface ColumnFilterProps {
   onFilter?: (value: string | number | null) => void;
   onDateRangeFilter?: (start: string | null, end: string | null) => void;
   align?: "left" | "center" | "right";
+  width?: string;
 }
 
 export default function ColumnFilter({
@@ -37,6 +38,7 @@ export default function ColumnFilter({
   onFilter,
   onDateRangeFilter,
   align = "left",
+  width,
 }: ColumnFilterProps) {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [textFilterValue, setTextFilterValue] = useState((currentFilter || "").toString());
@@ -117,7 +119,8 @@ export default function ColumnFilter({
 
   return (
     <th
-      className={`px-6 py-3 ${alignmentClasses[align]} text-xs font-medium text-gray-500 uppercase tracking-wider relative`}
+      className={`px-6 py-3 ${alignmentClasses[align]} text-xs font-medium text-gray-500 uppercase tracking-wider relative ${width || ""}`}
+      style={width ? { maxWidth: width } : undefined}
     >
       <div className="flex items-center gap-2 justify-between">
         <span>{label}</span>

@@ -421,6 +421,7 @@ export default function TransactionsPage() {
                         filterType="text"
                         currentFilter={payeeFilter}
                         onFilter={(value) => setPayeeFilter(value?.toString() || "")}
+                        width="20rem"
                       />
                     )}
                     {visibleColumns.includes("account") && (
@@ -500,22 +501,22 @@ export default function TransactionsPage() {
                         </td>
                       )}
                       {visibleColumns.includes("description") && (
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" style={{ maxWidth: "20rem" }}>
                           {transaction.payee_name ? (
                             <>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <PayeeIconSmall
                                   logoUrl={transaction.payee_logo_url}
                                   name={transaction.payee_name}
                                 />
-                                <span className="text-sm font-medium text-gray-900">{transaction.payee_name}</span>
+                                <span className="text-sm font-medium text-gray-900 truncate">{transaction.payee_name}</span>
                               </div>
                               <div className="text-xs text-gray-500 mt-1 truncate">
                                 {transaction.description}
                               </div>
                             </>
                           ) : (
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {transaction.description}
                             </div>
                           )}
