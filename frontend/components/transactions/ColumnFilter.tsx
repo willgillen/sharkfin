@@ -42,7 +42,9 @@ export default function ColumnFilter({
   const [textFilterValue, setTextFilterValue] = useState((currentFilter || "").toString());
   const [startDate, setStartDate] = useState(currentDateRange?.start || "");
   const [endDate, setEndDate] = useState(currentDateRange?.end || "");
+  const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,6 +61,22 @@ export default function ColumnFilter({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, [showFilterDropdown]);
+
+  // Adjust dropdown position based on available space
+  useEffect(() => {
+    if (showFilterDropdown && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const dropdownHeight = 300; // Approximate max height
+
+      if (spaceBelow < dropdownHeight && buttonRect.top > dropdownHeight) {
+        setDropdownPosition("top");
+      } else {
+        setDropdownPosition("bottom");
+      }
+    }
   }, [showFilterDropdown]);
 
   const handleSortClick = () => {
@@ -120,6 +138,7 @@ export default function ColumnFilter({
           {filterable && (
             <div ref={dropdownRef} className="relative">
               <button
+                ref={buttonRef}
                 onClick={handleFilterClick}
                 className={`text-xs hover:text-gray-700 transition-colors ${
                   currentFilter !== undefined && currentFilter !== "" ? "text-blue-600" : "text-gray-400"
@@ -130,7 +149,21 @@ export default function ColumnFilter({
               </button>
 
               {showFilterDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                <div className={`fixed w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200 ${
+                  dropdownPosition === "bottom" ? "mt-2" : "mb-2"
+                }`}
+                style={{
+                  top: dropdownPosition === "bottom" && buttonRef.current
+                    ? buttonRef.current.getBoundingClientRect().bottom + window.scrollY + 8
+                    : undefined,
+                  bottom: dropdownPosition === "top" && buttonRef.current
+                    ? window.innerHeight - buttonRef.current.getBoundingClientRect().top - window.scrollY + 8
+                    : undefined,
+                  right: buttonRef.current
+                    ? window.innerWidth - buttonRef.current.getBoundingClientRect().right
+                    : undefined,
+                }}
+                >
                   {filterType === "text" ? (
                     <div className="p-3">
                       <input

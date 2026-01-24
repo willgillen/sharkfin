@@ -369,14 +369,14 @@ export default function TransactionsPage() {
           </div>
         ) : transactions.length > 0 ? (
           <>
-            <div className="bg-white shadow sm:rounded-lg overflow-hidden">
+            <div className="bg-white shadow sm:rounded-lg">
               <div
                 ref={tableContainerRef}
                 className="overflow-x-auto overflow-y-auto"
                 style={{ maxHeight: '70vh' }}
               >
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
+                <table className="w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
                     {visibleColumns.includes("star") && (
                       <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
