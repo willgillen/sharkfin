@@ -421,7 +421,30 @@ docker-compose exec backend flake8 app/
 
 # Check backend test coverage
 docker-compose exec backend pytest --cov=app --cov-report=html
+
+# Clear all transactions, payees, and import data (for testing)
+docker-compose exec backend python scripts/clear_transactions.py
 ```
+
+## Testing & Data Management
+
+**Clear Database for Fresh Import Testing:**
+```bash
+# Clear all transactions, payees, patterns, and import history
+docker-compose exec backend python scripts/clear_transactions.py
+```
+
+This script clears:
+- All transactions
+- All payees (which will be auto-recreated with icons during import)
+- All payee matching patterns
+- All import history
+- All categorization rules
+
+After clearing, you can re-import transactions and payees will be automatically created with:
+- Brand logos for recognized merchants (Starbucks, Walmart, Amazon, etc.)
+- Emoji icons for category-based matches (restaurants 🍽️, grocery 🛒, gas ⛽)
+- Auto-assigned with confidence >= 0.7
 
 ## Resources
 

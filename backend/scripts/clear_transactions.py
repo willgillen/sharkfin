@@ -20,6 +20,7 @@ from app.models.transaction import Transaction
 from app.models.import_history import ImportHistory, ImportedTransaction
 from app.models.categorization_rule import CategorizationRule
 from app.models.payee import Payee
+from app.models.payee_matching_pattern import PayeeMatchingPattern
 
 
 def main():
@@ -32,6 +33,7 @@ def main():
         import_count = db.query(ImportHistory).count()
         imported_txn_count = db.query(ImportedTransaction).count()
         payee_count = db.query(Payee).count()
+        pattern_count = db.query(PayeeMatchingPattern).count()
         rule_count = db.query(CategorizationRule).count()
 
         print("=" * 80)
@@ -43,6 +45,7 @@ def main():
         print(f"  Import History:            {import_count:,}")
         print(f"  Imported Transaction Links: {imported_txn_count:,}")
         print(f"  Payees:                    {payee_count:,}")
+        print(f"  Payee Patterns:            {pattern_count:,}")
         print(f"  Rules:                     {rule_count:,}")
         print()
 
@@ -52,6 +55,7 @@ def main():
             + import_count
             + imported_txn_count
             + payee_count
+            + pattern_count
             + rule_count
         )
 
@@ -77,6 +81,9 @@ def main():
         print("Deleting user-created rules...")
         db.query(CategorizationRule).delete()
 
+        print("Deleting payee matching patterns...")
+        db.query(PayeeMatchingPattern).delete()
+
         print("Deleting all payees...")
         db.query(Payee).delete()
 
@@ -94,9 +101,11 @@ def main():
             f"  Imported Transaction Links: {db.query(ImportedTransaction).count():,}"
         )
         print(f"  Payees:                    {db.query(Payee).count():,}")
+        print(f"  Payee Patterns:            {db.query(PayeeMatchingPattern).count():,}")
         print(f"  Rules:                     {db.query(CategorizationRule).count():,}")
         print()
         print("🎉 Database is clean and ready for fresh imports!")
+        print("   Payees will be auto-created with brand logos and emoji icons!")
         print()
 
     except Exception as e:
