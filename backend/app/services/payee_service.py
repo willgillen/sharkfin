@@ -6,6 +6,7 @@ import re
 
 from app.models.payee import Payee
 from app.schemas.payee import PayeeCreate, PayeeUpdate
+from app.services.payee_icon_service import payee_icon_service
 
 
 class PayeeService:
@@ -53,11 +54,16 @@ class PayeeService:
         if payee:
             return payee
 
-        # Create new payee
+        # Auto-suggest icon for new payee
+        icon_suggestion = payee_icon_service.suggest_icon(normalized_name)
+        logo_url = icon_suggestion.get("icon_value") if icon_suggestion.get("confidence", 0) >= 0.7 else None
+
+        # Create new payee with auto-suggested icon
         payee = Payee(
             user_id=user_id,
             canonical_name=normalized_name,
             default_category_id=default_category_id,
+            logo_url=logo_url,
             transaction_count=0
         )
         self.db.add(payee)
