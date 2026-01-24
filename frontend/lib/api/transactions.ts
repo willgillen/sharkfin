@@ -7,6 +7,7 @@ export const transactionsAPI = {
     category_id?: number;
     type?: string;
     is_starred?: boolean;
+    payee_search?: string;
     start_date?: string;
     end_date?: string;
     skip?: number;

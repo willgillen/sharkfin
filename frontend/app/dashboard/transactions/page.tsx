@@ -28,6 +28,9 @@ export default function TransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [starredFilter, setStarredFilter] = useState<boolean | undefined>(undefined);
+  const [payeeFilter, setPayeeFilter] = useState<string>("");
+  const [startDateFilter, setStartDateFilter] = useState<string>("");
+  const [endDateFilter, setEndDateFilter] = useState<string>("");
 
   // Sorting
   const [sortBy, setSortBy] = useState<string>("date");
@@ -38,7 +41,7 @@ export default function TransactionsPage() {
     { id: "star", label: "⭐ Star", required: false },
     { id: "notes", label: "💬 Notes", required: false },
     { id: "date", label: "Date", required: true },
-    { id: "description", label: "Description", required: false },
+    { id: "description", label: "Payee / Description", required: false },
     { id: "account", label: "Account", required: false },
     { id: "category", label: "Category", required: false },
     { id: "amount", label: "Amount", required: true },
@@ -95,7 +98,7 @@ export default function TransactionsPage() {
     if (isAuthenticated && !loading) {
       loadData(true);
     }
-  }, [accountFilter, categoryFilter, typeFilter, starredFilter, sortBy, sortOrder]);
+  }, [accountFilter, categoryFilter, typeFilter, starredFilter, payeeFilter, startDateFilter, endDateFilter, sortBy, sortOrder]);
 
   const loadData = async (reset: boolean = true) => {
     try {
@@ -122,6 +125,9 @@ export default function TransactionsPage() {
         ...(categoryFilter && { category_id: parseInt(categoryFilter) }),
         ...(typeFilter && { type: typeFilter }),
         ...(starredFilter !== undefined && { is_starred: starredFilter }),
+        ...(payeeFilter && { payee_search: payeeFilter }),
+        ...(startDateFilter && { start_date: startDateFilter }),
+        ...(endDateFilter && { end_date: endDateFilter }),
       };
 
       const [txns, accts, cats] = await Promise.all([
@@ -273,7 +279,7 @@ export default function TransactionsPage() {
         <QuickAddBar onTransactionAdded={loadData} />
 
         {/* Active Filters Chips */}
-        {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined) && (
+        {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined || payeeFilter || startDateFilter || endDateFilter) && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="text-sm text-gray-600">Active filters:</span>
 
@@ -283,6 +289,29 @@ export default function TransactionsPage() {
                 className="inline-flex items-center px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
               >
                 ⭐ Starred
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
+            {payeeFilter && (
+              <button
+                onClick={() => setPayeeFilter("")}
+                className="inline-flex items-center px-3 py-1 text-sm bg-indigo-100 text-indigo-800 rounded-full hover:bg-indigo-200"
+              >
+                Payee: "{payeeFilter}"
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
+            {(startDateFilter || endDateFilter) && (
+              <button
+                onClick={() => {
+                  setStartDateFilter("");
+                  setEndDateFilter("");
+                }}
+                className="inline-flex items-center px-3 py-1 text-sm bg-teal-100 text-teal-800 rounded-full hover:bg-teal-200"
+              >
+                Date: {startDateFilter && formatDate(startDateFilter)} - {endDateFilter && formatDate(endDateFilter)}
                 <span className="ml-2">×</span>
               </button>
             )}
@@ -323,6 +352,9 @@ export default function TransactionsPage() {
                 setCategoryFilter("");
                 setTypeFilter("");
                 setStarredFilter(undefined);
+                setPayeeFilter("");
+                setStartDateFilter("");
+                setEndDateFilter("");
               }}
               className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800"
             >
@@ -367,15 +399,28 @@ export default function TransactionsPage() {
                       <ColumnFilter
                         label="Date"
                         sortable
+                        filterable
+                        filterType="dateRange"
                         currentSort={sortBy === "date" ? sortOrder : null}
+                        currentDateRange={{ start: startDateFilter, end: endDateFilter }}
                         onSort={(order) => {
                           setSortBy("date");
                           setSortOrder(order);
                         }}
+                        onDateRangeFilter={(start, end) => {
+                          setStartDateFilter(start || "");
+                          setEndDateFilter(end || "");
+                        }}
                       />
                     )}
                     {visibleColumns.includes("description") && (
-                      <ColumnFilter label="Description" />
+                      <ColumnFilter
+                        label="Payee"
+                        filterable
+                        filterType="text"
+                        currentFilter={payeeFilter}
+                        onFilter={(value) => setPayeeFilter(value?.toString() || "")}
+                      />
                     )}
                     {visibleColumns.includes("account") && (
                       <ColumnFilter
@@ -455,16 +500,22 @@ export default function TransactionsPage() {
                       )}
                       {visibleColumns.includes("description") && (
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {transaction.description}
-                          </div>
-                          {transaction.payee_name && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <PayeeIconSmall
-                                logoUrl={transaction.payee_logo_url}
-                                name={transaction.payee_name}
-                              />
-                              <span className="text-sm text-gray-500">{transaction.payee_name}</span>
+                          {transaction.payee_name ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <PayeeIconSmall
+                                  logoUrl={transaction.payee_logo_url}
+                                  name={transaction.payee_name}
+                                />
+                                <span className="text-sm font-medium text-gray-900">{transaction.payee_name}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1 truncate">
+                                {transaction.description}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm font-medium text-gray-900">
+                              {transaction.description}
                             </div>
                           )}
                         </td>

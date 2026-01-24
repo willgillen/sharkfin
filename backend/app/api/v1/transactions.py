@@ -93,6 +93,7 @@ def get_transactions(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     type: Optional[str] = Query(None, description="Filter by transaction type (debit, credit, transfer)"),
     is_starred: Optional[bool] = Query(None, description="Filter by starred status"),
+    payee_search: Optional[str] = Query(None, description="Search by payee name or description"),
     start_date: Optional[date] = Query(None, description="Filter transactions on or after this date"),
     end_date: Optional[date] = Query(None, description="Filter transactions on or before this date"),
     skip: int = Query(0, ge=0, description="Number of records to skip for pagination"),
@@ -123,6 +124,14 @@ def get_transactions(
 
     if is_starred is not None:
         query = query.filter(TransactionModel.is_starred == is_starred)
+
+    if payee_search:
+        # Search in both payee field and description
+        search_pattern = f"%{payee_search}%"
+        query = query.filter(
+            (TransactionModel.payee.ilike(search_pattern)) |
+            (TransactionModel.description.ilike(search_pattern))
+        )
 
     if start_date:
         query = query.filter(TransactionModel.date >= start_date)

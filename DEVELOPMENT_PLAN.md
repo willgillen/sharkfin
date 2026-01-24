@@ -391,13 +391,33 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Tests: Test note indicator display
 
 #### 14.7 Star/Flag Transactions
-- [ ] Add `is_starred BOOLEAN` to transactions table (migration)
-- [ ] Create index: `idx_transactions_starred`
-- [ ] Add star column in table (⭐/☆)
-- [ ] Click to toggle (optimistic update)
-- [ ] Add "Starred" filter quick button
-- [ ] Starred transactions highlighted with yellow background
+- [x] Add `is_starred BOOLEAN` to transactions table (migration)
+- [x] Create index: `idx_transactions_starred`
+- [x] Add star column in table (⭐/☆)
+- [x] Click to toggle (optimistic update)
+- [x] Add "Starred" filter quick button
+- [x] Starred transactions highlighted with yellow background
 - [ ] Tests: `test_star_transaction()`, `test_filter_starred_transactions()`
+
+#### 14.8 Favor Payee Over Description
+- [ ] Display payee name prominently (larger, bold)
+- [ ] Show description as secondary text (smaller, gray)
+- [ ] Reverse current order (payee first, description second)
+- [ ] Ensure truncation works properly
+
+#### 14.9 Payee/Description Column Filtering
+- [ ] Add filter dropdown to Description column header
+- [ ] Search/filter by payee name
+- [ ] Search/filter by description text
+- [ ] Show matching results as user types
+- [ ] Clear filter option
+
+#### 14.10 Date Range Filtering
+- [ ] Add date filter dropdown to Date column header
+- [ ] Preset ranges: Today, This Week, This Month, This Year
+- [ ] Custom date range picker (start/end dates)
+- [ ] Apply date filters to API query
+- [ ] Clear date filter option
 
 #### 14.8 Payee Icons in Transaction List ✅ COMPLETED
 - [x] Eager load `payee_entity` relationship in transaction list (already implemented)
