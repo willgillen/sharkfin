@@ -399,25 +399,29 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] Starred transactions highlighted with yellow background
 - [ ] Tests: `test_star_transaction()`, `test_filter_starred_transactions()`
 
-#### 14.8 Favor Payee Over Description
-- [ ] Display payee name prominently (larger, bold)
-- [ ] Show description as secondary text (smaller, gray)
-- [ ] Reverse current order (payee first, description second)
-- [ ] Ensure truncation works properly
+#### 14.8 Favor Payee Over Description ✅ COMPLETED
+- [x] Display payee name prominently (larger, bold)
+- [x] Show description as secondary text (smaller, gray)
+- [x] Reverse current order (payee first, description second)
+- [x] Ensure truncation works properly
+- [x] Add column width constraints to prevent horizontal scrollbar
+- [x] Fix dropdown clipping issues with smart positioning
 
-#### 14.9 Payee/Description Column Filtering
-- [ ] Add filter dropdown to Description column header
-- [ ] Search/filter by payee name
-- [ ] Search/filter by description text
-- [ ] Show matching results as user types
-- [ ] Clear filter option
+#### 14.9 Payee/Description Column Filtering ✅ COMPLETED
+- [x] Add filter dropdown to Description column header
+- [x] Search/filter by payee name
+- [x] Search/filter by description text
+- [x] Backend API support with ILIKE pattern matching
+- [x] Clear filter option
+- [x] Filter chips showing active filters
 
-#### 14.10 Date Range Filtering
-- [ ] Add date filter dropdown to Date column header
-- [ ] Preset ranges: Today, This Week, This Month, This Year
-- [ ] Custom date range picker (start/end dates)
-- [ ] Apply date filters to API query
-- [ ] Clear date filter option
+#### 14.10 Date Range Filtering ✅ COMPLETED
+- [x] Add date filter dropdown to Date column header
+- [x] Custom date range picker (start/end dates)
+- [x] Apply date filters to API query
+- [x] Clear date filter option
+- [x] Filter chips showing active date range
+- [x] Smart dropdown positioning (above/below based on viewport)
 
 #### 14.8 Payee Icons in Transaction List ✅ COMPLETED
 - [x] Eager load `payee_entity` relationship in transaction list (already implemented)
