@@ -9,6 +9,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuickAddBar from "@/components/transactions/QuickAddBar";
 import { PayeeIconSmall } from "@/components/payees/PayeeIcon";
+import ColumnFilter, { SortOrder } from "@/components/transactions/ColumnFilter";
 
 export default function TransactionsPage() {
   const router = useRouter();
@@ -27,6 +28,10 @@ export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [starredFilter, setStarredFilter] = useState<boolean | undefined>(undefined);
 
+  // Sorting
+  const [sortBy, setSortBy] = useState<string>("date");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
   // Pagination
   const PAGE_SIZE = 50;
 
@@ -42,12 +47,12 @@ export default function TransactionsPage() {
     }
   }, [isAuthenticated]);
 
-  // Reload when filters change
+  // Reload when filters or sorting change
   useEffect(() => {
     if (isAuthenticated && !loading) {
       loadData(true);
     }
-  }, [accountFilter, categoryFilter, typeFilter, starredFilter]);
+  }, [accountFilter, categoryFilter, typeFilter, starredFilter, sortBy, sortOrder]);
 
   const loadData = async (reset: boolean = true) => {
     try {
@@ -62,8 +67,8 @@ export default function TransactionsPage() {
       const params = {
         skip: reset ? 0 : transactions.length,
         limit: PAGE_SIZE,
-        sort_by: "date",
-        sort_order: "desc",
+        sort_by: sortBy,
+        sort_order: sortOrder || "desc",
         ...(accountFilter && { account_id: parseInt(accountFilter) }),
         ...(categoryFilter && { category_id: parseInt(categoryFilter) }),
         ...(typeFilter && { type: typeFilter }),
@@ -178,91 +183,64 @@ export default function TransactionsPage() {
         {/* Quick Add Bar */}
         <QuickAddBar onTransactionAdded={loadData} />
 
-        {/* Filters */}
-        <div className="mb-6 bg-white shadow rounded-lg p-4">
-          <div className="mb-4 flex items-center gap-2">
+        {/* Active Filters Chips */}
+        {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined) && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-600">Active filters:</span>
+
+            {starredFilter !== undefined && (
+              <button
+                onClick={() => setStarredFilter(undefined)}
+                className="inline-flex items-center px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
+              >
+                ⭐ Starred
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
+            {accountFilter && (
+              <button
+                onClick={() => setAccountFilter("")}
+                className="inline-flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
+              >
+                Account: {accounts.find((a) => a.id === parseInt(accountFilter))?.name}
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
+            {categoryFilter && (
+              <button
+                onClick={() => setCategoryFilter("")}
+                className="inline-flex items-center px-3 py-1 text-sm bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200"
+              >
+                Category: {categories.find((c) => c.id === parseInt(categoryFilter))?.name}
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
+            {typeFilter && (
+              <button
+                onClick={() => setTypeFilter("")}
+                className="inline-flex items-center px-3 py-1 text-sm bg-green-100 text-green-800 rounded-full hover:bg-green-200"
+              >
+                Type: {typeFilter === TransactionType.DEBIT ? "Expense" : typeFilter === TransactionType.CREDIT ? "Income" : "Transfer"}
+                <span className="ml-2">×</span>
+              </button>
+            )}
+
             <button
-              onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
-              className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
-                starredFilter === true
-                  ? "bg-yellow-500 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              onClick={() => {
+                setAccountFilter("");
+                setCategoryFilter("");
+                setTypeFilter("");
+                setStarredFilter(undefined);
+              }}
+              className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800"
             >
-              ⭐ Starred{starredFilter === true && ` (${transactions.length})`}
+              Clear all
             </button>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Account
-              </label>
-              <select
-                value={accountFilter}
-                onChange={(e) => setAccountFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Accounts</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type
-              </label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Types</option>
-                <option value={TransactionType.CREDIT}>Income</option>
-                <option value={TransactionType.DEBIT}>Expense</option>
-                <option value={TransactionType.TRANSFER}>Transfer</option>
-              </select>
-            </div>
-          </div>
-
-          {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined) && (
-            <div className="mt-3">
-              <button
-                onClick={() => {
-                  setAccountFilter("");
-                  setCategoryFilter("");
-                  setTypeFilter("");
-                  setStarredFilter(undefined);
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
-        </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
@@ -275,23 +253,61 @@ export default function TransactionsPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                      ⭐
+                      <button
+                        onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
+                        className={`text-xl hover:scale-110 transition-transform ${
+                          starredFilter === true ? "opacity-100" : "opacity-50"
+                        }`}
+                        title="Filter starred"
+                      >
+                        ⭐
+                      </button>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      💬
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Account
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
+                    <ColumnFilter
+                      label="Date"
+                      sortable
+                      currentSort={sortBy === "date" ? sortOrder : null}
+                      onSort={(order) => {
+                        setSortBy("date");
+                        setSortOrder(order);
+                      }}
+                    />
+                    <ColumnFilter label="Description" />
+                    <ColumnFilter
+                      label="Account"
+                      filterable
+                      filterOptions={accounts.map((a) => ({ label: a.name, value: a.id.toString() }))}
+                      currentFilter={accountFilter}
+                      onFilter={(value) => setAccountFilter(value?.toString() || "")}
+                    />
+                    <ColumnFilter
+                      label="Category"
+                      filterable
+                      filterOptions={categories.map((c) => ({ label: c.name, value: c.id.toString() }))}
+                      currentFilter={categoryFilter}
+                      onFilter={(value) => setCategoryFilter(value?.toString() || "")}
+                    />
+                    <ColumnFilter
+                      label="Amount"
+                      sortable
+                      filterable
+                      align="right"
+                      currentSort={sortBy === "amount" ? sortOrder : null}
+                      onSort={(order) => {
+                        setSortBy("amount");
+                        setSortOrder(order);
+                      }}
+                      filterOptions={[
+                        { label: "📤 Expense", value: TransactionType.DEBIT },
+                        { label: "📥 Income", value: TransactionType.CREDIT },
+                        { label: "🔄 Transfer", value: TransactionType.TRANSFER },
+                      ]}
+                      currentFilter={typeFilter}
+                      onFilter={(value) => setTypeFilter(value?.toString() || "")}
+                    />
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -308,6 +324,16 @@ export default function TransactionsPage() {
                         >
                           {transaction.is_starred ? "⭐" : "☆"}
                         </button>
+                      </td>
+                      <td className="px-2 py-4 text-center">
+                        {transaction.notes && (
+                          <div
+                            className="inline-block text-xl cursor-help"
+                            title={transaction.notes}
+                          >
+                            💬
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(transaction.date)}
