@@ -259,9 +259,6 @@ export default function TransactionsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount
                     </th>
@@ -295,11 +292,6 @@ export default function TransactionsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getCategoryName(transaction.category_id)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={getTransactionTypeColor(transaction.type)}>
-                          {getTransactionTypeLabel(transaction.type)}
-                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
                         <span className={getTransactionTypeColor(transaction.type)}>

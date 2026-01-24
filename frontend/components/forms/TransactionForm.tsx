@@ -88,9 +88,9 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
             onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value={TransactionType.CREDIT}>Income</option>
-            <option value={TransactionType.DEBIT}>Expense</option>
-            <option value={TransactionType.TRANSFER}>Transfer</option>
+            <option value={TransactionType.DEBIT}>📤 Expense</option>
+            <option value={TransactionType.CREDIT}>📥 Income</option>
+            <option value={TransactionType.TRANSFER}>🔄 Transfer</option>
           </select>
         </div>
 

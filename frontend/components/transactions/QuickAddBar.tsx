@@ -177,41 +177,9 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
 
   return (
     <div className="bg-white shadow rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-700">Quick Add Transaction</h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              setTransactionType(TransactionType.DEBIT);
-              // Clear category when switching types since different categories apply
-              setCategoryId(null);
-            }}
-            className={`px-3 py-1 text-xs rounded ${
-              transactionType === TransactionType.DEBIT
-                ? "bg-red-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            Expense
-          </button>
-          <button
-            onClick={() => {
-              setTransactionType(TransactionType.CREDIT);
-              // Clear category when switching types since different categories apply
-              setCategoryId(null);
-            }}
-            className={`px-3 py-1 text-xs rounded ${
-              transactionType === TransactionType.CREDIT
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            Income
-          </button>
-        </div>
-      </div>
+      <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Add Transaction</h3>
 
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-7 gap-3">
         {/* Date */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
@@ -222,6 +190,25 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             onKeyDown={(e) => handleKeyDown(e, () => payeeInputRef.current?.focus())}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           />
+        </div>
+
+        {/* Type Selector */}
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+          <select
+            value={transactionType}
+            onChange={(e) => {
+              setTransactionType(e.target.value as TransactionType);
+              // Clear category when switching types since different categories apply
+              setCategoryId(null);
+            }}
+            onKeyDown={(e) => handleKeyDown(e, () => payeeInputRef.current?.focus())}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value={TransactionType.DEBIT}>📤 Expense</option>
+            <option value={TransactionType.CREDIT}>📥 Income</option>
+            <option value={TransactionType.TRANSFER}>🔄 Transfer</option>
+          </select>
         </div>
 
         {/* Payee with autocomplete */}
