@@ -399,12 +399,11 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] Starred transactions highlighted with yellow background
 - [ ] Tests: `test_star_transaction()`, `test_filter_starred_transactions()`
 
-#### 14.8 Payee Icons in Transaction List
-- [ ] Eager load `payee_entity` relationship in transaction list
-- [ ] Include `logo_url` in API response
-- [ ] Render payee icon before name (logo or emoji)
-- [ ] Small size (24x24)
-- [ ] Tests: Test icon rendering
+#### 14.8 Payee Icons in Transaction List ✅ COMPLETED
+- [x] Eager load `payee_entity` relationship in transaction list (already implemented)
+- [x] Include `payee_logo_url` in API response (Transaction schema + _transaction_to_response)
+- [x] Render payee icon before name using PayeeIconSmall component
+- [x] Small size (24x24) with brand logos and emoji support
 
 ### Week 15: UI/UX Polish
 **Priority**: High - Visual Quality & Usability

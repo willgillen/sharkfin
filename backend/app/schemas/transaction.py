@@ -82,6 +82,8 @@ class Transaction(TransactionInDB):
     """Schema for transaction returned in API responses."""
     # Payee name from linked Payee entity (preferred over legacy payee string field)
     payee_name: Optional[str] = None
+    # Payee logo URL for visual display
+    payee_logo_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

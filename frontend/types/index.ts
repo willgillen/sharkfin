@@ -258,6 +258,7 @@ export interface Transaction {
   notes: string | null;
   payee: string | null;  // Legacy field - use payee_name instead
   payee_name: string | null;  // Payee name from linked Payee entity
+  payee_logo_url: string | null;  // Payee logo URL for visual display
   is_recurring: boolean;
   tags: string[];
   created_at: string;

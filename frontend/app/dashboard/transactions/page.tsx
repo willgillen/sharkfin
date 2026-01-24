@@ -8,6 +8,7 @@ import { Transaction, Account, Category, TransactionType } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import QuickAddBar from "@/components/transactions/QuickAddBar";
+import { PayeeIconSmall } from "@/components/payees/PayeeIcon";
 
 export default function TransactionsPage() {
   const router = useRouter();
@@ -280,7 +281,13 @@ export default function TransactionsPage() {
                           {transaction.description}
                         </div>
                         {transaction.payee_name && (
-                          <div className="text-sm text-gray-500">{transaction.payee_name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <PayeeIconSmall
+                              logoUrl={transaction.payee_logo_url}
+                              name={transaction.payee_name}
+                            />
+                            <span className="text-sm text-gray-500">{transaction.payee_name}</span>
+                          </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

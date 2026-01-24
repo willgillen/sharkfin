@@ -13,7 +13,7 @@ from app.services.payee_service import PayeeService
 
 
 def _transaction_to_response(transaction: TransactionModel) -> dict:
-    """Convert transaction model to response dict with payee_name from linked entity."""
+    """Convert transaction model to response dict with payee info from linked entity."""
     result = {
         "id": transaction.id,
         "user_id": transaction.user_id,
@@ -29,8 +29,9 @@ def _transaction_to_response(transaction: TransactionModel) -> dict:
         "transfer_account_id": transaction.transfer_account_id,
         "created_at": transaction.created_at,
         "updated_at": transaction.updated_at,
-        # Get payee_name from linked Payee entity
+        # Get payee info from linked Payee entity
         "payee_name": transaction.payee_entity.canonical_name if transaction.payee_entity else None,
+        "payee_logo_url": transaction.payee_entity.logo_url if transaction.payee_entity else None,
     }
     return result
 
