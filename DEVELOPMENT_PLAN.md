@@ -12,8 +12,8 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Development Progress Checklist
 
-**Last Updated**: January 19, 2026
-**Current Phase**: Phase 2 - Advanced Features (Payee Entity System & Rules Engine Integration)
+**Last Updated**: January 25, 2026
+**Current Phase**: Phase 2 - Advanced Features (Account Balance Architecture Refactor)
 
 ### Phase 1: MVP Foundation ✅ COMPLETED
 
@@ -506,6 +506,151 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] Check database migration includes `institution` column
 - [x] Tests: `test_create_account_with_institution()`, `test_institution_persists_after_save()`
 - [x] Added `account_number` field as well (last 4 digits)
+
+### Week 15.5: Account Balance Architecture Refactor
+**Priority**: Critical - Data Integrity & Architectural Correctness
+
+#### Background & Problem Statement
+The current implementation stores `current_balance` as a static field on the Account model that:
+- Is never automatically updated when transactions are created, modified, or deleted
+- Can become stale immediately after any transaction activity
+- Is manually editable via the account update API (can cause data inconsistency)
+- Is used for net worth calculations, potentially showing incorrect values
+- Violates single source of truth principle (transactions should be authoritative)
+
+This is a fundamental data integrity issue that must be addressed before adding more features.
+
+#### Architectural Decision: Opening Balance + Calculated Approach
+After analyzing approaches used by similar platforms (GnuCash, YNAB, Firefly III, Mint, QuickBooks), the recommended approach is:
+
+**Opening Balance + Calculated Delta**
+- Store a fixed `opening_balance` and `opening_balance_date` on each account
+- Calculate current balance on-the-fly: `opening_balance + SUM(transactions since opening_date)`
+- Benefits:
+  - Always accurate (transactions are single source of truth)
+  - Supports imports with existing balances
+  - Fast enough for personal finance (even 10k transactions < 50ms)
+  - Clear audit trail
+  - Supports reconciliation workflows
+
+#### 15.5.1 Database Migration
+- [ ] Create migration to add new fields to accounts table:
+  - `opening_balance` (Numeric(15,2), default 0, not null)
+  - `opening_balance_date` (Date, nullable - if null, implies account start)
+- [ ] Data migration script to:
+  - Copy existing `current_balance` to `opening_balance`
+  - Set `opening_balance_date` to earliest transaction date for the account (or created_at if no transactions)
+- [ ] Keep `current_balance` column temporarily for rollback safety
+- [ ] Tests: `test_migration_preserves_existing_balances()`
+
+#### 15.5.2 Backend Model & Service Updates
+- [ ] Update Account model:
+  - Add `opening_balance` and `opening_balance_date` columns
+  - Add `calculate_balance(db: Session)` method
+  - Add `get_balance_as_of(db: Session, date: date)` method for historical queries
+- [ ] Create `AccountBalanceService`:
+  - `get_current_balance(account_id)` - returns calculated balance
+  - `get_balance_as_of(account_id, date)` - returns balance at specific date
+  - `get_all_account_balances(user_id)` - batch calculation for dashboard
+  - `recalculate_opening_balance(account_id)` - for reconciliation
+- [ ] Handle transaction types correctly:
+  - CREDIT: adds to balance
+  - DEBIT: subtracts from balance
+  - TRANSFER: subtract from source, add to destination
+- [ ] Tests: `test_balance_calculation_with_transactions()`, `test_balance_as_of_date()`, `test_transfer_affects_both_accounts()`
+
+#### 15.5.3 API Endpoint Updates
+- [ ] Update `GET /api/v1/accounts` to include calculated `current_balance`
+- [ ] Update `GET /api/v1/accounts/{id}` to include calculated `current_balance`
+- [ ] Update `AccountCreate` schema - remove `current_balance`, add `opening_balance`
+- [ ] Update `AccountUpdate` schema - remove `current_balance`, keep `opening_balance` for reconciliation
+- [ ] Add new endpoint: `GET /api/v1/accounts/{id}/balance-history`
+  - Returns balance at end of each month for charting
+  - Query params: `start_date`, `end_date`, `granularity` (day/week/month)
+- [ ] Update `GET /api/v1/reports/dashboard` to use calculated balances
+- [ ] Tests: `test_account_api_returns_calculated_balance()`, `test_balance_history_endpoint()`
+
+#### 15.5.4 Transaction Hooks (Validation Only)
+- [ ] Add validation on transaction create/update/delete:
+  - Verify account belongs to user
+  - Validate transfer_account_id if present
+- [ ] Note: No balance update hooks needed since balance is calculated
+- [ ] Add audit logging for large transactions (optional)
+- [ ] Tests: `test_transaction_validation()`, `test_transfer_validation()`
+
+#### 15.5.5 Frontend Updates
+- [ ] Update Account list page to display calculated balance (no changes if API returns it)
+- [ ] Update Account form:
+  - New account: Show `opening_balance` field with help text
+  - Edit account: Show `opening_balance` and `opening_balance_date` fields
+  - Add "Calculated Balance" read-only display showing live balance
+- [ ] Update Dashboard net worth calculation (should work if API updated)
+- [ ] Add "Reconcile" feature (future enhancement placeholder):
+  - Compare calculated balance to bank statement
+  - Adjust opening balance or add adjustment transaction
+- [ ] Tests: Verify UI displays correct balances
+
+#### 15.5.6 Performance Optimization (If Needed)
+- [ ] Add database index: `idx_transactions_account_date` on (account_id, date)
+- [ ] Consider PostgreSQL view for balance calculation (if performance is issue)
+- [ ] Add Redis caching for balance calculations (invalidate on transaction change)
+- [ ] Benchmark: Ensure <100ms response for accounts with 10k+ transactions
+- [ ] Tests: `test_balance_calculation_performance()`
+
+#### 15.5.7 Cleanup & Documentation
+- [ ] After 2 weeks of stable operation, create migration to drop `current_balance` column
+- [ ] Update API documentation (OpenAPI/Swagger)
+- [ ] Update CLAUDE.md with balance architecture decision
+- [ ] Add reconciliation workflow documentation
+
+#### Success Criteria
+- [ ] Account balances are always accurate (calculated from transactions)
+- [ ] No manual balance editing possible (except opening_balance for reconciliation)
+- [ ] Net worth and reports show correct values
+- [ ] Balance calculation < 100ms for typical accounts (< 5000 transactions)
+- [ ] All existing tests pass + 15+ new balance-related tests
+- [ ] Import workflow works correctly with opening_balance
+- [ ] Frontend displays correct balances throughout application
+
+#### Technical Notes
+**Transaction Amount Sign Convention:**
+- All transaction amounts are stored as positive numbers
+- Transaction `type` field determines direction:
+  - `CREDIT` = money in (adds to balance)
+  - `DEBIT` = money out (subtracts from balance)
+  - `TRANSFER` = affects two accounts (subtract from source, add to destination)
+
+**Balance Calculation Query (PostgreSQL):**
+```sql
+SELECT
+    a.opening_balance + COALESCE(SUM(
+        CASE
+            WHEN t.type = 'credit' THEN t.amount
+            WHEN t.type = 'debit' THEN -t.amount
+            WHEN t.type = 'transfer' AND t.account_id = a.id THEN -t.amount
+            WHEN t.type = 'transfer' AND t.transfer_account_id = a.id THEN t.amount
+            ELSE 0
+        END
+    ), 0) as current_balance
+FROM accounts a
+LEFT JOIN transactions t ON (
+    t.account_id = a.id OR t.transfer_account_id = a.id
+) AND (a.opening_balance_date IS NULL OR t.date >= a.opening_balance_date)
+WHERE a.id = :account_id
+GROUP BY a.id;
+```
+
+**Files to Modify:**
+- `backend/app/models/account.py` - Add new fields, calculate method
+- `backend/app/schemas/account.py` - Update Create/Update schemas
+- `backend/app/api/v1/accounts.py` - Calculate balance on response
+- `backend/app/api/v1/reports.py` - Use calculated balances
+- `backend/app/services/account_balance_service.py` - New service (create)
+- `backend/alembic/versions/xxx_add_opening_balance.py` - Migration
+- `frontend/components/forms/AccountForm.tsx` - Update form fields
+- `frontend/app/dashboard/accounts/page.tsx` - Verify balance display
+
+---
 
 ### Week 16: Settings & Preferences System
 **Priority**: High - Infrastructure for Future Features
