@@ -12,7 +12,7 @@
     },
     {
       "pattern": "\\bSHELL\\b",
-      "name": "Shell",
+      "name": "Shell Oil",
       "category": "gas"
     },
     {
@@ -157,7 +157,7 @@
     },
     {
       "pattern": "\\bWHOLE\\s*FOODS\\b",
-      "name": "Whole Foods",
+      "name": "Whole Foods Market",
       "category": "grocery"
     },
     {
