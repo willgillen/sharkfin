@@ -270,6 +270,7 @@ export interface Transaction {
   tags: string[];
   created_at: string;
   updated_at: string | null;
+  running_balance: string | null;  // Running balance after this transaction (only when filtering by account)
 }
 
 export interface TransactionCreate {

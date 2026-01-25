@@ -86,6 +86,8 @@ class Transaction(TransactionInDB):
     payee_name: Optional[str] = None
     # Payee logo URL for visual display
     payee_logo_url: Optional[str] = None
+    # Running balance after this transaction (calculated when filtering by account)
+    running_balance: Optional[Decimal] = None
 
     model_config = ConfigDict(from_attributes=True)
 

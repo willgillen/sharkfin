@@ -1,18 +1,21 @@
 from typing import List, Optional, Dict
 from datetime import date
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, case, literal_column, over
+from sqlalchemy.sql import select
 
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
 from app.models.user import User as UserModel
-from app.models.transaction import Transaction as TransactionModel
+from app.models.transaction import Transaction as TransactionModel, TransactionType
+from app.models.account import Account as AccountModel
 from app.schemas.transaction import Transaction, TransactionCreate, TransactionUpdate
 from app.services.payee_service import PayeeService
 
 
-def _transaction_to_response(transaction: TransactionModel) -> dict:
+def _transaction_to_response(transaction: TransactionModel, running_balance: Optional[Decimal] = None) -> dict:
     """Convert transaction model to response dict with payee info from linked entity."""
     result = {
         "id": transaction.id,
@@ -33,6 +36,8 @@ def _transaction_to_response(transaction: TransactionModel) -> dict:
         # Get payee info from linked Payee entity
         "payee_name": transaction.payee_entity.canonical_name if transaction.payee_entity else None,
         "payee_logo_url": transaction.payee_entity.logo_url if transaction.payee_entity else None,
+        # Running balance (only present when filtering by account)
+        "running_balance": running_balance,
     }
     return result
 
@@ -106,59 +111,169 @@ def get_transactions(
     """Get transactions for the authenticated user with filtering, sorting, and pagination.
 
     Default behavior: Returns up to 100 most recent transactions sorted by date (newest first).
+    When filtering by account_id, includes running_balance for each transaction.
     """
-    # Eager load payee_entity to get payee_name without N+1 queries
-    query = db.query(TransactionModel).options(
-        joinedload(TransactionModel.payee_entity)
-    ).filter(TransactionModel.user_id == current_user.id)
 
-    # Apply filters
+    # If filtering by account, calculate running balance using window function
     if account_id:
-        query = query.filter(TransactionModel.account_id == account_id)
+        # Get account's opening balance
+        account = db.query(AccountModel).filter(
+            AccountModel.id == account_id,
+            AccountModel.user_id == current_user.id
+        ).first()
 
-    if category_id:
-        query = query.filter(TransactionModel.category_id == category_id)
+        if not account:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
 
-    if type:
-        query = query.filter(TransactionModel.type == type)
-
-    if is_starred is not None:
-        query = query.filter(TransactionModel.is_starred == is_starred)
-
-    if payee_search:
-        # Search in both payee field and description
-        search_pattern = f"%{payee_search}%"
-        query = query.filter(
-            (TransactionModel.payee.ilike(search_pattern)) |
-            (TransactionModel.description.ilike(search_pattern))
+        # Build transaction amount delta based on type
+        # For the account being viewed:
+        # - CREDIT adds to balance
+        # - DEBIT subtracts from balance
+        # - TRANSFER: if this is the source account, subtract; if destination, add
+        amount_delta = case(
+            (TransactionModel.type == TransactionType.CREDIT, TransactionModel.amount),
+            (TransactionModel.type == TransactionType.DEBIT, -TransactionModel.amount),
+            # For transfers, check if this account is source or destination
+            ((TransactionModel.type == TransactionType.TRANSFER) & (TransactionModel.account_id == account_id), -TransactionModel.amount),
+            ((TransactionModel.type == TransactionType.TRANSFER) & (TransactionModel.transfer_account_id == account_id), TransactionModel.amount),
+            else_=literal_column("0")
         )
 
-    if start_date:
-        query = query.filter(TransactionModel.date >= start_date)
+        # Create window function to calculate cumulative sum
+        # Order by date, then id for consistent ordering
+        running_sum_window = over(
+            func.sum(amount_delta),
+            order_by=[TransactionModel.date.asc(), TransactionModel.id.asc()]
+        )
 
-    if end_date:
-        query = query.filter(TransactionModel.date <= end_date)
+        # Build subquery with running balance
+        # Filter transactions that affect this account (either as primary account or transfer destination)
+        base_query = db.query(
+            TransactionModel,
+            (account.opening_balance + func.coalesce(running_sum_window, 0)).label('running_balance')
+        ).filter(
+            TransactionModel.user_id == current_user.id
+        ).filter(
+            (TransactionModel.account_id == account_id) |
+            (TransactionModel.transfer_account_id == account_id)
+        )
 
-    # Apply sorting
-    sort_column = TransactionModel.date  # Default
-    if sort_by == "amount":
-        sort_column = TransactionModel.amount
-    elif sort_by == "payee":
-        sort_column = TransactionModel.payee
-    elif sort_by == "date":
-        sort_column = TransactionModel.date
+        # Apply date filters for running balance calculation
+        if account.opening_balance_date:
+            base_query = base_query.filter(TransactionModel.date >= account.opening_balance_date)
 
-    if sort_order.lower() == "asc":
-        query = query.order_by(sort_column.asc())
+        if start_date:
+            base_query = base_query.filter(TransactionModel.date >= start_date)
+
+        if end_date:
+            base_query = base_query.filter(TransactionModel.date <= end_date)
+
+        # Apply other filters
+        if category_id:
+            base_query = base_query.filter(TransactionModel.category_id == category_id)
+
+        if type:
+            base_query = base_query.filter(TransactionModel.type == type)
+
+        if is_starred is not None:
+            base_query = base_query.filter(TransactionModel.is_starred == is_starred)
+
+        if payee_search:
+            search_pattern = f"%{payee_search}%"
+            base_query = base_query.filter(
+                (TransactionModel.payee.ilike(search_pattern)) |
+                (TransactionModel.description.ilike(search_pattern))
+            )
+
+        # Create subquery
+        subquery = base_query.subquery()
+
+        # Now query from subquery with sorting and pagination
+        # Join back to get payee_entity relationship
+        results = db.query(
+            TransactionModel,
+            subquery.c.running_balance
+        ).join(
+            subquery,
+            TransactionModel.id == subquery.c.id
+        ).options(
+            joinedload(TransactionModel.payee_entity)
+        )
+
+        # Apply sorting
+        sort_column = subquery.c.date  # Default
+        if sort_by == "amount":
+            sort_column = subquery.c.amount
+        elif sort_by == "payee":
+            sort_column = subquery.c.payee
+        elif sort_by == "date":
+            sort_column = subquery.c.date
+
+        if sort_order.lower() == "asc":
+            results = results.order_by(sort_column.asc())
+        else:
+            results = results.order_by(sort_column.desc())
+
+        # Apply pagination
+        results = results.offset(skip).limit(limit).all()
+
+        # Convert to response format with running balance
+        return [_transaction_to_response(t[0], t[1]) for t in results]
+
     else:
-        query = query.order_by(sort_column.desc())
+        # Original logic when not filtering by account (no running balance)
+        # Eager load payee_entity to get payee_name without N+1 queries
+        query = db.query(TransactionModel).options(
+            joinedload(TransactionModel.payee_entity)
+        ).filter(TransactionModel.user_id == current_user.id)
 
-    # Apply pagination
-    query = query.offset(skip).limit(limit)
+        # Apply filters
+        if category_id:
+            query = query.filter(TransactionModel.category_id == category_id)
 
-    transactions = query.all()
-    # Convert to response format with payee_name from linked entity
-    return [_transaction_to_response(t) for t in transactions]
+        if type:
+            query = query.filter(TransactionModel.type == type)
+
+        if is_starred is not None:
+            query = query.filter(TransactionModel.is_starred == is_starred)
+
+        if payee_search:
+            # Search in both payee field and description
+            search_pattern = f"%{payee_search}%"
+            query = query.filter(
+                (TransactionModel.payee.ilike(search_pattern)) |
+                (TransactionModel.description.ilike(search_pattern))
+            )
+
+        if start_date:
+            query = query.filter(TransactionModel.date >= start_date)
+
+        if end_date:
+            query = query.filter(TransactionModel.date <= end_date)
+
+        # Apply sorting
+        sort_column = TransactionModel.date  # Default
+        if sort_by == "amount":
+            sort_column = TransactionModel.amount
+        elif sort_by == "payee":
+            sort_column = TransactionModel.payee
+        elif sort_by == "date":
+            sort_column = TransactionModel.date
+
+        if sort_order.lower() == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        # Apply pagination
+        query = query.offset(skip).limit(limit)
+
+        transactions = query.all()
+        # Convert to response format with payee_name from linked entity
+        return [_transaction_to_response(t) for t in transactions]
 
 
 @router.get("/{transaction_id}", response_model=Transaction)

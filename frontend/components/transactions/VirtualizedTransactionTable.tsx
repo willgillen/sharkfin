@@ -184,6 +184,18 @@ export default function VirtualizedTransactionTable({
             </div>
           )}
 
+          {visibleColumns.includes("balance") && (
+            <div className="px-6 py-4 w-36 flex-shrink-0 whitespace-nowrap text-sm text-right font-medium">
+              {transaction.running_balance !== null && transaction.running_balance !== undefined ? (
+                <span className="text-text-primary">
+                  {formatCurrency(transaction.running_balance)}
+                </span>
+              ) : (
+                <span className="text-text-disabled">—</span>
+              )}
+            </div>
+          )}
+
           {visibleColumns.includes("actions") && (
             <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-right text-sm font-medium">
               <button

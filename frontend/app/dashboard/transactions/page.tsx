@@ -45,6 +45,7 @@ export default function TransactionsPage() {
     { id: "account", label: "Account", required: false },
     { id: "category", label: "Category", required: false },
     { id: "amount", label: "Amount", required: true },
+    { id: "balance", label: "Balance", required: false },
     { id: "actions", label: "Actions", required: false },
   ];
 
