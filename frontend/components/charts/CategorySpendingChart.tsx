@@ -29,12 +29,12 @@ export default function CategorySpendingChart({ data }: CategorySpendingChartPro
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-          <p className="font-medium text-gray-900">{payload[0].name}</p>
-          <p className="text-sm text-gray-600">
+        <div className="bg-surface p-3 border border-border-light rounded shadow-lg">
+          <p className="font-medium text-text-primary">{payload[0].name}</p>
+          <p className="text-sm text-text-secondary">
             {formatCurrency(payload[0].value)}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-text-tertiary">
             {payload[0].payload.percentage.toFixed(1)}% of total
           </p>
         </div>
@@ -45,7 +45,7 @@ export default function CategorySpendingChart({ data }: CategorySpendingChartPro
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-text-tertiary">
         No spending data available
       </div>
     );

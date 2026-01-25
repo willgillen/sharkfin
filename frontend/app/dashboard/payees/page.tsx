@@ -67,7 +67,7 @@ export default function PayeesPage() {
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
@@ -76,24 +76,24 @@ export default function PayeesPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Payees</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Payees</h1>
           <button
             onClick={() => router.push("/dashboard/payees/new")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
           >
             + Add Payee
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 rounded-md bg-danger-50 p-4">
+            <p className="text-sm text-danger-800">{error}</p>
           </div>
         )}
 
         {/* Search Bar */}
-        <div className="mb-6 bg-white shadow rounded-lg p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mb-6 bg-surface shadow rounded-lg p-4">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             Search Payees
           </label>
           <input
@@ -101,39 +101,39 @@ export default function PayeesPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading payees...</p>
+            <p className="text-text-secondary">Loading payees...</p>
           </div>
         ) : sortedPayees.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-surface shadow overflow-hidden sm:rounded-lg">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface-secondary">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Payee Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Default Category
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Transactions
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-border">
                 {sortedPayees.map((payee) => (
-                  <tr key={payee.id} className="hover:bg-gray-50">
+                  <tr key={payee.id} className="hover:bg-surface-secondary">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <PayeeIcon
@@ -143,11 +143,11 @@ export default function PayeesPage() {
                           className="mr-3"
                         />
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-text-primary">
                             {payee.canonical_name}
                           </div>
                           {payee.notes && (
-                            <div className="text-xs text-gray-500 truncate max-w-xs">
+                            <div className="text-xs text-text-tertiary truncate max-w-xs">
                               {payee.notes}
                             </div>
                           )}
@@ -156,41 +156,41 @@ export default function PayeesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {payee.payee_type ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
                           {payee.payee_type}
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-400">-</span>
+                        <span className="text-sm text-text-disabled">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                       {payee.default_category_name ? (
                         <button
                           onClick={() => router.push(`/dashboard/categories`)}
-                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                          className="text-sm text-primary-600 hover:text-primary-800 hover:underline"
                         >
                           {payee.default_category_name}
                         </button>
                       ) : (
-                        <span className="text-sm text-gray-400">None</span>
+                        <span className="text-sm text-text-disabled">None</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 font-medium">
+                      <span className="text-sm text-text-primary font-medium">
                         {payee.transaction_count}
                       </span>
-                      <span className="text-xs text-gray-500 ml-1">transactions</span>
+                      <span className="text-xs text-text-tertiary ml-1">transactions</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => router.push(`/dashboard/payees/${payee.id}`)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        className="text-primary-600 hover:text-primary-900 mr-4"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(payee.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-danger-600 hover:text-danger-900"
                       >
                         Delete
                       </button>
@@ -201,8 +201,8 @@ export default function PayeesPage() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">
               {payees.length === 0
                 ? "No payees yet. Payees are automatically created when you add transactions."
                 : "No payees match your search"}
@@ -210,7 +210,7 @@ export default function PayeesPage() {
             {payees.length === 0 && (
               <button
                 onClick={() => router.push("/dashboard/transactions")}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
               >
                 Go to Transactions
               </button>

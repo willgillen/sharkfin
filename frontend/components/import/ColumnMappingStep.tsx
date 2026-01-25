@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CSVPreviewResponse, CSVColumnMapping } from "@/types";
+import { Select } from "@/components/ui";
 
 interface ColumnMappingStepProps {
   preview: CSVPreviewResponse;
@@ -35,10 +36,10 @@ export default function ColumnMappingStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">Step 2: Map CSV Columns</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-medium text-text-primary mb-2">Step 2: Map CSV Columns</h2>
+        <p className="text-sm text-text-secondary">
           {preview.detected_format && preview.detected_format !== "generic" ? (
-            <span className="text-green-600 font-medium">
+            <span className="text-success-600 font-medium">
               Detected format: {preview.detected_format.toUpperCase()}
             </span>
           ) : (
@@ -50,106 +51,94 @@ export default function ColumnMappingStep({
       {/* Column Mapping Form */}
       <div className="space-y-4">
         {/* Date - Required */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date Column <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={mapping.date}
-            onChange={(e) => handleMappingChange("date", e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md"
-            required
-          >
-            <option value="">Select column...</option>
-            {preview.columns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Date Column"
+          id="date"
+          name="date"
+          value={mapping.date}
+          onChange={(e) => handleMappingChange("date", e.target.value)}
+          required
+        >
+          <option value="">Select column...</option>
+          {preview.columns.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
+        </Select>
 
         {/* Amount - Required */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Amount Column <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={mapping.amount}
-            onChange={(e) => handleMappingChange("amount", e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md"
-            required
-          >
-            <option value="">Select column...</option>
-            {preview.columns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Amount Column"
+          id="amount"
+          name="amount"
+          value={mapping.amount}
+          onChange={(e) => handleMappingChange("amount", e.target.value)}
+          required
+        >
+          <option value="">Select column...</option>
+          {preview.columns.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
+        </Select>
 
         {/* Description - Optional */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description Column <span className="text-gray-400">(optional)</span>
-          </label>
-          <select
-            value={mapping.description || ""}
-            onChange={(e) => handleMappingChange("description", e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">None</option>
-            {preview.columns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Description Column (optional)"
+          id="description"
+          name="description"
+          value={mapping.description || ""}
+          onChange={(e) => handleMappingChange("description", e.target.value)}
+        >
+          <option value="">None</option>
+          {preview.columns.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
+        </Select>
 
         {/* Payee - Optional */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Payee Column <span className="text-gray-400">(optional)</span>
-          </label>
-          <select
-            value={mapping.payee || ""}
-            onChange={(e) => handleMappingChange("payee", e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">None</option>
-            {preview.columns.map((col) => (
-              <option key={col} value={col}>
-                {col}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Payee Column (optional)"
+          id="payee"
+          name="payee"
+          value={mapping.payee || ""}
+          onChange={(e) => handleMappingChange("payee", e.target.value)}
+        >
+          <option value="">None</option>
+          {preview.columns.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {/* Sample Data Preview */}
       <div>
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Sample Data Preview</h3>
-        <div className="border border-gray-300 rounded-md overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <h3 className="text-sm font-medium text-text-secondary mb-2">Sample Data Preview</h3>
+        <div className="border border-border rounded-md overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-secondary">
               <tr>
                 {preview.columns.map((col) => (
                   <th
                     key={col}
-                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                    className="px-4 py-2 text-left text-xs font-medium text-text-tertiary uppercase"
                   >
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface divide-y divide-border">
               {preview.sample_rows.slice(0, 3).map((row, idx) => (
                 <tr key={idx}>
                   {preview.columns.map((col) => (
-                    <td key={col} className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">
+                    <td key={col} className="px-4 py-2 text-sm text-text-primary whitespace-nowrap">
                       {row[col] || "-"}
                     </td>
                   ))}
@@ -158,7 +147,7 @@ export default function ColumnMappingStep({
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-text-tertiary mt-2">
           Showing first 3 rows of {preview.row_count} total rows
         </p>
       </div>
@@ -167,13 +156,13 @@ export default function ColumnMappingStep({
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 border border-border rounded-md text-sm font-medium text-text-secondary hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+          className="px-4 py-2 bg-primary-600 text-text-inverse rounded-md text-sm font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           Continue
         </button>

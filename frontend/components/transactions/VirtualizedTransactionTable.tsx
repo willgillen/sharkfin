@@ -45,9 +45,9 @@ export default function VirtualizedTransactionTable({
 
   const getTransactionTypeColor = (type: TransactionType): string => {
     const colors: Record<TransactionType, string> = {
-      [TransactionType.DEBIT]: "text-red-600",
-      [TransactionType.CREDIT]: "text-green-600",
-      [TransactionType.TRANSFER]: "text-blue-600",
+      [TransactionType.DEBIT]: "text-danger-600",
+      [TransactionType.CREDIT]: "text-success-600",
+      [TransactionType.TRANSFER]: "text-primary-600",
     };
     return colors[type];
   };
@@ -76,7 +76,7 @@ export default function VirtualizedTransactionTable({
     if (!isItemLoaded(index)) {
       return (
         <div style={style} className="flex items-center justify-center py-4 border-b">
-          <div className="flex items-center gap-2 text-gray-600">
+          <div className="flex items-center gap-2 text-text-secondary">
             <svg
               className="animate-spin h-5 w-5"
               fill="none"
@@ -107,8 +107,8 @@ export default function VirtualizedTransactionTable({
     return (
       <div
         style={style}
-        className={`flex items-center border-b hover:bg-gray-50 ${
-          transaction.is_starred ? "bg-yellow-50" : ""
+        className={`flex items-center border-b hover:bg-surface-secondary ${
+          transaction.is_starred ? "bg-warning-50" : ""
         }`}
       >
         <div className="flex-1 flex items-center min-w-0">
@@ -138,14 +138,14 @@ export default function VirtualizedTransactionTable({
           )}
 
           {visibleColumns.includes("date") && (
-            <div className="px-6 py-4 w-32 flex-shrink-0 whitespace-nowrap text-sm text-gray-900">
+            <div className="px-6 py-4 w-32 flex-shrink-0 whitespace-nowrap text-sm text-text-primary">
               {formatDate(transaction.date)}
             </div>
           )}
 
           {visibleColumns.includes("description") && (
             <div className="px-6 py-4 flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">
+              <div className="text-sm font-medium text-text-primary truncate">
                 {transaction.description}
               </div>
               {transaction.payee_name && (
@@ -154,7 +154,7 @@ export default function VirtualizedTransactionTable({
                     logoUrl={transaction.payee_logo_url}
                     name={transaction.payee_name}
                   />
-                  <span className="text-sm text-gray-500 truncate">
+                  <span className="text-sm text-text-tertiary truncate">
                     {transaction.payee_name}
                   </span>
                 </div>
@@ -163,13 +163,13 @@ export default function VirtualizedTransactionTable({
           )}
 
           {visibleColumns.includes("account") && (
-            <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-sm text-gray-500 truncate">
+            <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-sm text-text-tertiary truncate">
               {getAccountName(transaction.account_id)}
             </div>
           )}
 
           {visibleColumns.includes("category") && (
-            <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-sm text-gray-500 truncate">
+            <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-sm text-text-tertiary truncate">
               {getCategoryName(transaction.category_id)}
             </div>
           )}
@@ -188,13 +188,13 @@ export default function VirtualizedTransactionTable({
             <div className="px-6 py-4 w-40 flex-shrink-0 whitespace-nowrap text-right text-sm font-medium">
               <button
                 onClick={() => onEdit(transaction.id)}
-                className="text-blue-600 hover:text-blue-900 mr-4"
+                className="text-primary-600 hover:text-primary-900 mr-4"
               >
                 Edit
               </button>
               <button
                 onClick={() => onDelete(transaction.id)}
-                className="text-red-600 hover:text-red-900"
+                className="text-danger-600 hover:text-danger-900"
               >
                 Delete
               </button>
@@ -206,7 +206,7 @@ export default function VirtualizedTransactionTable({
   };
 
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div className="bg-surface shadow overflow-hidden sm:rounded-lg">
       <InfiniteLoader
         isItemLoaded={isItemLoaded}
         itemCount={itemCount}
@@ -224,7 +224,7 @@ export default function VirtualizedTransactionTable({
             itemSize={getItemSize}
             onItemsRendered={onItemsRendered}
             width="100%"
-            className="divide-y divide-gray-200"
+            className="divide-y divide-border-light"
           >
             {Row}
           </List>

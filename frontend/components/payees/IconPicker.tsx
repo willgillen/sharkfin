@@ -105,8 +105,8 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
       <div className="flex items-center gap-4">
         <PayeeIconLarge logoUrl={value} name={payeeName || "Payee"} />
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-700">Current Icon</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium text-text-secondary">Current Icon</p>
+          <p className="text-xs text-text-tertiary">
             {value ? (
               value.startsWith("emoji:") ? `Emoji: ${value.slice(6)}` : "Custom image"
             ) : (
@@ -118,7 +118,7 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
           <button
             type="button"
             onClick={handleClear}
-            className="text-sm text-red-600 hover:text-red-700"
+            className="text-sm text-danger-600 hover:text-danger-700"
           >
             Clear
           </button>
@@ -126,15 +126,15 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border-light">
         <nav className="flex -mb-px space-x-8">
           <button
             type="button"
             onClick={() => setActiveTab("suggested")}
             className={`py-2 px-1 text-sm font-medium border-b-2 ${
               activeTab === "suggested"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
             }`}
             disabled={disabled}
           >
@@ -145,8 +145,8 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
             onClick={() => setActiveTab("emoji")}
             className={`py-2 px-1 text-sm font-medium border-b-2 ${
               activeTab === "emoji"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
             }`}
             disabled={disabled}
           >
@@ -157,8 +157,8 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
             onClick={() => setActiveTab("custom")}
             className={`py-2 px-1 text-sm font-medium border-b-2 ${
               activeTab === "custom"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
             }`}
             disabled={disabled}
           >
@@ -174,23 +174,23 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
           <div className="space-y-3">
             {loading ? (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-sm text-gray-500">Finding icon...</span>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                <span className="ml-2 text-sm text-text-tertiary">Finding icon...</span>
               </div>
             ) : suggestion ? (
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-surface-secondary rounded-lg">
                 <div className="flex items-center gap-4">
                   <PayeeIcon logoUrl={suggestion.icon_value} name={payeeName} size={48} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-text-primary">
                       {suggestion.icon_type === "brand" ? "Brand Logo" : "Emoji Suggestion"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-text-tertiary">
                       {suggestion.matched_term
                         ? `Matched: "${suggestion.matched_term}"`
                         : "Best match for this payee"}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-text-disabled">
                       Confidence: {Math.round(suggestion.confidence * 100)}%
                     </p>
                   </div>
@@ -198,7 +198,7 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
                     type="button"
                     onClick={handleUseSuggestion}
                     disabled={disabled}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Use This
                   </button>
@@ -209,14 +209,14 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
                       className="w-4 h-4 rounded"
                       style={{ backgroundColor: suggestion.brand_color }}
                     />
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-text-tertiary">
                       Brand color: {suggestion.brand_color}
                     </span>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-text-tertiary">
                 <p className="text-sm">Enter a payee name to get icon suggestions</p>
               </div>
             )}
@@ -226,7 +226,7 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
         {/* Emoji Tab */}
         {activeTab === "emoji" && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">Select a category emoji:</p>
+            <p className="text-sm text-text-secondary">Select a category emoji:</p>
             <div className="grid grid-cols-8 gap-2">
               {COMMON_EMOJIS.map(({ emoji, label }) => (
                 <button
@@ -234,8 +234,8 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
                   type="button"
                   onClick={() => handleSelectEmoji(emoji)}
                   disabled={disabled}
-                  className={`p-2 text-2xl rounded-lg hover:bg-gray-100 transition-colors ${
-                    value === `emoji:${emoji}` ? "bg-blue-100 ring-2 ring-blue-500" : "bg-gray-50"
+                  className={`p-2 text-2xl rounded-lg hover:bg-surface-tertiary transition-colors ${
+                    value === `emoji:${emoji}` ? "bg-primary-100 ring-2 ring-primary-500" : "bg-surface-secondary"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                   title={label}
                 >
@@ -243,7 +243,7 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-text-disabled mt-2">
               Tip: The system will also suggest emojis automatically based on the payee name.
             </p>
           </div>
@@ -252,7 +252,7 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
         {/* Custom URL Tab */}
         {activeTab === "custom" && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">Enter a custom image URL:</p>
+            <p className="text-sm text-text-secondary">Enter a custom image URL:</p>
             <div className="flex gap-2">
               <input
                 type="url"
@@ -260,18 +260,18 @@ export function IconPicker({ value, payeeName, onChange, disabled = false }: Ico
                 onChange={(e) => setCustomUrl(e.target.value)}
                 placeholder="https://example.com/logo.png"
                 disabled={disabled}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                className="flex-1 px-3 py-2 border border-border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 disabled:bg-surface-tertiary"
               />
               <button
                 type="button"
                 onClick={handleCustomUrl}
                 disabled={disabled || !customUrl.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Use
               </button>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-text-disabled">
               Supported formats: PNG, JPG, GIF, SVG, WebP
             </p>
           </div>

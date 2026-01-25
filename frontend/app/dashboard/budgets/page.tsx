@@ -78,25 +78,25 @@ export default function BudgetsPage() {
   };
 
   const getProgressColor = (budget: BudgetWithProgress): string => {
-    if (budget.is_over_budget) return "bg-red-600";
+    if (budget.is_over_budget) return "bg-danger-600";
     if (parseFloat(budget.percentage) >= parseFloat(budget.alert_threshold)) {
-      return "bg-yellow-500";
+      return "bg-warning-500";
     }
-    return "bg-green-600";
+    return "bg-success-600";
   };
 
   const getProgressTextColor = (budget: BudgetWithProgress): string => {
-    if (budget.is_over_budget) return "text-red-600";
+    if (budget.is_over_budget) return "text-danger-600";
     if (parseFloat(budget.percentage) >= parseFloat(budget.alert_threshold)) {
-      return "text-yellow-600";
+      return "text-warning-600";
     }
-    return "text-green-600";
+    return "text-success-600";
   };
 
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
@@ -105,46 +105,46 @@ export default function BudgetsPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Budgets</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Budgets</h1>
           <button
             onClick={() => router.push("/dashboard/budgets/new")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
           >
             + Add Budget
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 rounded-md bg-danger-50 p-4">
+            <p className="text-sm text-danger-800">{error}</p>
           </div>
         )}
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading budgets...</p>
+            <p className="text-text-secondary">Loading budgets...</p>
           </div>
         ) : budgets.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {budgets.map((budget) => (
-              <div key={budget.id} className="bg-white shadow rounded-lg p-6">
+              <div key={budget.id} className="bg-surface shadow rounded-lg p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{budget.name}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="text-lg font-medium text-text-primary">{budget.name}</h3>
+                    <p className="text-sm text-text-tertiary">
                       {getCategoryName(budget.category_id)} • {getBudgetPeriodLabel(budget.period)}
                     </p>
                   </div>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => router.push(`/dashboard/budgets/${budget.id}`)}
-                      className="text-blue-600 hover:text-blue-900 text-sm"
+                      className="text-primary-600 hover:text-primary-900 text-sm"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(budget.id)}
-                      className="text-red-600 hover:text-red-900 text-sm"
+                      className="text-danger-600 hover:text-danger-900 text-sm"
                     >
                       Delete
                     </button>
@@ -153,19 +153,19 @@ export default function BudgetsPage() {
 
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">Budget</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-text-secondary">Budget</span>
+                    <span className="font-medium text-text-primary">
                       {formatCurrency(budget.amount)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">Spent</span>
+                    <span className="text-text-secondary">Spent</span>
                     <span className={getProgressTextColor(budget)}>
                       {formatCurrency(budget.spent)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Remaining</span>
+                    <span className="text-text-secondary">Remaining</span>
                     <span className={getProgressTextColor(budget)}>
                       {formatCurrency(budget.remaining)}
                     </span>
@@ -173,19 +173,19 @@ export default function BudgetsPage() {
                 </div>
 
                 <div className="mb-3">
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-surface-tertiary rounded-full h-3">
                     <div
                       className={`h-3 rounded-full ${getProgressColor(budget)}`}
                       style={{ width: `${Math.min(parseFloat(budget.percentage), 100)}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-text-tertiary mt-1">
                     {formatPercentage(budget.percentage)} used
                     {budget.is_over_budget && " - Over budget!"}
                   </p>
                 </div>
 
-                <div className="flex justify-between text-xs text-gray-500 border-t pt-3">
+                <div className="flex justify-between text-xs text-text-tertiary border-t border-border-light pt-3">
                   <span>
                     {budget.start_date && `Started ${formatDate(budget.start_date)}`}
                   </span>
@@ -194,7 +194,7 @@ export default function BudgetsPage() {
                 </div>
 
                 {budget.alert_enabled && (
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-text-tertiary">
                     Alert at {formatPercentage(budget.alert_threshold)}
                   </div>
                 )}
@@ -202,11 +202,11 @@ export default function BudgetsPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">No budgets yet</p>
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">No budgets yet</p>
             <button
               onClick={() => router.push("/dashboard/budgets/new")}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
             >
               + Create Your First Budget
             </button>

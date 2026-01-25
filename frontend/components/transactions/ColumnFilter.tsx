@@ -119,7 +119,7 @@ export default function ColumnFilter({
 
   return (
     <th
-      className={`px-6 py-3 ${alignmentClasses[align]} text-xs font-medium text-gray-500 uppercase tracking-wider relative ${width || ""}`}
+      className={`px-6 py-3 ${alignmentClasses[align]} text-xs font-medium text-text-tertiary uppercase tracking-wider relative ${width || ""}`}
       style={width ? { maxWidth: width } : undefined}
     >
       <div className="flex items-center gap-2 justify-between">
@@ -129,8 +129,8 @@ export default function ColumnFilter({
           {sortable && (
             <button
               onClick={handleSortClick}
-              className={`text-xs hover:text-gray-700 transition-colors ${
-                currentSort ? "text-blue-600" : "text-gray-400"
+              className={`text-xs hover:text-text-secondary transition-colors ${
+                currentSort ? "text-primary-600" : "text-text-disabled"
               }`}
               title="Sort"
             >
@@ -143,8 +143,8 @@ export default function ColumnFilter({
               <button
                 ref={buttonRef}
                 onClick={handleFilterClick}
-                className={`text-xs hover:text-gray-700 transition-colors ${
-                  currentFilter !== undefined && currentFilter !== "" ? "text-blue-600" : "text-gray-400"
+                className={`text-xs hover:text-text-secondary transition-colors ${
+                  currentFilter !== undefined && currentFilter !== "" ? "text-primary-600" : "text-text-disabled"
                 }`}
                 title="Filter"
               >
@@ -152,7 +152,7 @@ export default function ColumnFilter({
               </button>
 
               {showFilterDropdown && (
-                <div className={`fixed w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200 ${
+                <div className={`fixed w-64 bg-surface rounded-md shadow-lg z-50 border border-border-light ${
                   dropdownPosition === "bottom" ? "mt-2" : "mb-2"
                 }`}
                 style={{
@@ -180,7 +180,7 @@ export default function ColumnFilter({
                           }
                         }}
                         placeholder="Search..."
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                         autoFocus
                       />
                       <div className="mt-2 flex gap-2">
@@ -189,7 +189,7 @@ export default function ColumnFilter({
                             handleFilterSelect(textFilterValue || null);
                             setShowFilterDropdown(false);
                           }}
-                          className="flex-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          className="flex-1 px-3 py-1.5 text-xs bg-primary-600 text-white rounded hover:bg-primary-700"
                         >
                           Apply
                         </button>
@@ -199,7 +199,7 @@ export default function ColumnFilter({
                             handleFilterSelect(null);
                             setShowFilterDropdown(false);
                           }}
-                          className="flex-1 px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                          className="flex-1 px-3 py-1.5 text-xs bg-surface-tertiary text-text-secondary rounded hover:bg-border"
                         >
                           Clear
                         </button>
@@ -209,21 +209,21 @@ export default function ColumnFilter({
                     <div className="p-3">
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">Start Date</label>
                           <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">End Date</label>
                           <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                           />
                         </div>
                       </div>
@@ -235,7 +235,7 @@ export default function ColumnFilter({
                             }
                             setShowFilterDropdown(false);
                           }}
-                          className="flex-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          className="flex-1 px-3 py-1.5 text-xs bg-primary-600 text-white rounded hover:bg-primary-700"
                         >
                           Apply
                         </button>
@@ -248,7 +248,7 @@ export default function ColumnFilter({
                             }
                             setShowFilterDropdown(false);
                           }}
-                          className="flex-1 px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                          className="flex-1 px-3 py-1.5 text-xs bg-surface-tertiary text-text-secondary rounded hover:bg-border"
                         >
                           Clear
                         </button>
@@ -258,7 +258,7 @@ export default function ColumnFilter({
                     <div className="py-1">
                       <button
                         onClick={() => handleFilterSelect(null)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-text-secondary hover:bg-surface-secondary"
                       >
                         All
                       </button>
@@ -266,10 +266,10 @@ export default function ColumnFilter({
                         <button
                           key={option.value}
                           onClick={() => handleFilterSelect(option.value)}
-                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                          className={`block w-full text-left px-4 py-2 text-sm hover:bg-surface-secondary ${
                             currentFilter === option.value
-                              ? "bg-blue-50 text-blue-700 font-medium"
-                              : "text-gray-700"
+                              ? "bg-primary-50 text-primary-700 font-medium"
+                              : "text-text-secondary"
                           }`}
                         >
                           {option.label}

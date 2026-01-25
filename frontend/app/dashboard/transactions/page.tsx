@@ -225,9 +225,9 @@ export default function TransactionsPage() {
 
   const getTransactionTypeColor = (type: TransactionType): string => {
     const colors: Record<TransactionType, string> = {
-      [TransactionType.DEBIT]: "text-red-600",
-      [TransactionType.CREDIT]: "text-green-600",
-      [TransactionType.TRANSFER]: "text-blue-600",
+      [TransactionType.DEBIT]: "text-danger-600",
+      [TransactionType.CREDIT]: "text-success-600",
+      [TransactionType.TRANSFER]: "text-primary-600",
     };
     return colors[type];
   };
@@ -244,7 +244,7 @@ export default function TransactionsPage() {
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
@@ -253,7 +253,7 @@ export default function TransactionsPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Transactions</h1>
           <div className="flex items-center gap-3">
             <ColumnSelector
               columns={AVAILABLE_COLUMNS}
@@ -262,7 +262,7 @@ export default function TransactionsPage() {
             />
             <button
               onClick={() => router.push("/dashboard/transactions/new")}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
             >
               + Add Transaction
             </button>
@@ -270,8 +270,8 @@ export default function TransactionsPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 rounded-md bg-danger-50 p-4">
+            <p className="text-sm text-danger-800">{error}</p>
           </div>
         )}
 
@@ -281,12 +281,12 @@ export default function TransactionsPage() {
         {/* Active Filters Chips */}
         {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined || payeeFilter || startDateFilter || endDateFilter) && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-600">Active filters:</span>
+            <span className="text-sm text-text-secondary">Active filters:</span>
 
             {starredFilter !== undefined && (
               <button
                 onClick={() => setStarredFilter(undefined)}
-                className="inline-flex items-center px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
+                className="inline-flex items-center px-3 py-1 text-sm bg-warning-100 text-warning-800 rounded-full hover:bg-warning-200"
               >
                 ⭐ Starred
                 <span className="ml-2">×</span>
@@ -319,7 +319,7 @@ export default function TransactionsPage() {
             {accountFilter && (
               <button
                 onClick={() => setAccountFilter("")}
-                className="inline-flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
+                className="inline-flex items-center px-3 py-1 text-sm bg-primary-100 text-primary-800 rounded-full hover:bg-primary-200"
               >
                 Account: {accounts.find((a) => a.id === parseInt(accountFilter))?.name}
                 <span className="ml-2">×</span>
@@ -339,7 +339,7 @@ export default function TransactionsPage() {
             {typeFilter && (
               <button
                 onClick={() => setTypeFilter("")}
-                className="inline-flex items-center px-3 py-1 text-sm bg-green-100 text-green-800 rounded-full hover:bg-green-200"
+                className="inline-flex items-center px-3 py-1 text-sm bg-success-100 text-success-800 rounded-full hover:bg-success-200"
               >
                 Type: {typeFilter === TransactionType.DEBIT ? "Expense" : typeFilter === TransactionType.CREDIT ? "Income" : "Transfer"}
                 <span className="ml-2">×</span>
@@ -356,7 +356,7 @@ export default function TransactionsPage() {
                 setStartDateFilter("");
                 setEndDateFilter("");
               }}
-              className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800"
+              className="inline-flex items-center px-3 py-1 text-sm text-danger-600 hover:text-danger-800"
             >
               Clear all
             </button>
@@ -365,21 +365,21 @@ export default function TransactionsPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading transactions...</p>
+            <p className="text-text-secondary">Loading transactions...</p>
           </div>
         ) : transactions.length > 0 ? (
           <>
-            <div className="bg-white shadow sm:rounded-lg">
+            <div className="bg-surface shadow sm:rounded-lg">
               <div
                 ref={tableContainerRef}
                 className="overflow-x-auto overflow-y-auto"
                 style={{ maxHeight: '70vh' }}
               >
-                <table className="w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-20">
+                <table className="w-full divide-y divide-border">
+                  <thead className="bg-surface-secondary sticky top-0 z-20">
                     <tr>
                     {visibleColumns.includes("star") && (
-                      <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <th className="px-2 py-3 text-center text-xs font-medium text-text-tertiary uppercase tracking-wider w-12">
                         <button
                           onClick={() => setStarredFilter(starredFilter === true ? undefined : true)}
                           className={`text-xl hover:scale-110 transition-transform ${
@@ -392,7 +392,7 @@ export default function TransactionsPage() {
                       </th>
                     )}
                     {visibleColumns.includes("notes") && (
-                      <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <th className="px-2 py-3 text-center text-xs font-medium text-text-tertiary uppercase tracking-wider w-12">
                         💬
                       </th>
                     )}
@@ -463,15 +463,15 @@ export default function TransactionsPage() {
                       />
                     )}
                     {visibleColumns.includes("actions") && (
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                         Actions
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-surface divide-y divide-border">
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id} className={`hover:bg-gray-50 ${transaction.is_starred ? 'bg-yellow-50' : ''}`}>
+                    <tr key={transaction.id} className={`hover:bg-surface-secondary ${transaction.is_starred ? 'bg-warning-50' : ''}`}>
                       {visibleColumns.includes("star") && (
                         <td className="px-2 py-4 text-center">
                           <button
@@ -496,7 +496,7 @@ export default function TransactionsPage() {
                         </td>
                       )}
                       {visibleColumns.includes("date") && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
                           {formatDate(transaction.date)}
                         </td>
                       )}
@@ -509,26 +509,26 @@ export default function TransactionsPage() {
                                   logoUrl={transaction.payee_logo_url}
                                   name={transaction.payee_name}
                                 />
-                                <span className="text-sm font-medium text-gray-900 truncate">{transaction.payee_name}</span>
+                                <span className="text-sm font-medium text-text-primary truncate">{transaction.payee_name}</span>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1 truncate">
+                              <div className="text-xs text-text-tertiary mt-1 truncate">
                                 {transaction.description}
                               </div>
                             </>
                           ) : (
-                            <div className="text-sm font-medium text-gray-900 truncate">
+                            <div className="text-sm font-medium text-text-primary truncate">
                               {transaction.description}
                             </div>
                           )}
                         </td>
                       )}
                       {visibleColumns.includes("account") && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                           {getAccountName(transaction.account_id)}
                         </td>
                       )}
                       {visibleColumns.includes("category") && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                           {getCategoryName(transaction.category_id)}
                         </td>
                       )}
@@ -547,13 +547,13 @@ export default function TransactionsPage() {
                             onClick={() =>
                               router.push(`/dashboard/transactions/${transaction.id}`)
                             }
-                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            className="text-primary-600 hover:text-primary-900 mr-4"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(transaction.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-danger-600 hover:text-danger-900"
                           >
                             Delete
                           </button>
@@ -566,9 +566,9 @@ export default function TransactionsPage() {
 
               {/* Inline Loading Indicator for Infinite Scroll */}
               {loadingMore && (
-                <div className="flex items-center justify-center py-4 border-t">
+                <div className="flex items-center justify-center py-4 border-t border-border-light">
                   <svg
-                    className="animate-spin h-5 w-5 text-blue-600 mr-2"
+                    className="animate-spin h-5 w-5 text-primary-600 mr-2"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -586,14 +586,14 @@ export default function TransactionsPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  <span className="text-sm text-gray-600">Loading more transactions...</span>
+                  <span className="text-sm text-text-secondary">Loading more transactions...</span>
                 </div>
               )}
 
               {/* End of list indicator */}
               {!hasMore && transactions.length >= PAGE_SIZE && (
-                <div className="text-center py-4 border-t">
-                  <p className="text-sm text-gray-500">
+                <div className="text-center py-4 border-t border-border-light">
+                  <p className="text-sm text-text-tertiary">
                     All {transactions.length} transactions loaded
                   </p>
                 </div>
@@ -601,8 +601,8 @@ export default function TransactionsPage() {
 
               {/* Max limit reached indicator */}
               {transactions.length >= MAX_TRANSACTIONS && hasMore && (
-                <div className="text-center py-4 border-t bg-yellow-50">
-                  <p className="text-sm text-gray-700">
+                <div className="text-center py-4 border-t border-border-light bg-warning-50">
+                  <p className="text-sm text-text-secondary">
                     Showing first {MAX_TRANSACTIONS} transactions. Use filters to narrow results.
                   </p>
                 </div>
@@ -612,17 +612,17 @@ export default function TransactionsPage() {
 
             {/* Transaction count */}
             <div className="mt-3 text-center">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-text-tertiary">
                 Showing {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
               </p>
             </div>
           </>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">No transactions yet</p>
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">No transactions yet</p>
             <button
               onClick={() => router.push("/dashboard/transactions/new")}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
             >
               + Add Your First Transaction
             </button>

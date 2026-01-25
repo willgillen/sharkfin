@@ -70,8 +70,8 @@ export default function CategoriesPage() {
 
   const getCategoryTypeColor = (type: CategoryType): string => {
     const colors: Record<CategoryType, string> = {
-      [CategoryType.INCOME]: "bg-green-100 text-green-800",
-      [CategoryType.EXPENSE]: "bg-red-100 text-red-800",
+      [CategoryType.INCOME]: "bg-success-100 text-success-800",
+      [CategoryType.EXPENSE]: "bg-danger-100 text-danger-800",
     };
     return colors[type];
   };
@@ -89,7 +89,7 @@ export default function CategoriesPage() {
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
@@ -98,24 +98,24 @@ export default function CategoriesPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Categories</h1>
           <button
             onClick={() => router.push("/dashboard/categories/new")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
           >
             + Add Category
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 rounded-md bg-danger-50 p-4">
+            <p className="text-sm text-danger-800">{error}</p>
           </div>
         )}
 
         {/* Type Filter */}
-        <div className="mb-6 bg-white shadow rounded-lg p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mb-6 bg-surface shadow rounded-lg p-4">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             Filter by Type
           </label>
           <div className="flex space-x-4">
@@ -123,8 +123,8 @@ export default function CategoriesPage() {
               onClick={() => setTypeFilter("")}
               className={`px-4 py-2 rounded-md text-sm font-medium ${
                 typeFilter === ""
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-primary-600 text-white"
+                  : "bg-surface-tertiary text-text-secondary hover:bg-surface-secondary"
               }`}
             >
               All Categories
@@ -133,8 +133,8 @@ export default function CategoriesPage() {
               onClick={() => setTypeFilter(CategoryType.INCOME)}
               className={`px-4 py-2 rounded-md text-sm font-medium ${
                 typeFilter === CategoryType.INCOME
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-success-600 text-white"
+                  : "bg-surface-tertiary text-text-secondary hover:bg-surface-secondary"
               }`}
             >
               Income
@@ -143,8 +143,8 @@ export default function CategoriesPage() {
               onClick={() => setTypeFilter(CategoryType.EXPENSE)}
               className={`px-4 py-2 rounded-md text-sm font-medium ${
                 typeFilter === CategoryType.EXPENSE
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-danger-600 text-white"
+                  : "bg-surface-tertiary text-text-secondary hover:bg-surface-secondary"
               }`}
             >
               Expense
@@ -154,42 +154,42 @@ export default function CategoriesPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading categories...</p>
+            <p className="text-text-secondary">Loading categories...</p>
           </div>
         ) : filteredCategories.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-surface shadow overflow-hidden sm:rounded-lg">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface-secondary">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Category
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Parent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Color
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     System
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-border">
                 {filteredCategories.map((category) => (
-                  <tr key={category.id} className="hover:bg-gray-50">
+                  <tr key={category.id} className="hover:bg-surface-secondary">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {category.icon && (
                           <span className="mr-2 text-lg">{category.icon}</span>
                         )}
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-text-primary">
                           {category.name}
                         </div>
                       </div>
@@ -203,17 +203,17 @@ export default function CategoriesPage() {
                         {getCategoryTypeLabel(category.type)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                       {getParentCategoryName(category.parent_id)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {category.color && (
                         <div className="flex items-center">
                           <div
-                            className="w-6 h-6 rounded border border-gray-300"
+                            className="w-6 h-6 rounded border border-border"
                             style={{ backgroundColor: category.color }}
                           ></div>
-                          <span className="ml-2 text-xs text-gray-500">
+                          <span className="ml-2 text-xs text-text-tertiary">
                             {category.color}
                           </span>
                         </div>
@@ -221,11 +221,11 @@ export default function CategoriesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {category.is_system ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-surface-tertiary text-text-secondary">
                           System
                         </span>
                       ) : (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
                           Custom
                         </span>
                       )}
@@ -233,7 +233,7 @@ export default function CategoriesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => router.push(`/dashboard/categories/${category.id}`)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        className="text-primary-600 hover:text-primary-900 mr-4"
                         disabled={category.is_system}
                       >
                         Edit
@@ -242,8 +242,8 @@ export default function CategoriesPage() {
                         onClick={() => handleDelete(category.id)}
                         className={`${
                           category.is_system
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "text-red-600 hover:text-red-900"
+                            ? "text-text-disabled cursor-not-allowed"
+                            : "text-danger-600 hover:text-danger-900"
                         }`}
                         disabled={category.is_system}
                       >
@@ -256,8 +256,8 @@ export default function CategoriesPage() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">
               {categories.length === 0
                 ? "No categories yet"
                 : "No categories match your filter"}
@@ -265,7 +265,7 @@ export default function CategoriesPage() {
             {categories.length === 0 && (
               <button
                 onClick={() => router.push("/dashboard/categories/new")}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
               >
                 + Create Your First Category
               </button>

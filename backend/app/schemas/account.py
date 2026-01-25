@@ -9,6 +9,8 @@ class AccountBase(BaseModel):
     """Base account schema with common attributes."""
     name: str
     type: AccountType
+    institution: Optional[str] = None
+    account_number: Optional[str] = None
     currency: str = "USD"
     current_balance: Decimal = Decimal("0.00")
     notes: Optional[str] = None
@@ -21,6 +23,14 @@ class AccountBase(BaseModel):
             raise ValueError("Currency must be 3-character ISO 4217 code (e.g., USD, EUR, GBP)")
         return v
 
+    @field_validator("account_number")
+    @classmethod
+    def validate_account_number(cls, v: Optional[str]) -> Optional[str]:
+        """Validate account number is max 4 digits."""
+        if v is not None and len(v) > 4:
+            raise ValueError("Account number must be 4 digits or less (last 4 digits)")
+        return v
+
 
 class AccountCreate(AccountBase):
     """Schema for creating a new account."""
@@ -31,6 +41,8 @@ class AccountUpdate(BaseModel):
     """Schema for updating account information."""
     name: Optional[str] = None
     type: Optional[AccountType] = None
+    institution: Optional[str] = None
+    account_number: Optional[str] = None
     currency: Optional[str] = None
     current_balance: Optional[Decimal] = None
     is_active: Optional[bool] = None
@@ -43,6 +55,14 @@ class AccountUpdate(BaseModel):
         if v is not None:
             if len(v) != 3 or not v.isupper():
                 raise ValueError("Currency must be 3-character ISO 4217 code (e.g., USD, EUR, GBP)")
+        return v
+
+    @field_validator("account_number")
+    @classmethod
+    def validate_account_number(cls, v: Optional[str]) -> Optional[str]:
+        """Validate account number is max 4 digits."""
+        if v is not None and len(v) > 4:
+            raise ValueError("Account number must be 4 digits or less (last 4 digits)")
         return v
 
 

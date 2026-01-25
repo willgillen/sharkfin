@@ -54,7 +54,7 @@ export default function ColumnSelector({
     <div ref={dropdownRef} className="relative inline-block">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="inline-flex items-center px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        className="inline-flex items-center px-3 py-1.5 text-sm text-text-secondary bg-surface border border-border rounded-md hover:bg-surface-secondary transition-colors"
         title="Configure columns"
       >
         <span className="mr-2">⚙️</span>
@@ -62,15 +62,15 @@ export default function ColumnSelector({
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+        <div className="absolute right-0 mt-2 w-64 bg-surface rounded-md shadow-lg z-20 border border-border-light">
           <div className="p-3">
-            <div className="text-xs font-medium text-gray-700 mb-2">Show / Hide Columns</div>
+            <div className="text-xs font-medium text-text-secondary mb-2">Show / Hide Columns</div>
             <div className="space-y-2">
               {columns.map((column) => (
                 <label
                   key={column.id}
                   className={`flex items-center text-sm ${
-                    column.required ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"
+                    column.required ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-surface-secondary"
                   } p-1 rounded`}
                 >
                   <input
@@ -78,10 +78,10 @@ export default function ColumnSelector({
                     checked={visibleColumns.includes(column.id)}
                     onChange={() => handleToggleColumn(column.id)}
                     disabled={column.required}
-                    className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                    className="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded disabled:opacity-50"
                   />
                   <span className="flex-1">{column.label}</span>
-                  {column.required && <span className="text-xs text-gray-400">(required)</span>}
+                  {column.required && <span className="text-xs text-text-disabled">(required)</span>}
                 </label>
               ))}
             </div>

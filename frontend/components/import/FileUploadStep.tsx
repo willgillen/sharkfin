@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { accountsAPI, importsAPI } from "@/lib/api";
 import { Account } from "@/types";
+import { Select } from "@/components/ui";
 
 interface FileUploadStepProps {
   onComplete: (step: string, data: any) => void;
@@ -94,7 +95,7 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
   if (loadingAccounts) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Loading accounts...</p>
+        <p className="text-text-secondary">Loading accounts...</p>
       </div>
     );
   }
@@ -102,8 +103,8 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
   if (accounts.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600 mb-4">No accounts found. Please create an account first.</p>
-        <a href="/dashboard/accounts/new" className="text-blue-600 hover:text-blue-800">
+        <p className="text-text-secondary mb-4">No accounts found. Please create an account first.</p>
+        <a href="/dashboard/accounts/new" className="text-primary-600 hover:text-primary-800">
           Create Account
         </a>
       </div>
@@ -113,22 +114,20 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Step 1: Select Account & Upload File</h2>
-        <p className="text-sm text-gray-600 mb-6">
+        <h2 className="text-lg font-medium text-text-primary mb-4">Step 1: Select Account & Upload File</h2>
+        <p className="text-sm text-text-secondary mb-6">
           Choose which account these transactions belong to, then upload a CSV or OFX/QFX file.
         </p>
       </div>
 
       {/* Account Selection */}
       <div>
-        <label htmlFor="account" className="block text-sm font-medium text-gray-700 mb-2">
-          Import to Account
-        </label>
-        <select
+        <Select
+          label="Import to Account"
           id="account"
+          name="account"
           value={selectedAccountId}
           onChange={(e) => setSelectedAccountId(parseInt(e.target.value))}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           disabled={uploading}
         >
           {accounts.map((account) => (
@@ -136,7 +135,7 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
               {account.name} ({account.type})
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* File Upload Dropzone */}
@@ -144,10 +143,10 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
           isDragActive
-            ? "border-blue-500 bg-blue-50"
+            ? "border-primary-500 bg-primary-50"
             : uploading
-            ? "border-gray-300 bg-gray-50 cursor-not-allowed"
-            : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+            ? "border-border bg-surface-secondary cursor-not-allowed"
+            : "border-border hover:border-primary-400 hover:bg-surface-secondary"
         }`}
       >
         <input {...getInputProps()} />
@@ -155,7 +154,7 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
         <div className="space-y-4">
           {uploading ? (
             <>
-              <div className="mx-auto h-12 w-12 text-gray-400">
+              <div className="mx-auto h-12 w-12 text-text-tertiary">
                 <svg className="animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
@@ -172,12 +171,12 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
                   />
                 </svg>
               </div>
-              <p className="text-sm text-gray-600">Processing file...</p>
+              <p className="text-sm text-text-secondary">Processing file...</p>
             </>
           ) : (
             <>
               <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+                className="mx-auto h-12 w-12 text-text-tertiary"
                 stroke="currentColor"
                 fill="none"
                 viewBox="0 0 48 48"
@@ -191,16 +190,16 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
               </svg>
 
               {isDragActive ? (
-                <p className="text-sm text-blue-600 font-medium">Drop file here...</p>
+                <p className="text-sm text-primary-600 font-medium">Drop file here...</p>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium text-blue-600 hover:text-blue-500">
+                  <p className="text-sm text-text-secondary">
+                    <span className="font-medium text-primary-600 hover:text-primary-500">
                       Click to upload
                     </span>{" "}
                     or drag and drop
                   </p>
-                  <p className="text-xs text-gray-500">CSV, OFX, or QFX files</p>
+                  <p className="text-xs text-text-tertiary">CSV, OFX, or QFX files</p>
                 </>
               )}
             </>
@@ -209,13 +208,13 @@ export default function FileUploadStep({ onComplete, onError }: FileUploadStepPr
       </div>
 
       {/* Supported Formats Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">Supported Formats</h3>
-        <ul className="text-xs text-blue-800 space-y-1">
+      <div className="bg-primary-50 border border-primary-200 rounded-md p-4">
+        <h3 className="text-sm font-medium text-primary-900 mb-2">Supported Formats</h3>
+        <ul className="text-xs text-primary-800 space-y-1">
           <li>• <strong>CSV</strong> - Mint, Chase, Bank of America, Wells Fargo, or generic format</li>
           <li>• <strong>OFX/QFX</strong> - Quicken and most online banking downloads</li>
         </ul>
-        <p className="text-xs text-blue-700 mt-2">
+        <p className="text-xs text-primary-700 mt-2">
           The system will automatically detect your file format and suggest column mappings.
         </p>
       </div>

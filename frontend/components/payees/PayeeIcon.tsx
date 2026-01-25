@@ -69,7 +69,7 @@ export function PayeeIcon({ logoUrl, name, size = 32, className = "" }: PayeeIco
 
     return (
       <span
-        className={`${baseStyles} bg-gray-100`}
+        className={`${baseStyles} bg-surface-tertiary`}
         style={{ ...sizeStyle, fontSize }}
         role="img"
         aria-label={`${name} icon`}
@@ -81,7 +81,7 @@ export function PayeeIcon({ logoUrl, name, size = 32, className = "" }: PayeeIco
 
   // Brand or custom image
   return (
-    <span className={`${baseStyles} bg-white overflow-hidden`} style={sizeStyle}>
+    <span className={`${baseStyles} bg-surface overflow-hidden`} style={sizeStyle}>
       <Image
         src={parsed.value}
         alt={`${name} logo`}

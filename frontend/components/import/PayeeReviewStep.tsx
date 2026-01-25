@@ -122,13 +122,13 @@ export default function PayeeReviewStep({
 
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 0.9) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Very High</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-100 text-success-800">Very High</span>;
     } else if (confidence >= 0.8) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">High</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-100 text-success-700">High</span>;
     } else if (confidence >= 0.7) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Medium</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-warning-100 text-warning-800">Medium</span>;
     } else {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Low</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-surface-tertiary text-text-primary">Low</span>;
     }
   };
 
@@ -136,19 +136,19 @@ export default function PayeeReviewStep({
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Analyzing Payees</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-lg font-medium text-text-primary mb-2">Analyzing Payees</h2>
+          <p className="text-sm text-text-secondary">
             Extracting and analyzing payee information from transactions...
           </p>
         </div>
 
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
-            <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-10 w-10 text-primary-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="text-sm text-gray-600">Analyzing payees...</p>
+            <p className="text-sm text-text-secondary">Analyzing payees...</p>
           </div>
         </div>
       </div>
@@ -158,36 +158,36 @@ export default function PayeeReviewStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">Review Payees</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-medium text-text-primary mb-2">Review Payees</h2>
+        <p className="text-sm text-text-secondary">
           Review and edit the {payeeMappings.length} unique payee{payeeMappings.length !== 1 ? 's' : ''} that will be created from this import.
           Edit payee names directly in the table or press Enter to save, Escape to cancel.
         </p>
       </div>
 
       {payeeMappings.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-          <svg className="mx-auto h-12 w-12 text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 text-center">
+          <svg className="mx-auto h-12 w-12 text-primary-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-sm font-medium text-blue-900 mb-1">No Payees Found</h3>
-          <p className="text-sm text-blue-700">
+          <h3 className="text-sm font-medium text-primary-900 mb-1">No Payees Found</h3>
+          <p className="text-sm text-primary-700">
             No payee information could be extracted from this import.
           </p>
         </div>
       ) : (
         <>
           {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-5 w-5 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-900">Review Before Creating</h3>
-                <p className="mt-1 text-sm text-blue-700">
+                <h3 className="text-sm font-medium text-primary-900">Review Before Creating</h3>
+                <p className="mt-1 text-sm text-primary-700">
                   These unique payees will be created in your account. Transactions with the same extracted payee name have been grouped together.
                   Review the names and edit any that need adjustment - your changes will apply to all grouped transactions.
                 </p>
@@ -196,32 +196,32 @@ export default function PayeeReviewStep({
           </div>
 
           {/* Payee List */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-surface shadow overflow-hidden sm:rounded-lg">
+            <table className="min-w-full divide-y divide-border-light">
+              <thead className="bg-surface-secondary">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider w-12">
                     #
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Payee Name (Editable)
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Sample Transactions
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 text-center">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider w-24 text-center">
                     Count
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider w-24">
                     Quality
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-border-light">
                 {payeeMappings.map((mapping, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                  <tr key={index} className="hover:bg-surface-secondary">
                     {/* Row Number */}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text-tertiary">
                       {index + 1}
                     </td>
 
@@ -246,11 +246,11 @@ export default function PayeeReviewStep({
                             e.currentTarget.blur();
                           }
                         }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="Enter payee name"
                       />
                       {mapping.suggested !== mapping.final && (
-                        <p className="mt-1 text-xs text-blue-600">
+                        <p className="mt-1 text-xs text-primary-600">
                           Changed from: {mapping.suggested}
                         </p>
                       )}
@@ -260,12 +260,12 @@ export default function PayeeReviewStep({
                     <td className="px-4 py-3">
                       <div className="space-y-1">
                         {mapping.sampleDescriptions.map((desc, i) => (
-                          <div key={i} className="text-sm text-gray-700 line-clamp-1">
+                          <div key={i} className="text-sm text-text-secondary line-clamp-1">
                             {desc}
                           </div>
                         ))}
                         {mapping.transactionCount > mapping.sampleDescriptions.length && (
-                          <div className="text-xs text-gray-500 italic">
+                          <div className="text-xs text-text-tertiary italic">
                             +{mapping.transactionCount - mapping.sampleDescriptions.length} more...
                           </div>
                         )}
@@ -274,7 +274,7 @@ export default function PayeeReviewStep({
 
                     {/* Transaction Count */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                         {mapping.transactionCount}
                       </span>
                     </td>
@@ -295,13 +295,13 @@ export default function PayeeReviewStep({
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 border border-border rounded-md text-sm font-medium text-text-secondary hover:bg-surface-secondary"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+          className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700"
         >
           Continue to Import
         </button>

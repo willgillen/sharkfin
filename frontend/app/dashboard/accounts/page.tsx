@@ -82,7 +82,7 @@ export default function AccountsPage() {
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
@@ -91,59 +91,59 @@ export default function AccountsPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Accounts</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Accounts</h1>
           <button
             onClick={() => router.push("/dashboard/accounts/new")}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
           >
             + Add Account
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 rounded-md bg-danger-50 p-4">
+            <p className="text-sm text-danger-800">{error}</p>
           </div>
         )}
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">Loading accounts...</p>
+            <p className="text-text-secondary">Loading accounts...</p>
           </div>
         ) : accounts.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-surface shadow overflow-hidden sm:rounded-lg">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface-secondary">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Account
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Institution
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Balance
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-border">
                 {accounts.map((account) => (
-                  <tr key={account.id} className="hover:bg-gray-50">
+                  <tr key={account.id} className="hover:bg-surface-secondary">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-text-primary">
                         {account.name}
                       </div>
                       {account.account_number && (
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-text-tertiary">
                           ***{account.account_number.slice(-4)}
                         </div>
                       )}
@@ -157,15 +157,15 @@ export default function AccountsPage() {
                         {getAccountTypeLabel(account.type)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                       {account.institution || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
                       <span
                         className={
                           parseFloat(account.current_balance) >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? "text-success-600"
+                            : "text-danger-600"
                         }
                       >
                         {formatCurrency(account.current_balance, account.currency)}
@@ -175,8 +175,8 @@ export default function AccountsPage() {
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           account.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-success-100 text-success-800"
+                            : "bg-surface-tertiary text-text-secondary"
                         }`}
                       >
                         {account.is_active ? "Active" : "Inactive"}
@@ -185,13 +185,13 @@ export default function AccountsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        className="text-primary-600 hover:text-primary-900 mr-4"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(account.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-danger-600 hover:text-danger-900"
                       >
                         Delete
                       </button>
@@ -202,11 +202,11 @@ export default function AccountsPage() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 mb-4">No accounts yet</p>
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">No accounts yet</p>
             <button
               onClick={() => router.push("/dashboard/accounts/new")}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
             >
               + Add Your First Account
             </button>

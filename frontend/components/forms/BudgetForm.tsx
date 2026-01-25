@@ -68,37 +68,34 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-md bg-danger-50 p-4">
+          <p className="text-sm text-danger-800">{error}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Budget Name *
-          </label>
-          <input
-            type="text"
+          <Input
+            label="Budget Name"
             id="name"
+            name="name"
+            type="text"
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., Monthly Groceries"
           />
         </div>
 
         <div>
-          <label htmlFor="category_id" className="block text-sm font-medium text-gray-700">
-            Category *
-          </label>
-          <select
+          <Select
+            label="Category"
             id="category_id"
+            name="category_id"
             required
             value={formData.category_id}
             onChange={(e) => setFormData({ ...formData, category_id: parseInt(e.target.value) })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            helperText="Only expense categories are shown"
           >
             <option value={0}>Select a category</option>
             {categories.map((category) => (
@@ -106,93 +103,78 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
                 {category.name}
               </option>
             ))}
-          </select>
-          <p className="mt-1 text-xs text-gray-500">Only expense categories are shown</p>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="period" className="block text-sm font-medium text-gray-700">
-            Period *
-          </label>
-          <select
+          <Select
+            label="Period"
             id="period"
+            name="period"
             required
             value={formData.period}
             onChange={(e) => setFormData({ ...formData, period: e.target.value as BudgetPeriod })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={BudgetPeriod.WEEKLY}>Weekly</option>
             <option value={BudgetPeriod.MONTHLY}>Monthly</option>
             <option value={BudgetPeriod.QUARTERLY}>Quarterly</option>
             <option value={BudgetPeriod.YEARLY}>Yearly</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-            Budget Amount *
-          </label>
-          <input
-            type="number"
+          <Input
+            label="Budget Amount"
             id="amount"
+            name="amount"
+            type="number"
             required
             step="0.01"
             min="0.01"
             value={formData.amount}
             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="0.00"
           />
         </div>
 
         <div>
-          <label htmlFor="alert_threshold" className="block text-sm font-medium text-gray-700">
-            Alert Threshold (%)
-          </label>
-          <input
-            type="number"
+          <Input
+            label="Alert Threshold (%)"
             id="alert_threshold"
+            name="alert_threshold"
+            type="number"
             step="1"
             min="0"
             max="100"
             value={formData.alert_threshold}
             onChange={(e) => setFormData({ ...formData, alert_threshold: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="90"
+            helperText="Get alerted when reaching this percentage"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Get alerted when reaching this percentage
-          </p>
         </div>
 
         <div>
-          <label htmlFor="start_date" className="block text-sm font-medium text-gray-700">
-            Start Date *
-          </label>
-          <input
-            type="date"
+          <Input
+            label="Start Date"
             id="start_date"
+            name="start_date"
+            type="date"
             required
             value={formData.start_date}
             onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
         <div>
-          <label htmlFor="end_date" className="block text-sm font-medium text-gray-700">
-            End Date (Optional)
-          </label>
-          <input
-            type="date"
+          <Input
+            label="End Date (Optional)"
             id="end_date"
+            name="end_date"
+            type="date"
             value={formData.end_date}
             onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            helperText="Leave empty for ongoing budget"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Leave empty for ongoing budget
-          </p>
         </div>
 
         <div className="sm:col-span-2">
@@ -203,9 +185,9 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
                 id="alert_enabled"
                 checked={formData.alert_enabled}
                 onChange={(e) => setFormData({ ...formData, alert_enabled: e.target.checked })}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded"
               />
-              <label htmlFor="alert_enabled" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="alert_enabled" className="ml-2 block text-sm text-text-primary">
                 Enable alerts when threshold is reached
               </label>
             </div>
@@ -216,9 +198,9 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
                 id="rollover"
                 checked={formData.rollover}
                 onChange={(e) => setFormData({ ...formData, rollover: e.target.checked })}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded"
               />
-              <label htmlFor="rollover" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="rollover" className="ml-2 block text-sm text-text-primary">
                 Roll over unused budget to next period
               </label>
             </div>
@@ -230,14 +212,14 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-border rounded-md shadow-sm text-sm font-medium text-text-secondary bg-surface hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-text-inverse bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
         >
           {loading ? "Saving..." : budget ? "Update Budget" : "Create Budget"}
         </button>

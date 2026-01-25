@@ -25,6 +25,8 @@ class Account(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
     type = Column(SQLEnum(AccountType), nullable=False)
+    institution = Column(String, nullable=True)  # Financial institution name (e.g., "Chase", "Bank of America")
+    account_number = Column(String(4), nullable=True)  # Last 4 digits of account number for identification
     currency = Column(String(3), default="USD", nullable=False)  # ISO 4217 currency code
     current_balance = Column(Numeric(15, 2), default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

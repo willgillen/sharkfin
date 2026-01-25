@@ -54,9 +54,9 @@ export default function DuplicateReviewStep({
   };
 
   const getConfidenceColor = (score: number) => {
-    if (score >= 0.9) return "text-red-600 bg-red-50";
+    if (score >= 0.9) return "text-danger-600 bg-danger-50";
     if (score >= 0.8) return "text-orange-600 bg-orange-50";
-    return "text-yellow-600 bg-yellow-50";
+    return "text-warning-600 bg-warning-50";
   };
 
   const getConfidenceLabel = (score: number) => {
@@ -68,37 +68,37 @@ export default function DuplicateReviewStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">
+        <h2 className="text-lg font-medium text-text-primary mb-2">
           {fileType === "csv" ? "Step 4: Review Duplicates" : "Step 3: Review Duplicates"}
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-text-secondary">
           We found {duplicates.length} potential duplicate transaction{duplicates.length !== 1 ? "s" : ""}.
           Review and select which ones to skip.
         </p>
       </div>
 
       {/* Selection Summary */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-blue-900">
+            <p className="text-sm font-medium text-primary-900">
               {selectedSkips.size} transaction{selectedSkips.size !== 1 ? "s" : ""} will be skipped
             </p>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-xs text-primary-700 mt-1">
               {duplicates.length - selectedSkips.size} new transaction{duplicates.length - selectedSkips.size !== 1 ? "s" : ""} will be imported
             </p>
           </div>
           <div className="flex space-x-2">
             <button
               onClick={() => setSelectedSkips(new Set(duplicates.map((d) => d.new_transaction.row)))}
-              className="text-xs text-blue-600 hover:text-blue-800 underline"
+              className="text-xs text-primary-600 hover:text-primary-800 underline"
             >
               Skip All
             </button>
-            <span className="text-gray-300">|</span>
+            <span className="text-text-disabled">|</span>
             <button
               onClick={() => setSelectedSkips(new Set())}
-              className="text-xs text-blue-600 hover:text-blue-800 underline"
+              className="text-xs text-primary-600 hover:text-primary-800 underline"
             >
               Import All
             </button>
@@ -115,7 +115,7 @@ export default function DuplicateReviewStep({
           return (
             <div
               key={idx}
-              className={`border rounded-lg p-4 ${isSkipped ? "bg-gray-50 border-gray-300" : "bg-white border-blue-200"}`}
+              className={`border rounded-lg p-4 ${isSkipped ? "bg-surface-secondary border-border" : "bg-surface border-primary-200"}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-2">
@@ -123,9 +123,9 @@ export default function DuplicateReviewStep({
                     type="checkbox"
                     checked={isSkipped}
                     onChange={() => toggleSkip(newTxn.row)}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="h-4 w-4 text-primary-600 border-border rounded focus:ring-primary-500"
                   />
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-text-primary">
                     Skip this transaction
                   </span>
                 </div>
@@ -136,22 +136,22 @@ export default function DuplicateReviewStep({
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Existing Transaction */}
-                <div className="border-r border-gray-200 pr-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-2">Existing Transaction</p>
+                <div className="border-r border-border-light pr-4">
+                  <p className="text-xs font-medium text-text-tertiary uppercase mb-2">Existing Transaction</p>
                   <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-600">Date:</span> {duplicate.existing_date}</p>
-                    <p><span className="text-gray-600">Amount:</span> {formatAmount(duplicate.existing_amount)}</p>
-                    <p><span className="text-gray-600">Description:</span> {duplicate.existing_description || "-"}</p>
+                    <p><span className="text-text-secondary">Date:</span> {duplicate.existing_date}</p>
+                    <p><span className="text-text-secondary">Amount:</span> {formatAmount(duplicate.existing_amount)}</p>
+                    <p><span className="text-text-secondary">Description:</span> {duplicate.existing_description || "-"}</p>
                   </div>
                 </div>
 
                 {/* New Transaction */}
                 <div className="pl-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-2">New Transaction</p>
+                  <p className="text-xs font-medium text-text-tertiary uppercase mb-2">New Transaction</p>
                   <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-600">Date:</span> {newTxn.date}</p>
-                    <p><span className="text-gray-600">Amount:</span> {formatAmount(newTxn.amount)}</p>
-                    <p><span className="text-gray-600">Description:</span> {newTxn.description || newTxn.payee || "-"}</p>
+                    <p><span className="text-text-secondary">Date:</span> {newTxn.date}</p>
+                    <p><span className="text-text-secondary">Amount:</span> {formatAmount(newTxn.amount)}</p>
+                    <p><span className="text-text-secondary">Description:</span> {newTxn.description || newTxn.payee || "-"}</p>
                   </div>
                 </div>
               </div>
@@ -164,13 +164,13 @@ export default function DuplicateReviewStep({
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 border border-border rounded-md text-sm font-medium text-text-secondary hover:bg-surface-secondary"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+          className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700"
         >
           Continue with {duplicates.length - selectedSkips.size} Transaction{duplicates.length - selectedSkips.size !== 1 ? "s" : ""}
         </button>

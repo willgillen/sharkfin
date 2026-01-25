@@ -221,13 +221,13 @@ export default function SmartRuleSuggestionsStep({
 
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 0.9) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Very High</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-100 text-success-800">Very High</span>;
     } else if (confidence >= 0.8) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">High</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-100 text-success-700">High</span>;
     } else if (confidence >= 0.7) {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Medium</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-warning-100 text-warning-800">Medium</span>;
     } else {
-      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Low</span>;
+      return <span className="px-2 py-1 text-xs font-medium rounded-full bg-surface-tertiary text-text-primary">Low</span>;
     }
   };
 
@@ -235,19 +235,19 @@ export default function SmartRuleSuggestionsStep({
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Analyzing Transactions</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-lg font-medium text-text-primary mb-2">Analyzing Transactions</h2>
+          <p className="text-sm text-text-secondary">
             Looking for patterns to suggest smart categorization rules...
           </p>
         </div>
 
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
-            <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-10 w-10 text-primary-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="text-sm text-gray-600">Analyzing transaction patterns...</p>
+            <p className="text-sm text-text-secondary">Analyzing transaction patterns...</p>
           </div>
         </div>
       </div>
@@ -257,19 +257,19 @@ export default function SmartRuleSuggestionsStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-2">Smart Rule Suggestions</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-medium text-text-primary mb-2">Smart Rule Suggestions</h2>
+        <p className="text-sm text-text-secondary">
           We've detected {suggestions.length} pattern{suggestions.length !== 1 ? 's' : ''} that could be automated with rules
         </p>
       </div>
 
       {suggestions.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-          <svg className="mx-auto h-12 w-12 text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 text-center">
+          <svg className="mx-auto h-12 w-12 text-primary-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-sm font-medium text-blue-900 mb-1">No Patterns Detected</h3>
-          <p className="text-sm text-blue-700">
+          <h3 className="text-sm font-medium text-primary-900 mb-1">No Patterns Detected</h3>
+          <p className="text-sm text-primary-700">
             We didn't find any recurring patterns in this import that would benefit from automation rules.
             You can create rules manually later from the Rules page.
           </p>
@@ -302,8 +302,8 @@ export default function SmartRuleSuggestionsStep({
                 key={index}
                 className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                   selectedSuggestions.has(index)
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-border hover:border-border"
                 }`}
                 onClick={() => toggleSuggestion(index)}
               >
@@ -312,21 +312,21 @@ export default function SmartRuleSuggestionsStep({
                     type="checkbox"
                     checked={selectedSuggestions.has(index)}
                     onChange={() => toggleSuggestion(index)}
-                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded"
                   />
                   <div className="ml-3 flex-1">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-gray-900">
+                      <h4 className="text-sm font-medium text-text-primary">
                         {suggestion.suggested_name}
                       </h4>
                       {getConfidenceBadge(suggestion.confidence)}
                     </div>
 
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
+                    <div className="mt-2 space-y-1 text-sm text-text-secondary">
                       <p>
                         <span className="font-medium">Pattern:</span> Contains "{suggestion.payee_pattern}"
                         {suggestion.detected_merchant && (
-                          <span className="ml-2 text-green-700">
+                          <span className="ml-2 text-success-700">
                             (Detected: {suggestion.detected_merchant})
                           </span>
                         )}
@@ -335,7 +335,7 @@ export default function SmartRuleSuggestionsStep({
                         <p>
                           <span className="font-medium">Extracted Payee:</span> {suggestion.extracted_payee_name}
                           {suggestion.extraction_confidence && (
-                            <span className="ml-2 text-xs text-gray-500">
+                            <span className="ml-2 text-xs text-text-tertiary">
                               ({Math.round(suggestion.extraction_confidence * 100)}% extraction quality)
                             </span>
                           )}
@@ -349,11 +349,11 @@ export default function SmartRuleSuggestionsStep({
 
                     {/* Sample Descriptions */}
                     {suggestion.sample_descriptions.length > 0 && (
-                      <div className="mt-3 bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-700 mb-1">Example transactions:</p>
+                      <div className="mt-3 bg-surface-secondary rounded p-2">
+                        <p className="text-xs font-medium text-text-secondary mb-1">Example transactions:</p>
                         <ul className="space-y-1">
                           {suggestion.sample_descriptions.slice(0, 3).map((desc, idx) => (
-                            <li key={idx} className="text-xs text-gray-600 truncate">
+                            <li key={idx} className="text-xs text-text-secondary truncate">
                               • {desc}
                             </li>
                           ))}
@@ -367,15 +367,15 @@ export default function SmartRuleSuggestionsStep({
           </div>
 
           {/* Info Box */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="bg-surface-secondary border border-border rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-5 w-5 text-text-disabled" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-text-secondary">
                   <strong>Note:</strong> Rules created here will help automatically categorize similar transactions in the future.
                   You can edit or assign categories to these rules later from the Rules page.
                 </p>
@@ -390,7 +390,7 @@ export default function SmartRuleSuggestionsStep({
         <button
           onClick={onBack}
           disabled={creatingRules}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 border border-border rounded-md text-sm font-medium text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
         >
           Back
         </button>
@@ -399,7 +399,7 @@ export default function SmartRuleSuggestionsStep({
             <button
               onClick={handleSkip}
               disabled={creatingRules}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="px-4 py-2 border border-border rounded-md text-sm font-medium text-text-secondary hover:bg-surface-secondary disabled:opacity-50"
             >
               Skip for Now
             </button>
@@ -407,7 +407,7 @@ export default function SmartRuleSuggestionsStep({
           <button
             onClick={handleContinue}
             disabled={creatingRules}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {creatingRules
               ? selectedSuggestions.size > 0

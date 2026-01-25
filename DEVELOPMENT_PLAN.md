@@ -439,9 +439,45 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] Create reusable `Input.tsx` component with proper styling
 - [x] Create reusable `Select.tsx` component
 - [x] Create reusable `Textarea.tsx` component
-- [x] Update AccountForm to use new UI components
 - [x] All components use WCAG AA compliant colors
-- [ ] Update remaining forms (TransactionForm, BudgetForm, CategoryForm) - in progress
+- [x] **Phase 1: Core CRUD Forms** ✅ COMPLETED
+  - [x] AccountForm.tsx ✅ COMPLETED
+  - [x] CategoryForm.tsx ✅ COMPLETED
+  - [x] BudgetForm.tsx ✅ COMPLETED
+  - [x] TransactionForm.tsx ✅ COMPLETED
+- [x] **Phase 2: Import Wizard Forms** ✅ COMPLETED
+  - [x] FileUploadStep.tsx ✅ COMPLETED
+  - [x] ColumnMappingStep.tsx ✅ COMPLETED
+- [x] **Phase 3: Authentication Pages** ✅ COMPLETED
+  - [x] Login page ✅ COMPLETED
+  - [x] Register page ✅ COMPLETED
+- [x] **Phase 4: Rules & High-Priority Components** ✅ COMPLETED
+  - [x] Rules new page (app/dashboard/rules/new/page.tsx) ✅ COMPLETED
+  - [x] Rules edit page (app/dashboard/rules/[id]/page.tsx) ✅ COMPLETED
+  - [x] QuickAddBar component (components/transactions/QuickAddBar.tsx) ✅ COMPLETED
+- [x] **Phase 5: Remaining Import Wizard Steps** ✅ COMPLETED
+  - [x] DuplicateReviewStep.tsx ✅ COMPLETED
+  - [x] EnhancedPayeeReviewStep.tsx ✅ COMPLETED
+  - [x] ImportResultStep.tsx ✅ COMPLETED
+  - [x] PayeeReviewStep.tsx ✅ COMPLETED
+  - [x] PreviewStep.tsx ✅ COMPLETED
+  - [x] SmartRuleSuggestionsStep.tsx ✅ COMPLETED
+- [x] **Phase 6: List/Table Pages** ✅ COMPLETED
+  - [x] Accounts list page ✅ COMPLETED
+  - [x] Budgets list page ✅ COMPLETED
+  - [x] Categories list page ✅ COMPLETED
+  - [x] Transactions list page ✅ COMPLETED
+  - [x] Payees list page ✅ COMPLETED
+  - [x] Rules list page ✅ COMPLETED (already done in Phase 4)
+  - [x] Import history page ✅ COMPLETED
+- [x] **Phase 7: Other Components** ✅ COMPLETED
+  - [x] VirtualizedTransactionTable.tsx ✅ COMPLETED
+  - [x] ColumnFilter.tsx ✅ COMPLETED
+  - [x] ColumnSelector.tsx ✅ COMPLETED
+  - [x] DashboardLayout.tsx ✅ COMPLETED
+  - [x] IconPicker.tsx ✅ COMPLETED
+  - [x] PayeeIcon.tsx ✅ COMPLETED
+  - [x] Chart components (CategorySpendingChart, IncomeTrendChart) ✅ COMPLETED
 
 #### 15.2 Overall Color Scheme Review ✅ COMPLETED
 - [x] Define color palette in `tailwind.config.js`
@@ -455,20 +491,21 @@ This application aims to provide feature parity with applications like Mint (now
 - [x] All colors WCAG AA compliant
 - [x] Applied to UI components (Input, Select, Textarea)
 
-#### 15.3 Refined Navigation Structure
-- [ ] Implement dropdown menu or collapsible sidebar
-- [ ] Main nav: Dashboard, Accounts, Transactions, Budgets, Reports
-- [ ] Dropdown "More" menu: Categories, Payees, Rules, Import, Import History, Settings
-- [ ] Group items logically (Settings group, Tools group)
-- [ ] Mobile-friendly responsive design
-- [ ] Test navigation interactions
+#### 15.3 Refined Navigation Structure ✅ COMPLETED
+- [x] Implement dropdown menu or collapsible sidebar
+- [x] Main nav: Dashboard, Accounts, Transactions, Budgets, Reports
+- [x] Dropdown "More" menu: Categories, Payees, Rules, Import, Import History, Settings
+- [x] Group items logically (Settings group, Tools group)
+- [x] Mobile-friendly responsive design
+- [x] Test navigation interactions
 
-#### 15.4 Fix Account Institution Field Bug
-- [ ] Verify `institution` field exists in Account model
-- [ ] Verify `AccountCreate` and `AccountUpdate` schemas include `institution`
-- [ ] Verify frontend form sends `institution` in API call
-- [ ] Check database migration includes `institution` column
-- [ ] Tests: `test_create_account_with_institution()`, `test_institution_persists_after_save()`
+#### 15.4 Fix Account Institution Field Bug ✅ COMPLETED
+- [x] Verify `institution` field exists in Account model
+- [x] Verify `AccountCreate` and `AccountUpdate` schemas include `institution`
+- [x] Verify frontend form sends `institution` in API call
+- [x] Check database migration includes `institution` column
+- [x] Tests: `test_create_account_with_institution()`, `test_institution_persists_after_save()`
+- [x] Added `account_number` field as well (last 4 digits)
 
 ### Week 16: Settings & Preferences System
 **Priority**: High - Infrastructure for Future Features

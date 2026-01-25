@@ -208,8 +208,8 @@ export default function EnhancedPayeeReviewStep({
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Analyzing payees with intelligent matching...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-sm text-text-secondary">Analyzing payees with intelligent matching...</p>
         </div>
       </div>
     );
@@ -217,8 +217,8 @@ export default function EnhancedPayeeReviewStep({
 
   if (!analysis) {
     return (
-      <div className="rounded-md bg-red-50 p-4">
-        <p className="text-sm text-red-800">Failed to load payee analysis. Please try again.</p>
+      <div className="rounded-md bg-danger-50 p-4">
+        <p className="text-sm text-danger-800">Failed to load payee analysis. Please try again.</p>
       </div>
     );
   }
@@ -280,51 +280,51 @@ export default function EnhancedPayeeReviewStep({
   return (
     <div className="space-y-6">
       {/* Summary Card */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900">Intelligent Payee Matching Results</h3>
-        <p className="mt-2 text-sm text-gray-600">
+      <div className="bg-surface shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-text-primary">Intelligent Payee Matching Results</h3>
+        <p className="mt-2 text-sm text-text-secondary">
           We analyzed {analysis.summary.total_transactions} transactions and matched them to your existing payees.
         </p>
 
         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-3xl font-bold text-green-600">
+          <div className="bg-success-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-success-600">
               {analysis.summary.high_confidence_matches}
             </div>
-            <div className="text-sm text-gray-600">High Confidence</div>
+            <div className="text-sm text-text-secondary">High Confidence</div>
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <div className="text-3xl font-bold text-yellow-600">
+          <div className="bg-warning-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-warning-600">
               {analysis.summary.low_confidence_matches}
             </div>
-            <div className="text-sm text-gray-600">Review Recommended</div>
+            <div className="text-sm text-text-secondary">Review Recommended</div>
           </div>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-3xl font-bold text-blue-600">
+          <div className="bg-primary-50 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-primary-600">
               {analysis.summary.new_payees_needed}
             </div>
-            <div className="text-sm text-gray-600">New Payees</div>
+            <div className="text-sm text-text-secondary">New Payees</div>
           </div>
         </div>
       </div>
 
       {/* HIGH CONFIDENCE SECTION */}
       {highConfidenceAssignments.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg">
+        <div className="bg-success-50 border border-success-200 rounded-lg">
           <div
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => setHighConfidenceExpanded(!highConfidenceExpanded)}
           >
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-5 w-5 text-success-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
               </svg>
-              <h3 className="font-medium text-green-900">
+              <h3 className="font-medium text-success-900">
                 High Confidence Matches ({highConfidenceAssignments.length})
               </h3>
             </div>
             <svg
-              className={`h-5 w-5 text-green-600 transform transition-transform ${highConfidenceExpanded ? 'rotate-180' : ''}`}
+              className={`h-5 w-5 text-success-600 transform transition-transform ${highConfidenceExpanded ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -334,37 +334,37 @@ export default function EnhancedPayeeReviewStep({
           </div>
 
           {highConfidenceExpanded && (
-            <div className="p-4 space-y-3 border-t border-green-200">
+            <div className="p-4 space-y-3 border-t border-success-200">
               {highConfidenceAssignments.map((assignment) => {
                 // Check if user has switched to "create new" mode for this item
                 const isCreatingNew = assignment.selectedPayeeId === null && assignment.selectedNewPayeeName !== "";
 
                 return (
-                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-surface rounded border">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">Transaction</label>
                       <p className="text-sm truncate" title={assignment.originalDescription}>
                         {assignment.originalDescription}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-text-tertiary mt-1">
                         {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
                       </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">Matched Payee</label>
                       {isCreatingNew ? (
                         // Show text input for new payee name
                         <div className="space-y-2">
                           <input
                             type="text"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-border rounded-md"
                             value={assignment.selectedNewPayeeName}
                             onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
                             placeholder="Enter new payee name"
                           />
                           <button
                             type="button"
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-primary-600 hover:text-primary-800"
                             onClick={() => handleCancelCreateNew(assignment.transactionIndex)}
                           >
                             ← Back to suggestions
@@ -373,7 +373,7 @@ export default function EnhancedPayeeReviewStep({
                       ) : (
                         // Show dropdown with suggestions + create new option
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-border rounded-md"
                           value={assignment.selectedPayeeId?.toString() || ""}
                           onChange={(e) => {
                             if (e.target.value === "__create_new__") {
@@ -407,21 +407,21 @@ export default function EnhancedPayeeReviewStep({
 
       {/* LOW CONFIDENCE SECTION */}
       {lowConfidenceAssignments.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="bg-warning-50 border border-warning-200 rounded-lg">
           <div
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => setLowConfidenceExpanded(!lowConfidenceExpanded)}
           >
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-5 w-5 text-warning-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
               </svg>
-              <h3 className="font-medium text-yellow-900">
+              <h3 className="font-medium text-warning-900">
                 Review Recommended ({lowConfidenceAssignments.length})
               </h3>
             </div>
             <svg
-              className={`h-5 w-5 text-yellow-600 transform transition-transform ${lowConfidenceExpanded ? 'rotate-180' : ''}`}
+              className={`h-5 w-5 text-warning-600 transform transition-transform ${lowConfidenceExpanded ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -431,37 +431,37 @@ export default function EnhancedPayeeReviewStep({
           </div>
 
           {lowConfidenceExpanded && (
-            <div className="p-4 space-y-3 border-t border-yellow-200">
+            <div className="p-4 space-y-3 border-t border-warning-200">
               {lowConfidenceAssignments.map((assignment) => {
                 // Check if user has switched to "create new" mode for this item
                 const isCreatingNew = assignment.selectedPayeeId === null && assignment.selectedNewPayeeName !== "";
 
                 return (
-                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-white rounded border">
+                  <div key={assignment.transactionIndex} className="grid grid-cols-2 gap-4 p-3 bg-surface rounded border">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Transaction</label>
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">Transaction</label>
                       <p className="text-sm truncate" title={assignment.originalDescription}>
                         {assignment.originalDescription}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-text-tertiary mt-1">
                         {assignment.matchReason} • {Math.round((assignment.matchConfidence || 0) * 100)}% confident
                       </p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Matched Payee</label>
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">Matched Payee</label>
                       {isCreatingNew ? (
                         // Show text input for new payee name
                         <div className="space-y-2">
                           <input
                             type="text"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-border rounded-md"
                             value={assignment.selectedNewPayeeName}
                             onChange={(e) => handleNewPayeeNameChange(assignment.transactionIndex, e.target.value)}
                             placeholder="Enter new payee name"
                           />
                           <button
                             type="button"
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-primary-600 hover:text-primary-800"
                             onClick={() => handleCancelCreateNew(assignment.transactionIndex)}
                           >
                             ← Back to suggestions
@@ -470,7 +470,7 @@ export default function EnhancedPayeeReviewStep({
                       ) : (
                         // Show dropdown with suggestions + create new option
                         <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-border rounded-md"
                           value={assignment.selectedPayeeId?.toString() || ""}
                           onChange={(e) => {
                             if (e.target.value === "__create_new__") {
@@ -504,21 +504,21 @@ export default function EnhancedPayeeReviewStep({
 
       {/* NEW PAYEES SECTION - GROUPED */}
       {sortedPayeeGroups.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg">
           <div
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => setNewPayeesExpanded(!newPayeesExpanded)}
           >
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-5 w-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
               </svg>
-              <h3 className="font-medium text-blue-900">
+              <h3 className="font-medium text-primary-900">
                 New Payees ({sortedPayeeGroups.length})
               </h3>
             </div>
             <svg
-              className={`h-5 w-5 text-blue-600 transform transition-transform ${newPayeesExpanded ? 'rotate-180' : ''}`}
+              className={`h-5 w-5 text-primary-600 transform transition-transform ${newPayeesExpanded ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -528,23 +528,23 @@ export default function EnhancedPayeeReviewStep({
           </div>
 
           {newPayeesExpanded && (
-            <div className="p-4 space-y-3 border-t border-blue-200">
+            <div className="p-4 space-y-3 border-t border-primary-200">
               {sortedPayeeGroups.map((group, idx) => (
-                <div key={`${group.suggestedName}-${idx}`} className="p-4 bg-white rounded border">
+                <div key={`${group.suggestedName}-${idx}`} className="p-4 bg-surface rounded border">
                   <div className="grid grid-cols-2 gap-4 mb-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">
                         Suggested Payee Name ({group.transactionCount} transaction{group.transactionCount > 1 ? 's' : ''})
                       </label>
-                      <p className="text-sm font-medium text-gray-900">{group.suggestedName}</p>
+                      <p className="text-sm font-medium text-text-primary">{group.suggestedName}</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label className="block text-xs font-medium text-text-tertiary mb-1">
                         Final Payee Name (editable)
                       </label>
                       <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-border rounded-md"
                         value={getGroupFinalName(group)}
                         onChange={(e) => handleGroupedPayeeNameChange(group.transactionIndices, e.target.value)}
                         placeholder="Enter payee name"
@@ -553,18 +553,18 @@ export default function EnhancedPayeeReviewStep({
                   </div>
 
                   {/* Show sample transaction descriptions */}
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <div className="mt-2 pt-2 border-t border-border-light">
+                    <label className="block text-xs font-medium text-text-tertiary mb-1">
                       Sample Transactions:
                     </label>
                     <ul className="space-y-1">
                       {group.sampleDescriptions.slice(0, 3).map((desc, descIdx) => (
-                        <li key={descIdx} className="text-xs text-gray-600 truncate" title={desc}>
+                        <li key={descIdx} className="text-xs text-text-secondary truncate" title={desc}>
                           • {desc}
                         </li>
                       ))}
                       {group.transactionCount > 3 && (
-                        <li className="text-xs text-gray-500 italic">
+                        <li className="text-xs text-text-tertiary italic">
                           ... and {group.transactionCount - 3} more
                         </li>
                       )}
@@ -581,13 +581,13 @@ export default function EnhancedPayeeReviewStep({
       <div className="flex justify-between pt-6">
         <button
           onClick={onBack}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2 text-sm font-medium text-text-secondary bg-surface border border-border rounded-md hover:bg-surface-secondary"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+          className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
         >
           Continue to Import
         </button>

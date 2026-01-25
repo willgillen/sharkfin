@@ -185,24 +185,24 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
   }, [isExpanded]);
 
   return (
-    <div className="bg-white shadow rounded-lg mb-6 overflow-hidden transition-all duration-300">
+    <div className="bg-surface shadow rounded-lg mb-6 overflow-hidden transition-all duration-300">
       {!isExpanded ? (
         // Collapsed state: Single line button
         <button
           onClick={() => setIsExpanded(true)}
-          className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+          className="w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-surface-secondary transition-colors flex items-center gap-2"
         >
-          <span className="text-blue-600 text-lg">+</span>
+          <span className="text-primary-600 text-lg">+</span>
           Add Transaction
         </button>
       ) : (
         // Expanded state: Full form
         <div className="p-4 animate-slideDown">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-700">Quick Add Transaction</h3>
+            <h3 className="text-sm font-medium text-text-secondary">Quick Add Transaction</h3>
             <button
               onClick={() => setIsExpanded(false)}
-              className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              className="text-text-tertiary hover:text-text-secondary text-xl leading-none"
               title="Collapse (ESC)"
             >
               ×
@@ -212,19 +212,19 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
           <div className="grid grid-cols-7 gap-3">
         {/* Date */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Date</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, () => payeeInputRef.current?.focus())}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
 
         {/* Type Selector */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Type</label>
           <select
             value={transactionType}
             onChange={(e) => {
@@ -233,7 +233,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
               setCategoryId(null);
             }}
             onKeyDown={(e) => handleKeyDown(e, () => payeeInputRef.current?.focus())}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           >
             <option value={TransactionType.DEBIT}>📤 Expense</option>
             <option value={TransactionType.CREDIT}>📥 Income</option>
@@ -243,8 +243,8 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
 
         {/* Payee with autocomplete */}
         <div className="relative">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Payee <span className="text-red-500">*</span>
+          <label className="block text-xs font-medium text-text-secondary mb-1">
+            Payee <span className="text-danger-500">*</span>
           </label>
           <input
             ref={payeeInputRef}
@@ -255,28 +255,28 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             onFocus={() => payee.length >= 2 && setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             placeholder="e.g., Starbucks"
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary placeholder-text-disabled border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
           {showSuggestions && payeeSuggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
               {payeeSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
                   onClick={() => handlePayeeSelect(suggestion)}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                  className="px-3 py-2 hover:bg-surface-secondary cursor-pointer border-b border-border last:border-b-0"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-text-primary">
                         {suggestion.canonical_name}
                       </div>
                       {suggestion.default_category_name && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-text-tertiary">
                           {suggestion.default_category_name}
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400 ml-2">
+                    <div className="text-xs text-text-disabled ml-2">
                       {suggestion.transaction_count} txns
                     </div>
                   </div>
@@ -288,8 +288,8 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
 
         {/* Amount */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Amount <span className="text-red-500">*</span>
+          <label className="block text-xs font-medium text-text-secondary mb-1">
+            Amount <span className="text-danger-500">*</span>
           </label>
           <input
             ref={amountInputRef}
@@ -298,18 +298,18 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             onChange={(e) => setAmount(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e)}
             placeholder="0.00"
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary placeholder-text-disabled border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
 
         {/* Category */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Category</label>
           <select
             value={categoryId || ""}
             onChange={(e) => setCategoryId(e.target.value ? parseInt(e.target.value) : null)}
             onKeyDown={(e) => handleKeyDown(e)}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">Select...</option>
             {filteredCategories.map((category) => (
@@ -322,14 +322,14 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
 
         {/* Account */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Account <span className="text-red-500">*</span>
+          <label className="block text-xs font-medium text-text-secondary mb-1">
+            Account <span className="text-danger-500">*</span>
           </label>
           <select
             value={accountId || ""}
             onChange={(e) => setAccountId(e.target.value ? parseInt(e.target.value) : null)}
             onKeyDown={(e) => handleKeyDown(e)}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 text-sm text-text-primary border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">Select...</option>
             {accounts.map((account) => (
@@ -347,8 +347,8 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             disabled={isSubmitting || !payee || !amount || !accountId}
             className={`w-full px-4 py-1.5 text-sm font-medium rounded-md ${
               success
-                ? "bg-green-600 text-white"
-                : "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                ? "bg-success-600 text-text-inverse"
+                : "bg-primary-600 text-text-inverse hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
             }`}
           >
             {success ? "✓ Added" : isSubmitting ? "Adding..." : "Add"}
@@ -357,11 +357,11 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
       </div>
 
           {error && (
-            <div className="mt-2 text-xs text-red-600">{error}</div>
+            <div className="mt-2 text-xs text-danger-600">{error}</div>
           )}
 
-          <div className="mt-2 text-xs text-gray-500">
-            Tip: Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Enter</kbd> to add, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded">Esc</kbd> to collapse
+          <div className="mt-2 text-xs text-text-tertiary">
+            Tip: Press <kbd className="px-1 py-0.5 bg-surface-secondary border border-border rounded">Enter</kbd> to add, <kbd className="px-1 py-0.5 bg-surface-secondary border border-border rounded">Esc</kbd> to collapse
           </div>
         </div>
       )}

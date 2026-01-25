@@ -259,3 +259,111 @@ class TestAccountCRUD:
         data = response.json()
         assert len(data) == 1
         assert data[0]["name"] == "User1 Account"
+
+    def test_create_account_with_institution(self, client, auth_headers):
+        """Test creating account with institution field."""
+        account_data = {
+            "name": "Chase Checking",
+            "type": "checking",
+            "institution": "Chase Bank",
+            "account_number": "1234",
+            "currency": "USD",
+            "current_balance": "2500.00",
+            "notes": "Primary checking at Chase"
+        }
+
+        response = client.post(
+            "/api/v1/accounts",
+            json=account_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == account_data["name"]
+        assert data["institution"] == account_data["institution"]
+        assert data["account_number"] == account_data["account_number"]
+        assert data["type"] == account_data["type"]
+        assert Decimal(data["current_balance"]) == Decimal(account_data["current_balance"])
+
+    def test_institution_persists_after_save(self, client, auth_headers, test_user, db_session):
+        """Test that institution field persists correctly in database."""
+        from app.models.account import Account
+
+        # Create account with institution
+        account = Account(
+            user_id=test_user.id,
+            name="Wells Fargo Savings",
+            type=AccountType.SAVINGS,
+            institution="Wells Fargo",
+            account_number="5678",
+            currency="USD",
+            current_balance=Decimal("10000.00")
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Verify institution persisted
+        assert account.institution == "Wells Fargo"
+        assert account.account_number == "5678"
+
+        # Retrieve via API and verify
+        response = client.get(f"/api/v1/accounts/{account.id}", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["institution"] == "Wells Fargo"
+        assert data["account_number"] == "5678"
+
+    def test_update_account_institution(self, client, auth_headers, test_user, db_session):
+        """Test updating account institution field."""
+        from app.models.account import Account
+
+        # Create account without institution
+        account = Account(
+            user_id=test_user.id,
+            name="Generic Account",
+            type=AccountType.CHECKING,
+            currency="USD",
+            current_balance=Decimal("1000.00")
+        )
+        db_session.add(account)
+        db_session.commit()
+        db_session.refresh(account)
+
+        # Update to add institution
+        update_data = {
+            "institution": "Bank of America",
+            "account_number": "9999"
+        }
+
+        response = client.put(
+            f"/api/v1/accounts/{account.id}",
+            json=update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["institution"] == "Bank of America"
+        assert data["account_number"] == "9999"
+
+    def test_account_number_validation(self, client, auth_headers):
+        """Test that account_number field validates length (max 4 digits)."""
+        account_data = {
+            "name": "Invalid Account",
+            "type": "checking",
+            "institution": "Some Bank",
+            "account_number": "12345",  # Too long - should be max 4
+            "currency": "USD",
+            "current_balance": "1000.00"
+        }
+
+        response = client.post(
+            "/api/v1/accounts",
+            json=account_data,
+            headers=auth_headers
+        )
+
+        # Should fail validation
+        assert response.status_code == 422

@@ -31,8 +31,8 @@ export default function IncomeTrendChart({ data }: IncomeTrendChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-          <p className="font-medium text-gray-900 mb-2">{label}</p>
+        <div className="bg-surface p-3 border border-border-light rounded shadow-lg">
+          <p className="font-medium text-text-primary mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
               {entry.name}: {formatCurrency(entry.value)}
@@ -46,7 +46,7 @@ export default function IncomeTrendChart({ data }: IncomeTrendChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-text-tertiary">
         No trend data available
       </div>
     );
