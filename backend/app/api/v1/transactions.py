@@ -111,8 +111,15 @@ def get_transactions(
     """Get transactions for the authenticated user with filtering, sorting, and pagination.
 
     Default behavior: Returns up to 100 most recent transactions sorted by date (newest first).
-    When filtering by account_id, includes running_balance for each transaction.
+    When filtering by account_id AND sorting by date, includes running_balance for each transaction.
+    Running balance is only meaningful in chronological order, so it's omitted for other sort fields.
     """
+
+    # Determine if we should calculate running balance
+    # Running balance only makes sense when:
+    # 1. Filtering by a single account (account_id is provided)
+    # 2. Sorting by date (chronological order)
+    should_calculate_running_balance = account_id is not None and sort_by == "date"
 
     # If filtering by account, calculate running balance using window function
     if account_id:
@@ -143,16 +150,25 @@ def get_transactions(
         )
 
         # Create window function to calculate cumulative sum
-        # Order by date, then id for consistent ordering
+        # Order by date, then display_order (if set), then id for consistent ordering
+        # display_order allows manual control of intra-day transaction sequence
+        # NULLS LAST ensures transactions without display_order sort after those with it
         running_sum_window = over(
             func.sum(amount_delta),
-            order_by=[TransactionModel.date.asc(), TransactionModel.id.asc()]
+            order_by=[
+                TransactionModel.date.asc(),
+                TransactionModel.display_order.asc().nullslast(),
+                TransactionModel.id.asc()
+            ]
         )
 
-        # Build subquery with running balance
-        # Filter transactions that affect this account (either as primary account or transfer destination)
-        base_query = db.query(
-            TransactionModel,
+        # STEP 1: Build subquery with running balance calculated over ALL account transactions
+        # Running balance must be calculated before applying filters like payee, category, etc.
+        # so that the balance reflects the true account state at each transaction.
+        # Only date-related filters (opening_balance_date, start_date, end_date) affect
+        # which transactions are included in the running balance calculation.
+        running_balance_query = db.query(
+            TransactionModel.id.label('id'),
             (account.opening_balance + func.coalesce(running_sum_window, 0)).label('running_balance')
         ).filter(
             TransactionModel.user_id == current_user.id
@@ -161,67 +177,91 @@ def get_transactions(
             (TransactionModel.transfer_account_id == account_id)
         )
 
-        # Apply date filters for running balance calculation
+        # Apply date filters to running balance calculation
         if account.opening_balance_date:
-            base_query = base_query.filter(TransactionModel.date >= account.opening_balance_date)
+            running_balance_query = running_balance_query.filter(TransactionModel.date >= account.opening_balance_date)
 
-        if start_date:
-            base_query = base_query.filter(TransactionModel.date >= start_date)
+        # Note: start_date and end_date for viewing don't affect running balance calculation
+        # Running balance should still be calculated from the beginning of the account
+        # The date filters are applied later for display purposes
 
-        if end_date:
-            base_query = base_query.filter(TransactionModel.date <= end_date)
+        # Create subquery for running balances
+        running_balance_subquery = running_balance_query.subquery()
 
-        # Apply other filters
-        if category_id:
-            base_query = base_query.filter(TransactionModel.category_id == category_id)
-
-        if type:
-            base_query = base_query.filter(TransactionModel.type == type)
-
-        if is_starred is not None:
-            base_query = base_query.filter(TransactionModel.is_starred == is_starred)
-
-        if payee_search:
-            search_pattern = f"%{payee_search}%"
-            base_query = base_query.filter(
-                (TransactionModel.payee.ilike(search_pattern)) |
-                (TransactionModel.description.ilike(search_pattern))
-            )
-
-        # Create subquery
-        subquery = base_query.subquery()
-
-        # Now query from subquery with sorting and pagination
-        # Join back to get payee_entity relationship
+        # STEP 2: Build main query joining transactions with their running balances
+        # Then apply user filters (category, type, payee, starred, dates)
         results = db.query(
             TransactionModel,
-            subquery.c.running_balance
+            running_balance_subquery.c.running_balance
         ).join(
-            subquery,
-            TransactionModel.id == subquery.c.id
+            running_balance_subquery,
+            TransactionModel.id == running_balance_subquery.c.id
         ).options(
             joinedload(TransactionModel.payee_entity)
         )
 
-        # Apply sorting
-        sort_column = subquery.c.date  # Default
-        if sort_by == "amount":
-            sort_column = subquery.c.amount
-        elif sort_by == "payee":
-            sort_column = subquery.c.payee
-        elif sort_by == "date":
-            sort_column = subquery.c.date
+        # Apply date filters for display (these filter what the user sees, not the running balance calc)
+        if start_date:
+            results = results.filter(TransactionModel.date >= start_date)
 
-        if sort_order.lower() == "asc":
-            results = results.order_by(sort_column.asc())
+        if end_date:
+            results = results.filter(TransactionModel.date <= end_date)
+
+        # Apply other filters (these don't affect running balance calculation)
+        if category_id:
+            results = results.filter(TransactionModel.category_id == category_id)
+
+        if type:
+            results = results.filter(TransactionModel.type == type)
+
+        if is_starred is not None:
+            results = results.filter(TransactionModel.is_starred == is_starred)
+
+        if payee_search:
+            search_pattern = f"%{payee_search}%"
+            results = results.filter(
+                (TransactionModel.payee.ilike(search_pattern)) |
+                (TransactionModel.description.ilike(search_pattern))
+            )
+
+        # Apply sorting
+        # When sorting by date, also sort by display_order and id for consistent
+        # intra-day ordering that matches the running balance calculation
+        if sort_by == "date":
+            if sort_order.lower() == "asc":
+                results = results.order_by(
+                    TransactionModel.date.asc(),
+                    TransactionModel.display_order.asc().nullslast(),
+                    TransactionModel.id.asc()
+                )
+            else:
+                results = results.order_by(
+                    TransactionModel.date.desc(),
+                    TransactionModel.display_order.desc().nullsfirst(),
+                    TransactionModel.id.desc()
+                )
         else:
-            results = results.order_by(sort_column.desc())
+            # For non-date sorting, just use the single column
+            sort_column = TransactionModel.date  # Default
+            if sort_by == "amount":
+                sort_column = TransactionModel.amount
+            elif sort_by == "payee":
+                sort_column = TransactionModel.payee
+
+            if sort_order.lower() == "asc":
+                results = results.order_by(sort_column.asc())
+            else:
+                results = results.order_by(sort_column.desc())
 
         # Apply pagination
         results = results.offset(skip).limit(limit).all()
 
-        # Convert to response format with running balance
-        return [_transaction_to_response(t[0], t[1]) for t in results]
+        # Convert to response format with running balance (only if sorting by date)
+        if should_calculate_running_balance:
+            return [_transaction_to_response(t[0], t[1]) for t in results]
+        else:
+            # Running balance is not meaningful when not sorted by date
+            return [_transaction_to_response(t[0], None) for t in results]
 
     else:
         # Original logic when not filtering by account (no running balance)

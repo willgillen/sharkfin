@@ -46,6 +46,12 @@ class Transaction(Base):
     # Star/flag for important transactions
     is_starred = Column(Boolean, nullable=False, server_default="false", default=False, index=True)
 
+    # Display order for transactions on the same date within an account
+    # Used to determine the sequence of transactions for running balance calculation
+    # Lower values appear first (earlier in the day)
+    # When NULL, falls back to ordering by id
+    display_order = Column(Integer, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 

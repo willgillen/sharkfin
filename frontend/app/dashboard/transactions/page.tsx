@@ -463,6 +463,25 @@ export default function TransactionsPage() {
                         onFilter={(value) => setTypeFilter(value?.toString() || "")}
                       />
                     )}
+                    {visibleColumns.includes("balance") && (
+                      <th
+                        className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider"
+                        title={
+                          !accountFilter
+                            ? "Filter by account to see running balance"
+                            : sortBy !== "date"
+                            ? "Sort by date to see running balance"
+                            : "Running balance after each transaction"
+                        }
+                      >
+                        Balance
+                        {(!accountFilter || sortBy !== "date") && (
+                          <span className="ml-1 text-warning-500" title="Balance requires account filter and date sort">
+                            ⚠
+                          </span>
+                        )}
+                      </th>
+                    )}
                     {visibleColumns.includes("actions") && (
                       <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                         Actions
@@ -540,6 +559,28 @@ export default function TransactionsPage() {
                             {transaction.type === TransactionType.CREDIT && "+"}
                             {formatCurrency(transaction.amount)}
                           </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes("balance") && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                          {transaction.running_balance !== null && transaction.running_balance !== undefined ? (
+                            <span className="text-text-primary">
+                              {formatCurrency(transaction.running_balance)}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-text-disabled cursor-help"
+                              title={
+                                !accountFilter
+                                  ? "Filter by a single account to see running balance"
+                                  : sortBy !== "date"
+                                  ? "Sort by date to see running balance"
+                                  : "Balance not available"
+                              }
+                            >
+                              —
+                            </span>
+                          )}
                         </td>
                       )}
                       {visibleColumns.includes("actions") && (

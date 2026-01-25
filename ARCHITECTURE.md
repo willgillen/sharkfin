@@ -584,6 +584,89 @@ CREATE INDEX idx_active_accounts
 └─────────────────────────────────────────────────────┘
 ```
 
+## Account Balances and Running Balance
+
+### Balance Concepts
+
+Shark Fin tracks several types of balances:
+
+1. **Opening Balance**: The initial balance set when an account is created, with an optional `opening_balance_date`.
+
+2. **Current Balance**: The real-time balance of an account, calculated as:
+   ```
+   current_balance = opening_balance + sum(all_transaction_deltas)
+   ```
+   Where transaction deltas are:
+   - CREDIT: +amount (adds to balance)
+   - DEBIT: -amount (subtracts from balance)
+   - TRANSFER: -amount (from source account), +amount (to destination account)
+
+3. **Running Balance**: The cumulative balance after each transaction, shown in the transaction list view. This allows users to see what the account balance was at any point in time.
+
+### Running Balance Calculation
+
+Running balance is calculated using PostgreSQL window functions for optimal performance:
+
+```sql
+SELECT
+    t.*,
+    opening_balance + SUM(
+        CASE
+            WHEN type = 'credit' THEN amount
+            WHEN type = 'debit' THEN -amount
+            WHEN type = 'transfer' AND account_id = ? THEN -amount
+            WHEN type = 'transfer' AND transfer_account_id = ? THEN amount
+            ELSE 0
+        END
+    ) OVER (
+        ORDER BY date ASC, display_order ASC NULLS LAST, id ASC
+    ) as running_balance
+FROM transactions t
+WHERE account_id = ? OR transfer_account_id = ?
+```
+
+### Running Balance Display Rules
+
+Running balance is **only calculated and displayed** when:
+
+1. **Filtering by a single account** - Running balance is account-specific and meaningless when viewing transactions across multiple accounts.
+
+2. **Sorting by date** - Running balance represents a chronological cumulative sum. When sorting by amount, payee, or other fields, the running balance values would be misleading.
+
+When either condition is not met, the Balance column shows "—" with a tooltip explaining why the balance is not available.
+
+### Transaction Display Order
+
+For transactions on the same date, the order is determined by:
+
+1. **`display_order`** (if set) - An optional integer field that allows manual control of transaction sequence within a day. Lower values appear first.
+
+2. **`id`** (fallback) - The database primary key provides a stable fallback ordering when `display_order` is not set.
+
+This ordering is used for:
+- Window function calculations (running balance)
+- Default display order in the transaction list
+- Database index optimization
+
+### Intra-Day Transaction Ordering
+
+Banks typically don't provide the exact time of transactions - only the date. This creates ambiguity when multiple transactions occur on the same day. Shark Fin handles this by:
+
+1. **Default ordering by ID** - Transactions are ordered by their database ID within each day, which generally reflects the order they were entered or imported.
+
+2. **Manual reordering via `display_order`** - Users can set explicit ordering for same-day transactions when the correct sequence is known (future feature).
+
+3. **Index optimization** - A composite index on `(account_id, date, display_order, id)` ensures efficient running balance queries.
+
+### Performance Considerations
+
+Running balance calculation uses:
+
+- **Window functions** instead of subqueries or application-level loops
+- **Composite indexes** for efficient date-based ordering
+- **Lazy calculation** - only computed when needed (account filter + date sort)
+- **Pagination support** - running balance is calculated correctly across paginated results
+
 ## API Documentation
 
 FastAPI provides automatic interactive API documentation:
