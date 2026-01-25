@@ -11,6 +11,26 @@ from app.schemas.account import Account, AccountCreate, AccountUpdate
 router = APIRouter()
 
 
+def _account_to_response(account: AccountModel, db: Session) -> dict:
+    """Convert account model to response dict with calculated balance."""
+    return {
+        "id": account.id,
+        "user_id": account.user_id,
+        "name": account.name,
+        "type": account.type,
+        "institution": account.institution,
+        "account_number": account.account_number,
+        "currency": account.currency,
+        "opening_balance": account.opening_balance,
+        "opening_balance_date": account.opening_balance_date,
+        "current_balance": account.calculate_balance(db),  # Calculated field
+        "is_active": account.is_active,
+        "notes": account.notes,
+        "created_at": account.created_at,
+        "updated_at": account.updated_at,
+    }
+
+
 @router.post("", response_model=Account, status_code=status.HTTP_201_CREATED)
 def create_account(
     account_data: AccountCreate,
@@ -26,7 +46,7 @@ def create_account(
         current_user: Current authenticated user
 
     Returns:
-        Created account object
+        Created account object with calculated balance
     """
     db_account = AccountModel(
         **account_data.model_dump(),
@@ -37,7 +57,7 @@ def create_account(
     db.commit()
     db.refresh(db_account)
 
-    return db_account
+    return _account_to_response(db_account, db)
 
 
 @router.get("", response_model=List[Account])
@@ -57,13 +77,13 @@ def get_accounts(
         limit: Maximum number of records to return
 
     Returns:
-        List of user's accounts
+        List of user's accounts with calculated balances
     """
     accounts = db.query(AccountModel).filter(
         AccountModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
 
-    return accounts
+    return [_account_to_response(account, db) for account in accounts]
 
 
 @router.get("/{account_id}", response_model=Account)
@@ -81,7 +101,7 @@ def get_account(
         current_user: Current authenticated user
 
     Returns:
-        Account object
+        Account object with calculated balance
 
     Raises:
         HTTPException: If account not found or doesn't belong to user
@@ -97,7 +117,7 @@ def get_account(
             detail="Account not found"
         )
 
-    return account
+    return _account_to_response(account, db)
 
 
 @router.put("/{account_id}", response_model=Account)
@@ -117,7 +137,7 @@ def update_account(
         current_user: Current authenticated user
 
     Returns:
-        Updated account object
+        Updated account object with calculated balance
 
     Raises:
         HTTPException: If account not found or doesn't belong to user
@@ -141,7 +161,7 @@ def update_account(
     db.commit()
     db.refresh(account)
 
-    return account
+    return _account_to_response(account, db)
 
 
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)

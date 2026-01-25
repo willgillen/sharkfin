@@ -52,7 +52,9 @@ export interface Account {
   type: AccountType;
   institution: string | null;
   account_number: string | null;
-  current_balance: string;
+  opening_balance: string;
+  opening_balance_date: string | null;
+  current_balance: string;  // Calculated field from API
   currency: string;
   is_active: boolean;
   notes: string | null;
@@ -65,7 +67,8 @@ export interface AccountCreate {
   type: AccountType;
   institution?: string;
   account_number?: string;
-  current_balance: string;
+  opening_balance: string;
+  opening_balance_date?: string;
   currency?: string;
   is_active?: boolean;
   notes?: string;
@@ -76,7 +79,8 @@ export interface AccountUpdate {
   type?: AccountType;
   institution?: string;
   account_number?: string;
-  current_balance?: string;
+  opening_balance?: string;
+  opening_balance_date?: string;
   currency?: string;
   is_active?: boolean;
   notes?: string;

@@ -12,7 +12,7 @@ class TestAccountCRUD:
             "name": "My Checking Account",
             "type": "checking",
             "currency": "USD",
-            "current_balance": "1000.50",
+            "opening_balance": "1000.50",
             "notes": "Primary checking account"
         }
 
@@ -27,7 +27,8 @@ class TestAccountCRUD:
         assert data["name"] == account_data["name"]
         assert data["type"] == account_data["type"]
         assert data["currency"] == account_data["currency"]
-        assert Decimal(data["current_balance"]) == Decimal(account_data["current_balance"])
+        assert Decimal(data["opening_balance"]) == Decimal(account_data["opening_balance"])
+        assert Decimal(data["current_balance"]) == Decimal(account_data["opening_balance"])  # Calculated from opening
         assert data["notes"] == account_data["notes"]
         assert data["is_active"] is True
         assert "id" in data
@@ -70,14 +71,14 @@ class TestAccountCRUD:
             name="Checking",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1000.00")
+            opening_balance=Decimal("1000.00")
         )
         account2 = Account(
             user_id=test_user.id,
             name="Savings",
             type=AccountType.SAVINGS,
             currency="USD",
-            current_balance=Decimal("5000.00")
+            opening_balance=Decimal("5000.00")
         )
         db_session.add_all([account1, account2])
         db_session.commit()
@@ -99,7 +100,7 @@ class TestAccountCRUD:
             name="My Checking",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1500.00")
+            opening_balance=Decimal("1500.00")
         )
         db_session.add(account)
         db_session.commit()
@@ -127,7 +128,7 @@ class TestAccountCRUD:
             name="Old Name",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1000.00")
+            opening_balance=Decimal("1000.00")
         )
         db_session.add(account)
         db_session.commit()
@@ -135,7 +136,7 @@ class TestAccountCRUD:
 
         update_data = {
             "name": "Updated Name",
-            "current_balance": "2000.00"
+            "opening_balance": "2000.00"
         }
 
         response = client.put(
@@ -268,7 +269,7 @@ class TestAccountCRUD:
             "institution": "Chase Bank",
             "account_number": "1234",
             "currency": "USD",
-            "current_balance": "2500.00",
+            "opening_balance": "2500.00",
             "notes": "Primary checking at Chase"
         }
 
@@ -284,7 +285,7 @@ class TestAccountCRUD:
         assert data["institution"] == account_data["institution"]
         assert data["account_number"] == account_data["account_number"]
         assert data["type"] == account_data["type"]
-        assert Decimal(data["current_balance"]) == Decimal(account_data["current_balance"])
+        assert Decimal(data["current_balance"]) == Decimal(account_data["opening_balance"])
 
     def test_institution_persists_after_save(self, client, auth_headers, test_user, db_session):
         """Test that institution field persists correctly in database."""
@@ -298,7 +299,7 @@ class TestAccountCRUD:
             institution="Wells Fargo",
             account_number="5678",
             currency="USD",
-            current_balance=Decimal("10000.00")
+            opening_balance=Decimal("10000.00")
         )
         db_session.add(account)
         db_session.commit()
@@ -325,7 +326,7 @@ class TestAccountCRUD:
             name="Generic Account",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1000.00")
+            opening_balance=Decimal("1000.00")
         )
         db_session.add(account)
         db_session.commit()
@@ -356,7 +357,7 @@ class TestAccountCRUD:
             "institution": "Some Bank",
             "account_number": "12345",  # Too long - should be max 4
             "currency": "USD",
-            "current_balance": "1000.00"
+            "opening_balance": "1000.00"
         }
 
         response = client.post(

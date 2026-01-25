@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from app.models.account import AccountType
 
@@ -12,7 +12,8 @@ class AccountBase(BaseModel):
     institution: Optional[str] = None
     account_number: Optional[str] = None
     currency: str = "USD"
-    current_balance: Decimal = Decimal("0.00")
+    opening_balance: Decimal = Decimal("0.00")
+    opening_balance_date: Optional[date] = None
     notes: Optional[str] = None
 
     @field_validator("currency")
@@ -44,7 +45,8 @@ class AccountUpdate(BaseModel):
     institution: Optional[str] = None
     account_number: Optional[str] = None
     currency: Optional[str] = None
-    current_balance: Optional[Decimal] = None
+    opening_balance: Optional[Decimal] = None
+    opening_balance_date: Optional[date] = None
     is_active: Optional[bool] = None
     notes: Optional[str] = None
 
@@ -79,4 +81,4 @@ class AccountInDB(AccountBase):
 
 class Account(AccountInDB):
     """Schema for account returned in API responses."""
-    pass
+    current_balance: Decimal = Decimal("0.00")  # Calculated field, set by API

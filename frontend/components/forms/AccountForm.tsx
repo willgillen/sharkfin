@@ -16,7 +16,8 @@ export default function AccountForm({ account, onSubmit, onCancel }: AccountForm
     type: account?.type || AccountType.CHECKING,
     institution: account?.institution || "",
     account_number: account?.account_number || "",
-    current_balance: account?.current_balance || "0.00",
+    opening_balance: account?.opening_balance || "0.00",
+    opening_balance_date: account?.opening_balance_date || "",
     currency: account?.currency || "USD",
     is_active: account?.is_active !== undefined ? account.is_active : true,
     notes: account?.notes || "",
@@ -119,17 +120,44 @@ export default function AccountForm({ account, onSubmit, onCancel }: AccountForm
 
         <div>
           <Input
-            label="Current Balance"
-            id="current_balance"
-            name="current_balance"
+            label="Opening Balance"
+            id="opening_balance"
+            name="opening_balance"
             type="number"
             required
             step="0.01"
-            value={formData.current_balance}
-            onChange={(e) => setFormData({ ...formData, current_balance: e.target.value })}
+            value={formData.opening_balance}
+            onChange={(e) => setFormData({ ...formData, opening_balance: e.target.value })}
             placeholder="0.00"
+            helperText="The starting balance for this account"
           />
         </div>
+
+        <div>
+          <Input
+            label="Opening Balance Date"
+            id="opening_balance_date"
+            name="opening_balance_date"
+            type="date"
+            value={formData.opening_balance_date}
+            onChange={(e) => setFormData({ ...formData, opening_balance_date: e.target.value })}
+            helperText="Optional - date of the opening balance"
+          />
+        </div>
+
+        {account && account.current_balance && (
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Calculated Balance
+            </label>
+            <div className="mt-1 text-lg font-semibold text-gray-900">
+              ${parseFloat(account.current_balance).toFixed(2)}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              This balance is calculated from your opening balance and all transactions
+            </p>
+          </div>
+        )}
 
         <div className="sm:col-span-2">
           <Textarea
