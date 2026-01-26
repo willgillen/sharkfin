@@ -86,14 +86,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 })}
 
                 {/* More dropdown */}
-                <div className="relative" ref={moreMenuRef}>
+                <div className="relative inline-flex items-center" ref={moreMenuRef}>
                   <button
                     onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                     className={`${
                       isMoreMenuActive
                         ? "border-primary-500 text-text-primary"
                         : "border-transparent text-text-tertiary hover:border-border hover:text-text-secondary"
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium h-full`}
                   >
                     More
                     <svg
@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                   {/* Dropdown Menu */}
                   {moreMenuOpen && (
-                    <div className="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-surface ring-1 ring-border z-50">
+                    <div className="absolute left-0 top-full mt-2 w-56 rounded-md shadow-lg bg-surface ring-1 ring-border z-50">
                       <div className="py-1">
                         {/* Group items by category */}
                         {["Tools", "Settings"].map((group) => {
