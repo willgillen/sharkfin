@@ -388,6 +388,111 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
+## Account Balance Architecture
+
+### Design Decision: Calculated Balances (No Stored `current_balance`)
+
+Shark Fin uses a **calculated balance** approach rather than storing a `current_balance` column on accounts. This architectural decision was made for the following reasons:
+
+**Why Calculated Balances:**
+1. **Single Source of Truth**: The balance is always derived from `opening_balance + sum(transactions)`, eliminating synchronization issues
+2. **Audit Trail**: The balance at any point in time can be reconstructed from the transaction history
+3. **Simplicity**: No need for balance update triggers, recalculation jobs, or consistency checks
+4. **Accuracy**: Impossible for balance to become "stale" or out-of-sync with transactions
+
+**Implementation Details:**
+- `Account.opening_balance`: The starting balance when the account was opened or first imported
+- `Account.opening_balance_date`: Optional date for the opening balance (transactions before this date are excluded)
+- `Account.calculate_balance(db)`: Method that computes current balance from opening_balance + all transaction deltas
+- Running balance in transaction list uses PostgreSQL window functions for efficiency
+
+**Balance Calculation Formula:**
+```
+current_balance = opening_balance + sum(
+    CASE type
+        WHEN 'credit' THEN +amount
+        WHEN 'debit' THEN -amount
+        WHEN 'transfer' THEN (source: -amount, destination: +amount)
+    END
+)
+```
+
+**When Working With Balances:**
+- Always use `account.calculate_balance(db)` to get current balance
+- Never add a `current_balance` column to the Account model
+- For reports/dashboards, calculate balances on-the-fly
+- Running balance in transaction lists is calculated via window functions in the query
+
+### Running Balance Display Rules
+
+Running balance is **only calculated and displayed** when:
+1. **Filtering by a single account** - Running balance is account-specific
+2. **Sorting by date** - Running balance requires chronological order
+
+When these conditions aren't met, the Balance column shows "—" with a tooltip explaining why.
+
+### Intra-Day Transaction Ordering
+
+For transactions on the same date, order is determined by:
+1. `display_order` (if set) - Manual control of sequence within a day
+2. `id` (fallback) - Database ID provides stable default ordering
+
+## Reconciliation Workflow
+
+### Overview
+
+Account reconciliation is the process of verifying that transactions in Shark Fin match a bank statement. This ensures data accuracy and helps catch missing or duplicate transactions.
+
+### Reconciliation Concepts
+
+**Statement Balance**: The ending balance shown on a bank statement for a specific date.
+
+**Cleared Transactions**: Transactions that have been verified against the bank statement.
+
+**Reconciled Balance**: The calculated balance based on cleared transactions only.
+
+**Difference**: The gap between the statement balance and reconciled balance (should be $0.00 when complete).
+
+### Reconciliation Process (Future Feature)
+
+1. **Start Reconciliation**
+   - Select account to reconcile
+   - Enter statement date and ending balance from bank statement
+   - System calculates transactions up to that date
+
+2. **Mark Transactions as Cleared**
+   - Review each transaction against the bank statement
+   - Mark matching transactions as "cleared"
+   - Running reconciled balance updates in real-time
+
+3. **Resolve Differences**
+   - If difference ≠ $0.00, investigate:
+     - Missing transactions (need to be added)
+     - Duplicate transactions (need to be deleted)
+     - Incorrect amounts (need to be corrected)
+     - Bank fees or interest not yet recorded
+
+4. **Complete Reconciliation**
+   - When difference = $0.00, finalize reconciliation
+   - Cleared transactions become "reconciled" (locked from editing)
+   - Record reconciliation history for audit trail
+
+### Data Model Considerations
+
+When implementing reconciliation, consider these fields:
+- `Transaction.is_cleared`: Boolean for cleared status
+- `Transaction.is_reconciled`: Boolean for reconciled (locked) status
+- `Transaction.cleared_date`: When the transaction was marked cleared
+- `Reconciliation` model: Tracks reconciliation sessions (account, statement_date, statement_balance, completed_at)
+
+### Best Practices for Reconciliation
+
+1. **Reconcile Regularly**: Monthly reconciliation catches errors early
+2. **Match Statement Period**: Use the exact dates from your bank statement
+3. **Check Opening Balance**: First reconciliation should verify the opening balance
+4. **Don't Skip Months**: Reconcile in chronological order
+5. **Keep Records**: Maintain reconciliation history for audit purposes
+
 ## Quick Reference
 
 **Most Common Commands:**
@@ -464,4 +569,4 @@ After clearing, you can re-import transactions and payees will be automatically 
 
 ---
 
-*Last Updated: 2026-01-11*
+*Last Updated: 2026-01-25*

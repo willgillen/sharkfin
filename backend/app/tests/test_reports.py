@@ -20,21 +20,21 @@ class TestReportsAPI:
             name="Checking",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("2000.00")
+            opening_balance=Decimal("2000.00")
         )
         savings = Account(
             user_id=test_user.id,
             name="Savings",
             type=AccountType.SAVINGS,
             currency="USD",
-            current_balance=Decimal("5000.00")
+            opening_balance=Decimal("5000.00")
         )
         credit_card = Account(
             user_id=test_user.id,
             name="Credit Card",
             type=AccountType.CREDIT_CARD,
             currency="USD",
-            current_balance=Decimal("-500.00")
+            opening_balance=Decimal("-500.00")
         )
         db_session.add_all([checking, savings, credit_card])
         db_session.commit()
@@ -97,10 +97,16 @@ class TestReportsAPI:
         data = response.json()
 
         # Check account summary
+        # Note: Account balances are now calculated from opening_balance + transactions
+        # Checking: 2000 (opening) + 3000 (income) - 500 (expense) = 4500
+        # Savings: 5000 (opening, no transactions)
+        # Total assets: 4500 + 5000 = 9500
+        # Credit Card: -500 (opening, no transactions), liability = 500
+        # Net worth: 9500 - 500 = 9000
         assert "account_summary" in data
-        assert Decimal(data["account_summary"]["total_assets"]) == Decimal("7000.00")
+        assert Decimal(data["account_summary"]["total_assets"]) == Decimal("9500.00")
         assert Decimal(data["account_summary"]["total_liabilities"]) == Decimal("500.00")
-        assert Decimal(data["account_summary"]["net_worth"]) == Decimal("6500.00")
+        assert Decimal(data["account_summary"]["net_worth"]) == Decimal("9000.00")
 
         # Check income vs expenses
         assert "income_vs_expenses" in data
@@ -132,7 +138,7 @@ class TestReportsAPI:
             name="Checking",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1000.00")
+            opening_balance=Decimal("1000.00")
         )
         db_session.add(checking)
         db_session.commit()
@@ -435,7 +441,7 @@ class TestReportsAPI:
             name="User1 Account",
             type=AccountType.CHECKING,
             currency="USD",
-            current_balance=Decimal("1000.00")
+            opening_balance=Decimal("1000.00")
         )
         db_session.add(account1)
         db_session.commit()

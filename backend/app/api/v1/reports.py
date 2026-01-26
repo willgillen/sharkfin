@@ -49,10 +49,12 @@ def get_dashboard_summary(
     total_liabilities = Decimal("0.00")
 
     for account in accounts:
+        # Calculate balance on-the-fly from opening_balance + transactions
+        balance = account.calculate_balance(db)
         if account.type in [AccountType.CHECKING, AccountType.SAVINGS, AccountType.INVESTMENT, AccountType.CASH]:
-            total_assets += account.current_balance
+            total_assets += balance
         elif account.type in [AccountType.CREDIT_CARD, AccountType.LOAN]:
-            total_liabilities += abs(account.current_balance)
+            total_liabilities += abs(balance)
 
     net_worth = total_assets - total_liabilities
 

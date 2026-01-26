@@ -355,7 +355,7 @@ class TestPayeeAPI:
             user_id=user.id,
             name="Test Checking",
             type="checking",
-            current_balance=1000.00,
+            opening_balance=1000.00,
             currency="USD"
         )
         db_session.add(account)
@@ -453,7 +453,7 @@ class TestPayeeAPI:
             user_id=user.id,
             name="Test Checking",
             type="checking",
-            current_balance=1000.00,
+            opening_balance=1000.00,
             currency="USD"
         )
         db_session.add(account)

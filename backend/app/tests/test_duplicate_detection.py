@@ -34,7 +34,7 @@ def test_account(db_session: Session, test_user: User):
         user_id=test_user.id,
         name="Test Checking",
         type=AccountType.CHECKING,
-        current_balance=1000.00
+        opening_balance=1000.00
     )
     db_session.add(account)
     db_session.commit()
@@ -128,13 +128,13 @@ class TestFITIDExactMatching:
             user_id=test_user.id,
             name="Checking 1",
             type=AccountType.CHECKING,
-            current_balance=1000.00
+            opening_balance=1000.00
         )
         account2 = Account(
             user_id=test_user.id,
             name="Checking 2",
             type=AccountType.CHECKING,
-            current_balance=2000.00
+            opening_balance=2000.00
         )
         db_session.add_all([account1, account2])
         db_session.commit()

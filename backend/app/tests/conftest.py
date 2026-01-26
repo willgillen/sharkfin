@@ -134,7 +134,7 @@ def test_account(db_session, test_user):
         user_id=test_user.id,
         name="Test Checking",
         type=AccountType.CHECKING,
-        current_balance=1000.00
+        opening_balance=1000.00
     )
     db_session.add(account)
     db_session.commit()

@@ -30,7 +30,6 @@ class Account(Base):
     institution = Column(String, nullable=True)  # Financial institution name (e.g., "Chase", "Bank of America")
     account_number = Column(String(4), nullable=True)  # Last 4 digits of account number for identification
     currency = Column(String(3), default="USD", nullable=False)  # ISO 4217 currency code
-    current_balance = Column(Numeric(15, 2), default=0, nullable=False)  # DEPRECATED: Will be removed after balance refactor
     opening_balance = Column(Numeric(15, 2), default=0, nullable=False)  # Fixed balance at opening_balance_date
     opening_balance_date = Column(Date, nullable=True)  # Date of opening balance (NULL = from account creation)
     is_active = Column(Boolean, default=True, nullable=False)

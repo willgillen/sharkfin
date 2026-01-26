@@ -39,7 +39,7 @@ def seed_database(db: Session):
         name="Main Checking",
         type=AccountType.CHECKING,
         currency="USD",
-        current_balance=Decimal("2450.75"),
+        opening_balance=Decimal("2450.75"),
         notes="Primary checking account"
     )
 
@@ -48,7 +48,7 @@ def seed_database(db: Session):
         name="Emergency Savings",
         type=AccountType.SAVINGS,
         currency="USD",
-        current_balance=Decimal("10000.00"),
+        opening_balance=Decimal("10000.00"),
         notes="Emergency fund"
     )
 
@@ -57,7 +57,7 @@ def seed_database(db: Session):
         name="Chase Sapphire",
         type=AccountType.CREDIT_CARD,
         currency="USD",
-        current_balance=Decimal("-850.25"),
+        opening_balance=Decimal("-850.25"),
         notes="Travel rewards card"
     )
 
