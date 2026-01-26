@@ -41,6 +41,12 @@ class TransactionPayeeAnalysisSchema(BaseModel):
     match_confidence: float = Field(ge=0.0, le=1.0)
     match_reason: str
 
+    # Suggested category (from known merchants or matched payee's default)
+    suggested_category: Optional[str] = Field(
+        None,
+        description="Category name from known merchants config or matched payee's default category"
+    )
+
     # Alternatives for user selection
     alternative_matches: List[AlternativeMatchSchema] = []
 
@@ -85,6 +91,10 @@ class PayeeAssignmentDecision(BaseModel):
         None,
         description="New payee name if user wants to create new payee"
     )
+    new_payee_category: Optional[str] = Field(
+        None,
+        description="Category name for new payee (from suggested_category or user selection)"
+    )
 
     # Whether to create/strengthen pattern from this decision
     create_pattern: bool = Field(
@@ -99,6 +109,7 @@ class PayeeAssignmentDecision(BaseModel):
                 "original_description": "UBER TRIP 12345 SF CA",
                 "payee_id": 42,
                 "new_payee_name": None,
+                "new_payee_category": None,
                 "create_pattern": True
             }
         }

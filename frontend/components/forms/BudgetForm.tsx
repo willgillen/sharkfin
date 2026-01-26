@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Budget, BudgetCreate, BudgetUpdate, BudgetPeriod, Category, CategoryType } from "@/types";
 import { categoriesAPI } from "@/lib/api";
 import { Input, Select } from "@/components/ui";
+import { getErrorMessage } from "@/lib/utils/errors";
 
 interface BudgetFormProps {
   budget?: Budget;
@@ -59,7 +60,7 @@ export default function BudgetForm({ budget, onSubmit, onCancel }: BudgetFormPro
       };
       await onSubmit(submitData);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save budget");
+      setError(getErrorMessage(err, "Failed to save budget"));
     } finally {
       setLoading(false);
     }

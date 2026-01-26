@@ -378,6 +378,10 @@ class PayeeService:
         # Title case for consistency
         text = text.title()
 
+        # Fix apostrophe-S capitalization (e.g., "Mcdonald'S" -> "McDonald's")
+        # Python's .title() capitalizes after any non-letter, so 'S becomes 'S
+        text = re.sub(r"'S\b", "'s", text)
+
         # Truncate to 200 chars
         return text[:200]
 

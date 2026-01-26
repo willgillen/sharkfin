@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Transaction, TransactionCreate, TransactionUpdate, TransactionType, Account, Category } from "@/types";
 import { accountsAPI, categoriesAPI } from "@/lib/api";
 import { Input, Select, Textarea } from "@/components/ui";
+import { getErrorMessage } from "@/lib/utils/errors";
 
 interface TransactionFormProps {
   transaction?: Transaction;
@@ -57,13 +58,21 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
     setLoading(true);
 
     try {
-      const submitData = {
+      const submitData: any = {
         ...formData,
         category_id: formData.category_id || undefined,
       };
+
+      // Remove empty strings and convert to undefined (for proper JSON serialization)
+      Object.keys(submitData).forEach((key) => {
+        if (submitData[key] === "") {
+          submitData[key] = undefined;
+        }
+      });
+
       await onSubmit(submitData);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save transaction");
+      setError(getErrorMessage(err, "Failed to save transaction"));
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Account, AccountCreate, AccountUpdate, AccountType } from "@/types";
 import { Input, Select, Textarea } from "@/components/ui";
+import { getErrorMessage } from "@/lib/utils/errors";
 
 interface AccountFormProps {
   account?: Account;
@@ -33,7 +34,7 @@ export default function AccountForm({ account, onSubmit, onCancel }: AccountForm
     try {
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save account");
+      setError(getErrorMessage(err, "Failed to save account"));
     } finally {
       setLoading(false);
     }

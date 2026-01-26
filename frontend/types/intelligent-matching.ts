@@ -24,6 +24,9 @@ export interface TransactionPayeeAnalysis {
   match_confidence: number;
   match_reason: string;
 
+  // Suggested category (from known merchants or matched payee's default)
+  suggested_category?: string | null;
+
   // Alternatives for user selection
   alternative_matches: AlternativeMatch[];
 }
@@ -54,6 +57,7 @@ export interface PayeeAssignmentDecision {
   // User can choose EITHER existing payee OR create new one
   payee_id?: number | null;
   new_payee_name?: string | null;
+  new_payee_category?: string | null;
 
   // Whether to create/strengthen pattern from this decision
   create_pattern?: boolean;
@@ -79,6 +83,9 @@ export interface PayeeAssignment {
   matchedPayeeName?: string;
   matchConfidence?: number;
   matchReason?: string;
+
+  // Suggested category from analysis
+  suggestedCategory?: string | null;
 
   // For user selection (frontend state)
   selectedPayeeId?: number | null;

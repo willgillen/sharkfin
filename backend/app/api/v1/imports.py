@@ -8,6 +8,8 @@ from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction, TransactionType
 from app.models.import_history import ImportHistory, ImportedTransaction
+from app.models.payee import Payee as PayeeModel
+from app.models.category import Category
 from app.schemas.imports import (
     CSVPreviewResponse,
     OFXPreviewResponse,
@@ -41,6 +43,119 @@ from app.services.intelligent_payee_matching_service import IntelligentPayeeMatc
 import json
 
 router = APIRouter()
+
+
+def find_category_by_name(db: Session, user_id: int, category_name: str) -> Optional[int]:
+    """
+    Find a user's category by name, with flexible matching.
+    Supports: exact match, case-insensitive match, and common aliases.
+
+    Args:
+        db: Database session
+        user_id: User ID to search within
+        category_name: Category name to find (from known_merchants.json or user input)
+
+    Returns:
+        Category ID if found, None otherwise
+    """
+    if not category_name:
+        return None
+
+    # Comprehensive category name mappings
+    # Maps suggested category names -> possible user category names
+    category_aliases = {
+        # Transportation & Auto
+        'transportation': ['Transportation', 'Transport', 'Auto & Transport', 'Travel'],
+        'auto & transport': ['Auto & Transport', 'Transportation', 'Auto', 'Car'],
+        'gas & fuel': ['Gas & Fuel', 'Gas', 'Fuel', 'Auto & Transport', 'Transportation'],
+
+        # Food & Dining
+        'restaurants': ['Restaurants', 'Restaurant', 'Dining', 'Food & Dining', 'Eating Out'],
+        'restaurant': ['Restaurants', 'Restaurant', 'Dining', 'Food & Dining'],
+        'fast_food': ['Restaurants', 'Fast Food', 'Food & Dining', 'Dining'],
+        'coffee shops': ['Coffee Shops', 'Coffee', 'Restaurants', 'Dining', 'Food & Dining'],
+        'food delivery': ['Food Delivery', 'Restaurants', 'Dining', 'Delivery'],
+        'groceries': ['Groceries', 'Grocery', 'Food & Dining', 'Food'],
+
+        # Shopping
+        'shopping': ['Shopping', 'Retail', 'General Merchandise', 'Stores'],
+        'retail': ['Shopping', 'Retail', 'General Merchandise'],
+
+        # Entertainment
+        'entertainment': ['Entertainment', 'Fun', 'Recreation', 'Leisure'],
+
+        # Bills & Utilities
+        'utilities': ['Utilities', 'Bills & Utilities', 'Bills', 'Home'],
+        'phone & internet': ['Phone & Internet', 'Phone', 'Internet', 'Utilities', 'Bills'],
+
+        # Health
+        'health & medical': ['Health & Medical', 'Healthcare', 'Medical', 'Health'],
+        'gym & fitness': ['Gym & Fitness', 'Fitness', 'Gym', 'Health'],
+
+        # Personal
+        'personal care': ['Personal Care', 'Personal', 'Beauty', 'Self Care'],
+
+        # Home
+        'home services': ['Home Services', 'Home', 'Home Improvement', 'Services'],
+
+        # Insurance
+        'insurance': ['Insurance', 'Bills', 'Auto Insurance', 'Health Insurance'],
+
+        # Travel
+        'travel': ['Travel', 'Vacation', 'Transportation', 'Hotels'],
+
+        # Education
+        'education': ['Education', 'Learning', 'Books', 'School'],
+
+        # Subscriptions
+        'subscriptions': ['Subscriptions', 'Entertainment', 'Software', 'Monthly'],
+
+        # Fees
+        'fees & charges': ['Fees & Charges', 'Fees', 'Bank Fees', 'Finance'],
+
+        # Gifts & Donations
+        'gifts & donations': ['Gifts & Donations', 'Gifts', 'Donations', 'Charity'],
+
+        # Pets
+        'pets': ['Pets', 'Pet Care', 'Pet Supplies'],
+
+        # Childcare
+        'childcare': ['Childcare', 'Kids', 'Children', 'Family'],
+
+        # Taxes & Legal
+        'taxes': ['Taxes', 'Tax', 'Tax Preparation'],
+        'legal': ['Legal', 'Legal Services', 'Attorney'],
+    }
+
+    # Get all user categories for matching
+    user_categories = db.query(Category).filter(
+        Category.user_id == user_id
+    ).all()
+
+    # Try exact match first
+    for cat in user_categories:
+        if cat.name == category_name:
+            return cat.id
+
+    # Try case-insensitive match
+    category_lower = category_name.lower()
+    for cat in user_categories:
+        if cat.name.lower() == category_lower:
+            return cat.id
+
+    # Try alias mapping
+    if category_lower in category_aliases:
+        for alias in category_aliases[category_lower]:
+            for cat in user_categories:
+                if cat.name.lower() == alias.lower():
+                    return cat.id
+
+    # Try partial match (category_name is substring of actual name)
+    for cat in user_categories:
+        if category_lower in cat.name.lower():
+            return cat.id
+
+    return None
 
 
 @router.post("/csv/preview", response_model=CSVPreviewResponse)
@@ -364,6 +479,7 @@ async def execute_csv_import(
             try:
                 # Handle payee entity creation with overrides
                 payee_id = None
+                payee_entity = None
                 description = trans_data.get('description', '')
                 payee = trans_data.get('payee', '')
                 text_to_extract = description or payee
@@ -382,6 +498,11 @@ async def execute_csv_import(
                     )
                     payee_id = payee_entity.id
 
+                # Get category from payee's default_category if available
+                category_id = None
+                if payee_entity and payee_entity.default_category_id:
+                    category_id = payee_entity.default_category_id
+
                 # Create transaction
                 transaction = Transaction(
                     user_id=current_user.id,
@@ -392,6 +513,7 @@ async def execute_csv_import(
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
                     payee_id=payee_id,
+                    category_id=category_id,
                     notes=trans_data.get('notes'),
                 )
                 db.add(transaction)
@@ -497,6 +619,7 @@ async def execute_ofx_import(
             try:
                 # Handle payee entity creation with overrides
                 payee_id = None
+                payee_entity = None
                 description = trans_data.get('description', '')
                 payee = trans_data.get('payee', '')
                 text_to_extract = description or payee
@@ -515,6 +638,11 @@ async def execute_ofx_import(
                     )
                     payee_id = payee_entity.id
 
+                # Get category from payee's default_category if available
+                category_id = None
+                if payee_entity and payee_entity.default_category_id:
+                    category_id = payee_entity.default_category_id
+
                 # Create transaction
                 transaction = Transaction(
                     user_id=current_user.id,
@@ -525,6 +653,7 @@ async def execute_ofx_import(
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
                     payee_id=payee_id,
+                    category_id=category_id,
                     fitid=trans_data.get('fitid'),  # Store FITID in dedicated column
                     notes=trans_data.get('notes'),
                 )
@@ -900,6 +1029,7 @@ async def analyze_csv_payees_intelligent(
                 matched_payee_name=a.matched_payee_name,
                 match_confidence=a.match_confidence,
                 match_reason=a.match_reason,
+                suggested_category=a.suggested_category,
                 alternative_matches=[
                     AlternativeMatchSchema(
                         payee_id=alt.payee_id,
@@ -996,6 +1126,7 @@ async def analyze_ofx_payees_intelligent(
                 matched_payee_name=a.matched_payee_name,
                 match_confidence=a.match_confidence,
                 match_reason=a.match_reason,
+                suggested_category=a.suggested_category,
                 alternative_matches=[
                     AlternativeMatchSchema(
                         payee_id=alt.payee_id,
@@ -1094,7 +1225,7 @@ async def execute_csv_import_with_decisions(
         print(f"[CSV Execute] Total payee_assignments: {len(request.payee_assignments)}")
         print(f"[CSV Execute] Total parsed_transactions: {len(parsed_transactions)}")
         for i, d in enumerate(request.payee_assignments[:5]):  # First 5
-            print(f"[CSV Execute] Assignment {i}: idx={d.transaction_index}, payee_id={d.payee_id}, new_name={d.new_payee_name}")
+            print(f"[CSV Execute] Assignment {i}: idx={d.transaction_index}, payee_id={d.payee_id}, new_name={d.new_payee_name}, category={d.new_payee_category}")
 
         # Services
         payee_service = PayeeService(db)
@@ -1102,14 +1233,23 @@ async def execute_csv_import_with_decisions(
 
         # Step 1: Create new payees and patterns
         new_payees = {}  # Map transaction_index -> payee_id
+        new_payee_categories = {}  # Map transaction_index -> category_id
         for decision in request.payee_assignments:
             if decision.new_payee_name:
+                # Look up category ID by name with flexible matching
+                default_category_id = find_category_by_name(
+                    db, current_user.id, decision.new_payee_category
+                )
+
                 # User wants to create new payee
                 payee = payee_service.get_or_create(
                     user_id=current_user.id,
-                    canonical_name=decision.new_payee_name
+                    canonical_name=decision.new_payee_name,
+                    default_category_id=default_category_id
                 )
                 new_payees[decision.transaction_index] = payee.id
+                if default_category_id:
+                    new_payee_categories[decision.transaction_index] = default_category_id
 
                 # Create initial pattern if requested
                 if decision.create_pattern:
@@ -1189,6 +1329,7 @@ async def execute_csv_import_with_decisions(
 
                 # Determine payee_id from user decisions
                 payee_id = payee_overrides.get(str(idx))
+                payee_entity = None
 
                 # If no decision was made, fall back to extraction
                 if payee_id is None:
@@ -1205,6 +1346,17 @@ async def execute_csv_import_with_decisions(
                                 canonical_name=extracted_name
                             )
                             payee_id = payee_entity.id
+                else:
+                    # Look up the payee entity to get its default category
+                    payee_entity = db.query(PayeeModel).filter(
+                        PayeeModel.id == payee_id,
+                        PayeeModel.user_id == current_user.id
+                    ).first()
+
+                # Get category from payee's default_category if available
+                category_id = None
+                if payee_entity and payee_entity.default_category_id:
+                    category_id = payee_entity.default_category_id
 
                 # Create transaction - payee name comes from linked Payee entity via API
                 transaction = Transaction(
@@ -1215,6 +1367,7 @@ async def execute_csv_import_with_decisions(
                     date=trans_data['date'],
                     description=trans_data.get('description'),
                     payee_id=payee_id,
+                    category_id=category_id,
                     notes=trans_data.get('notes'),
                 )
                 db.add(transaction)
@@ -1310,14 +1463,23 @@ async def execute_ofx_import_with_decisions(
 
         # Step 1: Create new payees and patterns
         new_payees = {}  # Map transaction_index -> payee_id
+        new_payee_categories = {}  # Map transaction_index -> category_id
         for decision in request.payee_assignments:
             if decision.new_payee_name:
+                # Look up category ID by name with flexible matching
+                default_category_id = find_category_by_name(
+                    db, current_user.id, decision.new_payee_category
+                )
+
                 # User wants to create new payee
                 payee = payee_service.get_or_create(
                     user_id=current_user.id,
-                    canonical_name=decision.new_payee_name
+                    canonical_name=decision.new_payee_name,
+                    default_category_id=default_category_id
                 )
                 new_payees[decision.transaction_index] = payee.id
+                if default_category_id:
+                    new_payee_categories[decision.transaction_index] = default_category_id
 
                 # Create initial pattern if requested
                 if decision.create_pattern:
@@ -1386,6 +1548,7 @@ async def execute_ofx_import_with_decisions(
             try:
                 # Determine payee_id from user decisions
                 payee_id = payee_overrides.get(str(idx))
+                payee_entity = None
 
                 # If no decision was made, fall back to extraction
                 if payee_id is None:
@@ -1402,6 +1565,17 @@ async def execute_ofx_import_with_decisions(
                                 canonical_name=extracted_name
                             )
                             payee_id = payee_entity.id
+                else:
+                    # Look up the payee entity to get its default category
+                    payee_entity = db.query(PayeeModel).filter(
+                        PayeeModel.id == payee_id,
+                        PayeeModel.user_id == current_user.id
+                    ).first()
+
+                # Get category from payee's default_category if available
+                category_id = None
+                if payee_entity and payee_entity.default_category_id:
+                    category_id = payee_entity.default_category_id
 
                 # Create transaction
                 transaction = Transaction(
@@ -1413,6 +1587,7 @@ async def execute_ofx_import_with_decisions(
                     description=trans_data.get('description'),
                     payee=trans_data.get('payee'),
                     payee_id=payee_id,
+                    category_id=category_id,
                     fitid=trans_data.get('fitid'),
                     notes=trans_data.get('notes'),
                 )

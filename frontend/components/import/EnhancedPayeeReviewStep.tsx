@@ -74,6 +74,7 @@ export default function EnhancedPayeeReviewStep({
             matchedPayeeName: a.matched_payee_name ?? undefined,
             matchConfidence: a.match_confidence,
             matchReason: a.match_reason,
+            suggestedCategory: a.suggested_category ?? undefined,
             // For HIGH/LOW confidence: preselect matched payee
             selectedPayeeId: a.matched_payee_id ?? null,
             // For NO_MATCH: use extracted name as default new payee
@@ -190,12 +191,20 @@ export default function EnhancedPayeeReviewStep({
       } else if (assignment.selectedNewPayeeName?.trim()) {
         // User wants to create new payee
         decision.new_payee_name = assignment.selectedNewPayeeName.trim();
+        // Include suggested category for new payees
+        if (assignment.suggestedCategory) {
+          decision.new_payee_category = assignment.suggestedCategory;
+        }
       } else if (assignment.matchType !== "NO_MATCH" && assignment.matchedPayeeId) {
         // Fallback: use matched payee if no explicit selection
         decision.payee_id = assignment.matchedPayeeId;
       } else {
         // Last resort: use extracted name
         decision.new_payee_name = assignment.extractedName;
+        // Include suggested category for new payees
+        if (assignment.suggestedCategory) {
+          decision.new_payee_category = assignment.suggestedCategory;
+        }
       }
 
       decisions.push(decision);

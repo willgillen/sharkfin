@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Category, CategoryCreate, CategoryUpdate, CategoryType } from "@/types";
 import { categoriesAPI } from "@/lib/api";
 import { Input, Select } from "@/components/ui";
+import { getErrorMessage } from "@/lib/utils/errors";
 
 interface CategoryFormProps {
   category?: Category;
@@ -54,7 +55,7 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
       };
       await onSubmit(submitData);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save category");
+      setError(getErrorMessage(err, "Failed to save category"));
     } finally {
       setLoading(false);
     }

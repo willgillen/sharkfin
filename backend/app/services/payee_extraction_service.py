@@ -16,6 +16,7 @@ from typing import Optional, Tuple, List
 from sqlalchemy.orm import Session
 from app.models.payee import Payee
 from Levenshtein import ratio
+from app.services.payee_category_suggestion_service import payee_category_suggestion_service
 
 
 class PayeeExtractionService:
@@ -23,12 +24,13 @@ class PayeeExtractionService:
         self.db = db
         self.known_merchants = self._load_known_merchants()
 
-    def _load_known_merchants(self) -> List[Tuple[str, str]]:
+    def _load_known_merchants(self) -> List[Tuple[str, str, Optional[str]]]:
         """
         Load known merchant patterns from JSON config file.
 
         Returns:
-            List of tuples: [(pattern, canonical_name), ...]
+            List of tuples: [(pattern, canonical_name, category), ...]
+            category may be None if not specified in config
         """
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
@@ -43,8 +45,9 @@ class PayeeExtractionService:
                 for merchant in data.get('merchants', []):
                     pattern = merchant.get('pattern')
                     name = merchant.get('name')
+                    category = merchant.get('category')  # May be None
                     if pattern and name:
-                        merchants.append((pattern, name))
+                        merchants.append((pattern, name, category))
                 return merchants
         except FileNotFoundError:
             # If config file doesn't exist, log warning and return empty list
@@ -67,61 +70,90 @@ class PayeeExtractionService:
             Tuple of (cleaned_name, confidence_score)
             confidence_score: 0.0-1.0 indicating extraction quality
         """
+        name, confidence, _ = self.extract_payee_name_with_category(description)
+        return (name, confidence)
+
+    def extract_payee_name_with_category(self, description: str) -> Tuple[str, float, Optional[str]]:
+        """
+        Extract clean payee name and suggested category from transaction description.
+
+        Returns:
+            Tuple of (cleaned_name, confidence_score, suggested_category)
+            confidence_score: 0.0-1.0 indicating extraction quality
+            suggested_category: Category string from known merchants, or None
+        """
         if not description or not description.strip():
-            return ("", 0.0)
+            return ("", 0.0, None)
 
         original = description.strip()
 
         # STEP 0: Check for well-known merchants FIRST (highest priority)
-        for pattern, merchant_name in self.known_merchants:
+        for pattern, merchant_name, category in self.known_merchants:
             if re.search(pattern, original, re.IGNORECASE):
                 # Found a well-known merchant - return immediately with high confidence
-                return (merchant_name, 0.95)
+                return (merchant_name, 0.95, category)
 
         cleaned = original
         confidence = 0.5  # Base confidence
 
         # Apply extraction patterns in order of specificity
 
-        # 1. Payment processor prefixes (includes ACH COMPANY, ENTRY descriptors)
+        # 1. Remove short prefixes followed by asterisk (SQ*, TST*, STRIPE*, etc.)
+        # This catches payment processors generically - any 1-5 char alpha prefix + asterisk
+        cleaned, prefix_match = self._remove_short_prefixes_with_asterisk(cleaned)
+        if prefix_match:
+            confidence += 0.15
+
+        # 2. Payment processor prefixes (includes ACH COMPANY, ENTRY descriptors)
         cleaned, processor_match = self._remove_processor_prefixes(cleaned)
         if processor_match:
             confidence += 0.2
 
-        # 2. Expand abbreviations (BEFORE transaction ID removal to avoid losing important words)
+        # 3. Replace hyphens with spaces (helps normalize merchant names)
+        # Exception: preserve common hyphenated brand names like "7-ELEVEN"
+        cleaned = self._normalize_hyphens(cleaned)
+
+        # 4. Remove ALL numbers (0-9) - most numbers in descriptions are noise
+        # (store numbers, transaction IDs, dates, phone numbers, etc.)
+        # Do this early to clean up before other processing
+        cleaned, numbers_removed = self._remove_all_numbers(cleaned)
+        if numbers_removed:
+            confidence += 0.1
+
+        # 5. Expand abbreviations (BEFORE transaction ID removal to avoid losing important words)
         cleaned = self._expand_abbreviations(cleaned)
 
-        # 3. Remove phone numbers (before removing other numbers)
+        # 6. Remove phone numbers (mostly handled by _remove_all_numbers now, but keep for formatting)
         cleaned, phone_removed = self._remove_phone_numbers(cleaned)
         if phone_removed:
             confidence += 0.05
 
-        # 4. Remove MCC codes and store numbers
+        # 7. Remove MCC codes and store numbers (mostly handled by _remove_all_numbers now)
         cleaned, number_removed = self._remove_store_numbers(cleaned)
         if number_removed:
             confidence += 0.1
 
-        # 5. Remove transaction IDs and codes
+        # 8. Remove transaction IDs and codes
         cleaned, id_removed = self._remove_transaction_ids(cleaned)
         if id_removed:
             confidence += 0.1
 
-        # 6. Remove URL suffixes
+        # 9. Remove URL suffixes
         cleaned, url_removed = self._remove_url_suffixes(cleaned)
         if url_removed:
             confidence += 0.05
 
-        # 7. Remove location indicators (cities, states, addresses)
+        # 10. Remove location indicators (cities, states, addresses)
         cleaned, location_removed = self._remove_location_indicators(cleaned)
         if location_removed:
             confidence += 0.05
 
-        # 8. Remove person names at end (for ACH transactions)
+        # 11. Remove person names at end (for ACH transactions)
         cleaned, person_removed = self._remove_person_names(cleaned)
         if person_removed:
             confidence += 0.05
 
-        # 9. Clean up whitespace and standardize
+        # 12. Clean up whitespace and standardize
         cleaned = self._normalize_whitespace(cleaned)
 
         # Adjust confidence based on result quality
@@ -133,7 +165,15 @@ class PayeeExtractionService:
         # Cap confidence at 1.0
         confidence = min(confidence, 1.0)
 
-        return (cleaned, confidence)
+        # Try to suggest a category using intelligent keyword matching
+        # This provides category suggestions for payees not in known_merchants.json
+        suggested_category = payee_category_suggestion_service.get_category_name(cleaned)
+
+        # If no match on cleaned name, try the original description too
+        if not suggested_category:
+            suggested_category = payee_category_suggestion_service.get_category_name(original)
+
+        return (cleaned, confidence, suggested_category)
 
     def _remove_processor_prefixes(self, text: str) -> Tuple[str, bool]:
         """
@@ -181,6 +221,86 @@ class PayeeExtractionService:
                 return (cleaned, True)
 
         return (text, False)
+
+    def _remove_short_prefixes_with_asterisk(self, text: str) -> Tuple[str, bool]:
+        """
+        Remove any short alpha prefix (1-5 characters) followed by asterisk.
+
+        This generically handles payment processor prefixes like:
+        - SQ * (Square)
+        - TST* (Toast)
+        - PP* (PayPal)
+        - SP * (Shopify)
+        - and many others
+
+        The pattern matches 1-5 uppercase letters followed by optional space and asterisk.
+        """
+        # Pattern: 1-5 letters at start, optional space, asterisk, optional space
+        pattern = r'^[A-Z]{1,5}\s*\*\s*'
+
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            cleaned = re.sub(pattern, '', text, flags=re.IGNORECASE).strip()
+            return (cleaned, True)
+
+        return (text, False)
+
+    def _normalize_hyphens(self, text: str) -> str:
+        """
+        Replace hyphens with spaces, except for known hyphenated brand names.
+
+        Preserves:
+        - 7-ELEVEN, 7-11
+        - A-1, etc.
+        """
+        # Known hyphenated brand names to preserve
+        preserved_brands = {
+            '7-ELEVEN': '7-ELEVEN',
+            '7-11': '7-ELEVEN',
+            'COCA-COLA': 'COCA-COLA',
+            'MERCEDES-BENZ': 'MERCEDES-BENZ',
+            'ROLLS-ROYCE': 'ROLLS-ROYCE',
+            'JACK-IN-THE-BOX': 'JACK-IN-THE-BOX',
+        }
+
+        # Check for preserved brands first (case-insensitive)
+        text_upper = text.upper()
+        for brand_pattern, replacement in preserved_brands.items():
+            if brand_pattern in text_upper:
+                # Don't modify hyphens for this text
+                return text
+
+        # Replace hyphens with spaces
+        return text.replace('-', ' ')
+
+    def _remove_all_numbers(self, text: str) -> Tuple[str, bool]:
+        """
+        Remove ALL numbers (0-9) from the text.
+
+        Most numbers in transaction descriptions are noise:
+        - Store numbers (#1234)
+        - Transaction IDs
+        - Phone numbers
+        - Dates embedded in descriptions
+        - MCC codes
+
+        This aggressive approach produces cleaner payee names.
+        """
+        original = text
+
+        # Remove all digits
+        cleaned = re.sub(r'\d', '', text)
+
+        # Remove orphaned "#" symbols (# without a number after it)
+        cleaned = re.sub(r'#\s*(?![0-9])', '', cleaned)
+
+        # Clean up resulting whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+        # Check if we removed anything
+        has_changes = cleaned != original
+
+        return (cleaned, has_changes)
 
     def _remove_store_numbers(self, text: str) -> Tuple[str, bool]:
         """
@@ -469,6 +589,10 @@ class PayeeExtractionService:
 
         # Title case (capitalize each word)
         text = text.title()
+
+        # Fix apostrophe-S capitalization (e.g., "Mcdonald'S" -> "McDonald's")
+        # Python's .title() capitalizes after any non-letter, so 'S becomes 'S
+        text = re.sub(r"'S\b", "'s", text)
 
         return text
 

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime
+from datetime import date as DateType
 from decimal import Decimal
 from app.models.transaction import TransactionType
 
@@ -11,7 +12,7 @@ class TransactionBase(BaseModel):
     category_id: Optional[int] = None
     type: TransactionType
     amount: Decimal
-    date: date
+    date: DateType
 
     # NEW: Support both payee_id (preferred) and payee string (legacy)
     payee_id: Optional[int] = None
@@ -50,7 +51,7 @@ class TransactionUpdate(BaseModel):
     category_id: Optional[int] = None
     type: Optional[TransactionType] = None
     amount: Optional[Decimal] = None
-    date: Optional[date] = None
+    date: Optional[DateType] = None
 
     # NEW: Support both payee_id (preferred) and payee string (legacy)
     payee_id: Optional[int] = None

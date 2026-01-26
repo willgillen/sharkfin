@@ -43,8 +43,15 @@ class TransactionPayeeAnalysis:
     match_confidence: float
     match_reason: str  # "Known merchant: Uber" or "Pattern match: UBER (92%)"
 
+    # Suggested category (from known merchants or matched payee's default)
+    suggested_category: Optional[str] = None
+
     # Alternatives for user selection
-    alternative_matches: List[AlternativeMatch]
+    alternative_matches: List[AlternativeMatch] = None
+
+    def __post_init__(self):
+        if self.alternative_matches is None:
+            self.alternative_matches = []
 
 
 class IntelligentPayeeMatchingService:
@@ -129,10 +136,9 @@ class IntelligentPayeeMatchingService:
                 ))
                 continue
 
-            # Step 1: Extract payee name
-            extracted_name, extraction_confidence = self.extraction_service.extract_payee_name(
-                text_to_extract
-            )
+            # Step 1: Extract payee name with category suggestion
+            extracted_name, extraction_confidence, suggested_category = \
+                self.extraction_service.extract_payee_name_with_category(text_to_extract)
 
             # Step 2: Try pattern matching (includes known merchants)
             pattern_match = self._match_against_patterns(
@@ -157,6 +163,10 @@ class IntelligentPayeeMatchingService:
                 matched_payee_id = matched_payee.id
                 matched_payee_name = matched_payee.canonical_name
 
+                # Use matched payee's default category if available
+                if matched_payee.default_category:
+                    suggested_category = matched_payee.default_category.name
+
                 # Find alternatives (other patterns or fuzzy matches)
                 alternatives = self._find_alternative_matches(
                     user_payees,
@@ -172,6 +182,10 @@ class IntelligentPayeeMatchingService:
                 matched_payee_name = matched_payee.canonical_name
                 reason = f"Similar to: {matched_payee_name} ({int(confidence * 100)}%)"
 
+                # Use matched payee's default category if available
+                if matched_payee.default_category:
+                    suggested_category = matched_payee.default_category.name
+
                 # Rest of fuzzy matches are alternatives
                 alternatives = [
                     AlternativeMatch(p.id, p.canonical_name, conf)
@@ -179,7 +193,7 @@ class IntelligentPayeeMatchingService:
                 ]
 
             else:
-                # No match found
+                # No match found - suggested_category from known merchants is already set
                 match_type = 'NO_MATCH'
                 matched_payee_id = None
                 matched_payee_name = None
@@ -197,6 +211,7 @@ class IntelligentPayeeMatchingService:
                 matched_payee_name=matched_payee_name,
                 match_confidence=confidence,
                 match_reason=reason,
+                suggested_category=suggested_category,
                 alternative_matches=alternatives
             ))
 
