@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-01-27",
+  "description": "Known merchants database for automatic payee recognition and categorization",
+  "files": [
+    "financial_institutions.json",
+    "restaurants_fast_food.json",
+    "restaurants_casual_dining.json",
+    "coffee_beverages.json",
+    "grocery_supermarkets.json",
+    "retail_general.json",
+    "retail_clothing.json",
+    "gas_stations.json",
+    "travel_transportation.json",
+    "utilities_telecom.json",
+    "subscription_services.json",
+    "healthcare_pharmacy.json",
+    "entertainment_recreation.json",
+    "home_services.json",
+    "ecommerce_delivery.json",
+    "insurance_legal.json"
+  ],
+  "schema": {
+    "pattern": "Required. Regex pattern for matching transaction descriptions",
+    "name": "Required. Canonical payee name (properly capitalized)",
+    "category": "Required. Category slug for category lookup",
+    "simple_icons_slug": "Optional. Simple Icons slug for brand logo",
+    "aliases": "Optional. Array of alternative names"
+  },
+  "categories": [
+    "bank", "credit_union", "investment", "credit_card", "payment_processor",
+    "fast_food", "casual_dining", "fine_dining", "coffee_shop", "bakery",
+    "grocery", "supermarket", "convenience_store",
+    "department_store", "discount_store", "online_retail", "specialty_retail",
+    "gas_station", "ev_charging",
+    "rideshare", "car_rental", "public_transit", "parking", "toll",
+    "airline", "hotel", "travel_booking",
+    "electric", "gas_utility", "water", "internet", "phone", "cable",
+    "streaming", "music_streaming", "gaming",
+    "software", "cloud_services",
+    "pharmacy", "hospital", "clinic", "dental", "vision",
+    "auto_insurance", "health_insurance", "home_insurance", "life_insurance",
+    "gym", "fitness_app", "wellness",
+    "professional_services", "home_services", "legal", "tax"
+  ]
+}

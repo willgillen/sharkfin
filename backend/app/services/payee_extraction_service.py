@@ -26,39 +26,73 @@ class PayeeExtractionService:
 
     def _load_known_merchants(self) -> List[Tuple[str, str, Optional[str]]]:
         """
-        Load known merchant patterns from JSON config file.
+        Load known merchant patterns from JSON config files.
+
+        Supports both:
+        - New multi-file structure: config/merchants/*.json
+        - Legacy single file: config/known_merchants.json (fallback)
 
         Returns:
             List of tuples: [(pattern, canonical_name, category), ...]
             category may be None if not specified in config
         """
-        config_path = os.path.join(
+        config_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            'config',
-            'known_merchants.json'
+            'config'
         )
 
+        merchants = []
+
+        # Try new multi-file structure first
+        merchants_dir = os.path.join(config_dir, 'merchants')
+        if os.path.isdir(merchants_dir):
+            for filename in sorted(os.listdir(merchants_dir)):
+                # Skip index and hidden files
+                if filename.startswith('_') or filename.startswith('.'):
+                    continue
+                if not filename.endswith('.json'):
+                    continue
+
+                filepath = os.path.join(merchants_dir, filename)
+                try:
+                    with open(filepath, 'r') as f:
+                        data = json.load(f)
+                        for merchant in data.get('merchants', []):
+                            pattern = merchant.get('pattern')
+                            name = merchant.get('name')
+                            category = merchant.get('category')
+                            if pattern and name:
+                                merchants.append((pattern, name, category))
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing {filename}: {e}")
+                except Exception as e:
+                    print(f"Error loading {filename}: {e}")
+
+        # If we loaded merchants from the new structure, return them
+        if merchants:
+            print(f"Loaded {len(merchants)} known merchants from {merchants_dir}")
+            return merchants
+
+        # Fall back to legacy single file
+        legacy_path = os.path.join(config_dir, 'known_merchants.json')
         try:
-            with open(config_path, 'r') as f:
+            with open(legacy_path, 'r') as f:
                 data = json.load(f)
-                merchants = []
                 for merchant in data.get('merchants', []):
                     pattern = merchant.get('pattern')
                     name = merchant.get('name')
-                    category = merchant.get('category')  # May be None
+                    category = merchant.get('category')
                     if pattern and name:
                         merchants.append((pattern, name, category))
+                print(f"Loaded {len(merchants)} known merchants from legacy file")
                 return merchants
         except FileNotFoundError:
-            # If config file doesn't exist, log warning and return empty list
-            print(f"Warning: Known merchants config not found at {config_path}")
+            print(f"Warning: No known merchants config found")
             return []
         except json.JSONDecodeError as e:
-            # If JSON is invalid, log error and return empty list
             print(f"Error parsing known merchants config: {e}")
             return []
         except Exception as e:
-            # Catch any other errors
             print(f"Error loading known merchants config: {e}")
             return []
 

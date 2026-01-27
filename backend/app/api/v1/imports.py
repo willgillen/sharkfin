@@ -64,54 +64,114 @@ def find_category_by_name(db: Session, user_id: int, category_name: str) -> Opti
     # Comprehensive category name mappings
     # Maps suggested category names -> possible user category names
     category_aliases = {
+        # Financial Institutions
+        'bank': ['Bank', 'Banking', 'Finance', 'Financial', 'Bank Fees', 'Fees & Charges'],
+        'credit_union': ['Credit Union', 'Bank', 'Banking', 'Finance'],
+        'investment': ['Investment', 'Investments', 'Finance', 'Brokerage', 'Stocks'],
+        'credit_card': ['Credit Card', 'Credit Cards', 'Finance', 'Fees & Charges'],
+        'payment_processor': ['Transfer', 'Transfers', 'Finance', 'Payment'],
+
         # Transportation & Auto
         'transportation': ['Transportation', 'Transport', 'Auto & Transport', 'Travel'],
         'auto & transport': ['Auto & Transport', 'Transportation', 'Auto', 'Car'],
+        'gas': ['Gas & Fuel', 'Gas', 'Fuel', 'Auto & Transport', 'Transportation'],
+        'gas_station': ['Gas & Fuel', 'Gas', 'Fuel', 'Auto & Transport', 'Transportation'],
         'gas & fuel': ['Gas & Fuel', 'Gas', 'Fuel', 'Auto & Transport', 'Transportation'],
+        'ev_charging': ['Gas & Fuel', 'Electric', 'Auto & Transport', 'Transportation'],
+        'rideshare': ['Transportation', 'Rideshare', 'Auto & Transport', 'Travel'],
+        'car_rental': ['Car Rental', 'Transportation', 'Travel', 'Auto & Transport'],
+        'public_transit': ['Transportation', 'Public Transit', 'Transit', 'Auto & Transport'],
+        'parking': ['Parking', 'Transportation', 'Auto & Transport'],
+        'toll': ['Toll', 'Transportation', 'Auto & Transport'],
 
         # Food & Dining
         'restaurants': ['Restaurants', 'Restaurant', 'Dining', 'Food & Dining', 'Eating Out'],
         'restaurant': ['Restaurants', 'Restaurant', 'Dining', 'Food & Dining'],
         'fast_food': ['Restaurants', 'Fast Food', 'Food & Dining', 'Dining'],
+        'casual_dining': ['Restaurants', 'Dining', 'Food & Dining'],
+        'fine_dining': ['Restaurants', 'Dining', 'Food & Dining'],
+        'coffee_shop': ['Coffee Shops', 'Coffee', 'Restaurants', 'Dining', 'Food & Dining'],
         'coffee shops': ['Coffee Shops', 'Coffee', 'Restaurants', 'Dining', 'Food & Dining'],
+        'bakery': ['Bakery', 'Coffee Shops', 'Restaurants', 'Food & Dining'],
         'food delivery': ['Food Delivery', 'Restaurants', 'Dining', 'Delivery'],
-        'groceries': ['Groceries', 'Grocery', 'Food & Dining', 'Food'],
+        'food_delivery': ['Food Delivery', 'Restaurants', 'Dining', 'Delivery'],
 
-        # Shopping
+        # Grocery
+        'groceries': ['Groceries', 'Grocery', 'Food & Dining', 'Food'],
+        'grocery': ['Groceries', 'Grocery', 'Food & Dining', 'Food'],
+        'supermarket': ['Groceries', 'Grocery', 'Supermarket', 'Food'],
+        'convenience_store': ['Groceries', 'Convenience', 'Shopping'],
+
+        # Shopping & Retail
         'shopping': ['Shopping', 'Retail', 'General Merchandise', 'Stores'],
         'retail': ['Shopping', 'Retail', 'General Merchandise'],
+        'department_store': ['Shopping', 'Department Store', 'Retail'],
+        'discount_store': ['Shopping', 'Discount', 'Retail'],
+        'online_retail': ['Shopping', 'Online Shopping', 'Retail'],
+        'specialty_retail': ['Shopping', 'Retail', 'Specialty'],
 
         # Entertainment
         'entertainment': ['Entertainment', 'Fun', 'Recreation', 'Leisure'],
+        'streaming': ['Entertainment', 'Streaming', 'Subscriptions'],
+        'music_streaming': ['Entertainment', 'Music', 'Subscriptions'],
+        'gaming': ['Entertainment', 'Gaming', 'Games', 'Subscriptions'],
 
         # Bills & Utilities
         'utilities': ['Utilities', 'Bills & Utilities', 'Bills', 'Home'],
+        'electric': ['Utilities', 'Electric', 'Bills & Utilities', 'Bills'],
+        'gas_utility': ['Utilities', 'Gas', 'Bills & Utilities', 'Bills'],
+        'water': ['Utilities', 'Water', 'Bills & Utilities', 'Bills'],
+        'internet': ['Phone & Internet', 'Internet', 'Utilities', 'Bills'],
+        'phone': ['Phone & Internet', 'Phone', 'Mobile', 'Utilities', 'Bills'],
+        'cable': ['Phone & Internet', 'Cable', 'TV', 'Utilities', 'Bills'],
         'phone & internet': ['Phone & Internet', 'Phone', 'Internet', 'Utilities', 'Bills'],
 
-        # Health
+        # Software & Subscriptions
+        'subscriptions': ['Subscriptions', 'Entertainment', 'Software', 'Monthly'],
+        'software': ['Software', 'Subscriptions', 'Technology'],
+        'cloud_services': ['Software', 'Cloud', 'Subscriptions', 'Technology'],
+
+        # Health & Medical
         'health & medical': ['Health & Medical', 'Healthcare', 'Medical', 'Health'],
+        'pharmacy': ['Pharmacy', 'Health & Medical', 'Healthcare', 'Medical'],
+        'hospital': ['Health & Medical', 'Hospital', 'Medical', 'Healthcare'],
+        'clinic': ['Health & Medical', 'Clinic', 'Medical', 'Healthcare'],
+        'dental': ['Dental', 'Health & Medical', 'Healthcare'],
+        'vision': ['Vision', 'Eye Care', 'Health & Medical', 'Healthcare'],
         'gym & fitness': ['Gym & Fitness', 'Fitness', 'Gym', 'Health'],
+        'gym': ['Gym & Fitness', 'Fitness', 'Gym', 'Health'],
+        'fitness_app': ['Gym & Fitness', 'Fitness', 'Subscriptions', 'Health'],
+        'wellness': ['Wellness', 'Health & Medical', 'Personal Care'],
+
+        # Insurance
+        'insurance': ['Insurance', 'Bills', 'Auto Insurance', 'Health Insurance'],
+        'auto_insurance': ['Insurance', 'Auto Insurance', 'Auto & Transport'],
+        'health_insurance': ['Insurance', 'Health Insurance', 'Health & Medical'],
+        'home_insurance': ['Insurance', 'Home Insurance', 'Home'],
+        'life_insurance': ['Insurance', 'Life Insurance'],
+
+        # Travel
+        'travel': ['Travel', 'Vacation', 'Transportation', 'Hotels'],
+        'airline': ['Travel', 'Airlines', 'Air Travel', 'Transportation'],
+        'hotel': ['Travel', 'Hotels', 'Lodging', 'Vacation'],
+        'travel_booking': ['Travel', 'Vacation', 'Hotels', 'Airlines'],
 
         # Personal
         'personal care': ['Personal Care', 'Personal', 'Beauty', 'Self Care'],
 
         # Home
         'home services': ['Home Services', 'Home', 'Home Improvement', 'Services'],
+        'home_services': ['Home Services', 'Home', 'Home Improvement', 'Services'],
 
-        # Insurance
-        'insurance': ['Insurance', 'Bills', 'Auto Insurance', 'Health Insurance'],
-
-        # Travel
-        'travel': ['Travel', 'Vacation', 'Transportation', 'Hotels'],
+        # Professional Services
+        'professional_services': ['Professional Services', 'Services', 'Business'],
 
         # Education
         'education': ['Education', 'Learning', 'Books', 'School'],
 
-        # Subscriptions
-        'subscriptions': ['Subscriptions', 'Entertainment', 'Software', 'Monthly'],
-
-        # Fees
+        # Fees & Finance
         'fees & charges': ['Fees & Charges', 'Fees', 'Bank Fees', 'Finance'],
+        'fees': ['Fees & Charges', 'Fees', 'Bank Fees', 'Finance'],
 
         # Gifts & Donations
         'gifts & donations': ['Gifts & Donations', 'Gifts', 'Donations', 'Charity'],
@@ -124,6 +184,7 @@ def find_category_by_name(db: Session, user_id: int, category_name: str) -> Opti
 
         # Taxes & Legal
         'taxes': ['Taxes', 'Tax', 'Tax Preparation'],
+        'tax': ['Taxes', 'Tax', 'Tax Preparation'],
         'legal': ['Legal', 'Legal Services', 'Attorney'],
     }
 

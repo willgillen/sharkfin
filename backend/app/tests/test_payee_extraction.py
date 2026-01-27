@@ -56,7 +56,8 @@ class TestPayeeExtraction:
         description = "PAYPAL *EBAY"
         extracted, confidence = extraction_service.extract_payee_name(description)
 
-        assert extracted == "Ebay"
+        # eBay is a known merchant, so we return canonical name with proper branding
+        assert extracted == "eBay"
         assert confidence > 0.6
 
     def test_remove_store_number(self, extraction_service: PayeeExtractionService):
@@ -132,7 +133,8 @@ class TestPayeeExtraction:
         description = "SHELL OIL 78912345"
         extracted, confidence = extraction_service.extract_payee_name(description)
 
-        assert "Shell Oil" in extracted
+        # Shell is a known merchant, returns canonical name "Shell"
+        assert "Shell" in extracted
         assert "78912345" not in extracted
 
     def test_empty_description(self, extraction_service: PayeeExtractionService):
