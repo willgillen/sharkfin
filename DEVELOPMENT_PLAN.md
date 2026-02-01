@@ -261,7 +261,26 @@ This application aims to provide feature parity with applications like Mint (now
 - [ ] "What-if" toggle to exclude planned expenses
 - [ ] Tests: `test_recurring_transaction_detection()`, `test_cash_flow_projection()`
 
-##### 18.6 Report Export (All Reports)
+##### 18.6 Cash Flow Sankey Diagram (Priority 6)
+**Business Value**: Visualize the complete flow of money from income sources through to expenses/savings
+- [ ] Backend: `GET /api/v1/reports/cash-flow-sankey` endpoint
+  - Aggregate income by source (payee/category)
+  - Aggregate expenses by category (top-level groupings)
+  - Calculate intermediate flows (Gross Income → Tax Withholding → Net Income → Expenses/Savings)
+  - Support custom grouping levels (show sub-categories or roll up)
+  - Return nodes and links for Sankey visualization
+- [ ] Frontend: `CashFlowSankeyReport` page component
+- [ ] Use recharts Sankey or d3-sankey for visualization
+- [ ] Left side: Income sources (Salary, Other Income, Asset Sales, etc.)
+- [ ] Middle: Intermediate aggregations (Gross Income, Tax Withholding, Inflows, etc.)
+- [ ] Right side: Outflow destinations (Expenses, Debt Payments, Investments, Savings)
+- [ ] Far right: Detailed breakdown (House, Car, Discretionary, 401k, etc.)
+- [ ] Interactive: Hover to highlight flow path, click to drill down
+- [ ] Date range filter integration
+- [ ] Account filter support (single account or all accounts)
+- [ ] Tests: `test_sankey_node_calculation()`, `test_sankey_link_aggregation()`
+
+##### 18.7 Report Export (All Reports)
 - [ ] Add PDF export using @react-pdf/renderer or similar
 - [ ] Add CSV export for data download
 - [ ] Add Excel export option (xlsx)
