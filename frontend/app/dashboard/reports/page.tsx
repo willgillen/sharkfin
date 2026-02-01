@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
-import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse } from "@/types";
+import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ReportHeader from "@/components/reports/ReportHeader";
 import { DateRange, getDefaultDateRange } from "@/components/reports/DateRangePicker";
@@ -85,6 +85,7 @@ export default function ReportsPage() {
   const [spendingData, setSpendingData] = useState<SpendingByCategoryResponse | null>(null);
   const [spendingTrendsData, setSpendingTrendsData] = useState<SpendingTrendsResponse | null>(null);
   const [incomeData, setIncomeData] = useState<IncomeVsExpensesResponse | null>(null);
+  const [incomeDetailData, setIncomeDetailData] = useState<IncomeExpenseDetailResponse | null>(null);
   const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -170,6 +171,15 @@ export default function ReportsPage() {
         );
         const income = await reportsAPI.getIncomeVsExpenses(Math.min(months, 24));
         setIncomeData(income);
+
+        // Also load detailed income data for the income report
+        if (activeReport === "income") {
+          const incomeDetail = await reportsAPI.getIncomeExpenseDetail(
+            Math.min(months, 24),
+            selectedAccountId || undefined
+          );
+          setIncomeDetailData(incomeDetail);
+        }
       }
 
       if (activeReport === "net-worth") {
@@ -603,6 +613,95 @@ export default function ReportsPage() {
                     </div>
                   </div>
 
+                  {/* Income Sources and Top Expenses */}
+                  {incomeDetailData && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Income Sources */}
+                      <div className="bg-surface rounded-lg shadow">
+                        <div className="p-4 border-b border-border">
+                          <h3 className="text-lg font-semibold text-success-600">Income Sources</h3>
+                        </div>
+                        <div className="p-4">
+                          {incomeDetailData.income_by_source.length > 0 ? (
+                            <>
+                              {incomeDetailData.income_by_source.map((source) => (
+                                <div
+                                  key={source.category_id}
+                                  className="flex justify-between items-center py-2 border-b border-border last:border-0"
+                                >
+                                  <div className="flex-1">
+                                    <div className="font-medium text-text-primary">
+                                      {source.category_name}
+                                    </div>
+                                    <div className="text-xs text-text-tertiary">
+                                      {source.transaction_count} transactions ({formatPercentage(source.percentage)})
+                                    </div>
+                                  </div>
+                                  <div className="font-semibold text-success-600">
+                                    {formatCurrency(source.amount)}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-border">
+                                <div className="font-semibold text-text-primary">Total Income</div>
+                                <div className="font-bold text-success-600">
+                                  {formatCurrency(incomeDetailData.summary.total_income)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-text-tertiary text-sm">No income recorded</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Savings Rate Trend */}
+                      <div className="bg-surface rounded-lg shadow">
+                        <div className="p-4 border-b border-border">
+                          <h3 className="text-lg font-semibold text-primary-600">Monthly Savings Rate</h3>
+                        </div>
+                        <div className="p-4">
+                          {incomeDetailData.monthly_breakdown.map((month) => (
+                            <div
+                              key={month.month}
+                              className="flex items-center gap-4 py-2 border-b border-border last:border-0"
+                            >
+                              <div className="w-24 text-sm text-text-primary">
+                                {new Date(month.month + "-01").toLocaleDateString("en-US", {
+                                  month: "short",
+                                  year: "2-digit",
+                                })}
+                              </div>
+                              <div className="flex-1">
+                                <div className="w-full bg-surface-secondary rounded-full h-4">
+                                  <div
+                                    className={`h-4 rounded-full ${
+                                      parseFloat(month.savings_rate) >= 0
+                                        ? "bg-primary-500"
+                                        : "bg-danger-500"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(Math.abs(parseFloat(month.savings_rate)), 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div
+                                className={`w-16 text-right text-sm font-medium ${
+                                  parseFloat(month.savings_rate) >= 0
+                                    ? "text-primary-600"
+                                    : "text-danger-600"
+                                }`}
+                              >
+                                {formatPercentage(month.savings_rate)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Monthly Breakdown Table */}
                   <div className="bg-surface rounded-lg shadow">
                     <div className="p-6 border-b border-border">
@@ -624,32 +723,47 @@ export default function ReportsPage() {
                             <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                               Net
                             </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Savings Rate
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {incomeData.monthly_trends.map((month) => (
-                            <tr key={month.month} className="hover:bg-surface-secondary">
-                              <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                                {new Date(month.month + "-01").toLocaleDateString("en-US", {
-                                  month: "long",
-                                  year: "numeric",
-                                })}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-right text-success-600">
-                                {formatCurrency(month.income)}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-right text-danger-600">
-                                {formatCurrency(month.expenses)}
-                              </td>
-                              <td
-                                className={`px-6 py-4 text-sm text-right font-medium ${
-                                  parseFloat(month.net) >= 0 ? "text-success-600" : "text-danger-600"
-                                }`}
-                              >
-                                {formatCurrency(month.net)}
-                              </td>
-                            </tr>
-                          ))}
+                          {(incomeDetailData?.monthly_breakdown || incomeData.monthly_trends).map((month) => {
+                            const savingsRate = 'savings_rate' in month ? month.savings_rate : null;
+                            return (
+                              <tr key={month.month} className="hover:bg-surface-secondary">
+                                <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                                  {new Date(month.month + "-01").toLocaleDateString("en-US", {
+                                    month: "long",
+                                    year: "numeric",
+                                  })}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-success-600">
+                                  {formatCurrency(month.income)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-danger-600">
+                                  {formatCurrency(month.expenses)}
+                                </td>
+                                <td
+                                  className={`px-6 py-4 text-sm text-right font-medium ${
+                                    parseFloat(month.net) >= 0 ? "text-success-600" : "text-danger-600"
+                                  }`}
+                                >
+                                  {formatCurrency(month.net)}
+                                </td>
+                                <td
+                                  className={`px-6 py-4 text-sm text-right ${
+                                    savingsRate && parseFloat(savingsRate) >= 0
+                                      ? "text-primary-600"
+                                      : "text-danger-600"
+                                  }`}
+                                >
+                                  {savingsRate ? formatPercentage(savingsRate) : "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

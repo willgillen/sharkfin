@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import { DashboardSummary, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse } from "@/types";
+import { DashboardSummary, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse } from "@/types";
 
 export const reportsAPI = {
   async getDashboard(startDate?: string, endDate?: string): Promise<DashboardSummary> {
@@ -56,6 +56,20 @@ export const reportsAPI = {
 
     const { data } = await apiClient.get<SpendingTrendsResponse>(
       `/api/v1/reports/spending-trends?${params.toString()}`
+    );
+    return data;
+  },
+
+  async getIncomeExpenseDetail(
+    months: number = 6,
+    accountId?: number
+  ): Promise<IncomeExpenseDetailResponse> {
+    const params = new URLSearchParams();
+    params.append("months", months.toString());
+    if (accountId) params.append("account_id", accountId.toString());
+
+    const { data } = await apiClient.get<IncomeExpenseDetailResponse>(
+      `/api/v1/reports/income-expense-detail?${params.toString()}`
     );
     return data;
   },

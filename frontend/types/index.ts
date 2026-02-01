@@ -541,6 +541,33 @@ export interface SpendingTrendsResponse {
   period_end: string;
 }
 
+// Income vs Expenses Detail types
+export interface IncomeSource {
+  category_id: number;
+  category_name: string;
+  amount: string;
+  percentage: string;
+  transaction_count: number;
+}
+
+export interface MonthlyIncomeExpense {
+  month: string;
+  income: string;
+  expenses: string;
+  net: string;
+  savings_rate: string;
+  income_sources: IncomeSource[];
+  top_expenses: CategorySpending[];
+}
+
+export interface IncomeExpenseDetailResponse {
+  summary: IncomeVsExpenses;
+  monthly_breakdown: MonthlyIncomeExpense[];
+  income_by_source: IncomeSource[];
+  period_start: string;
+  period_end: string;
+}
+
 // API Error types
 export interface APIError {
   detail: string | { msg: string; type: string }[];

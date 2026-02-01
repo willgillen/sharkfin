@@ -27,7 +27,10 @@ from app.schemas.dashboard import (
     NetWorthHistoryResponse,
     CategoryMonthlySpending,
     CategoryTrend,
-    SpendingTrendsResponse
+    SpendingTrendsResponse,
+    IncomeSource,
+    MonthlyIncomeExpense,
+    IncomeExpenseDetailResponse
 )
 
 router = APIRouter()
@@ -520,6 +523,190 @@ def get_spending_trends(
         total_spending=total_spending,
         categories=category_trends,
         months=month_list,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
+@router.get("/income-expense-detail", response_model=IncomeExpenseDetailResponse)
+def get_income_expense_detail(
+    months: int = Query(6, ge=1, le=24, description="Number of months to include"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account (optional)"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get detailed income vs expenses breakdown with sources."""
+
+    end_date = date.today()
+    start_date = end_date - relativedelta(months=months)
+
+    # Base filters
+    base_filters = [TransactionModel.user_id == current_user.id]
+    if account_id:
+        base_filters.append(TransactionModel.account_id == account_id)
+
+    # Overall summary
+    total_income = db.query(func.sum(TransactionModel.amount)).filter(
+        *base_filters,
+        TransactionModel.type == TransactionType.CREDIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).scalar() or Decimal("0.00")
+
+    total_expenses = db.query(func.sum(TransactionModel.amount)).filter(
+        *base_filters,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).scalar() or Decimal("0.00")
+
+    net = total_income - total_expenses
+    savings_rate = (net / total_income * 100) if total_income > 0 else Decimal("0.00")
+
+    summary = IncomeVsExpenses(
+        total_income=total_income,
+        total_expenses=total_expenses,
+        net=net,
+        savings_rate=savings_rate
+    )
+
+    # Income by source/category
+    income_by_category = db.query(
+        CategoryModel.id,
+        CategoryModel.name,
+        func.sum(TransactionModel.amount).label("total"),
+        func.count(TransactionModel.id).label("count")
+    ).join(
+        TransactionModel,
+        TransactionModel.category_id == CategoryModel.id
+    ).filter(
+        *base_filters,
+        TransactionModel.type == TransactionType.CREDIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).group_by(
+        CategoryModel.id,
+        CategoryModel.name
+    ).order_by(
+        func.sum(TransactionModel.amount).desc()
+    ).all()
+
+    income_sources = []
+    for cat_id, cat_name, total, count in income_by_category:
+        percentage = (total / total_income * 100) if total_income > 0 else Decimal("0.00")
+        income_sources.append(IncomeSource(
+            category_id=cat_id,
+            category_name=cat_name,
+            amount=total,
+            percentage=percentage,
+            transaction_count=count
+        ))
+
+    # Monthly breakdown
+    monthly_breakdown = []
+    for i in range(months):
+        month_date = end_date - relativedelta(months=i)
+        month_start = date(month_date.year, month_date.month, 1)
+        month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
+        month_str = month_start.strftime("%Y-%m")
+
+        # Month income
+        month_income = db.query(func.sum(TransactionModel.amount)).filter(
+            *base_filters,
+            TransactionModel.type == TransactionType.CREDIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).scalar() or Decimal("0.00")
+
+        # Month expenses
+        month_expenses = db.query(func.sum(TransactionModel.amount)).filter(
+            *base_filters,
+            TransactionModel.type == TransactionType.DEBIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).scalar() or Decimal("0.00")
+
+        month_net = month_income - month_expenses
+        month_savings_rate = (month_net / month_income * 100) if month_income > 0 else Decimal("0.00")
+
+        # Month income sources
+        month_income_by_cat = db.query(
+            CategoryModel.id,
+            CategoryModel.name,
+            func.sum(TransactionModel.amount).label("total"),
+            func.count(TransactionModel.id).label("count")
+        ).join(
+            TransactionModel,
+            TransactionModel.category_id == CategoryModel.id
+        ).filter(
+            *base_filters,
+            TransactionModel.type == TransactionType.CREDIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).group_by(
+            CategoryModel.id,
+            CategoryModel.name
+        ).order_by(
+            func.sum(TransactionModel.amount).desc()
+        ).limit(5).all()
+
+        month_income_sources = []
+        for cat_id, cat_name, total, count in month_income_by_cat:
+            percentage = (total / month_income * 100) if month_income > 0 else Decimal("0.00")
+            month_income_sources.append(IncomeSource(
+                category_id=cat_id,
+                category_name=cat_name,
+                amount=total,
+                percentage=percentage,
+                transaction_count=count
+            ))
+
+        # Month top expenses
+        month_expense_by_cat = db.query(
+            CategoryModel.id,
+            CategoryModel.name,
+            func.sum(TransactionModel.amount).label("total"),
+            func.count(TransactionModel.id).label("count")
+        ).join(
+            TransactionModel,
+            TransactionModel.category_id == CategoryModel.id
+        ).filter(
+            *base_filters,
+            TransactionModel.type == TransactionType.DEBIT,
+            TransactionModel.date >= month_start,
+            TransactionModel.date <= month_end
+        ).group_by(
+            CategoryModel.id,
+            CategoryModel.name
+        ).order_by(
+            func.sum(TransactionModel.amount).desc()
+        ).limit(5).all()
+
+        month_top_expenses = []
+        for cat_id, cat_name, total, count in month_expense_by_cat:
+            percentage = (total / month_expenses * 100) if month_expenses > 0 else Decimal("0.00")
+            month_top_expenses.append(CategorySpending(
+                category_id=cat_id,
+                category_name=cat_name,
+                amount=total,
+                percentage=percentage,
+                transaction_count=count
+            ))
+
+        monthly_breakdown.insert(0, MonthlyIncomeExpense(
+            month=month_str,
+            income=month_income,
+            expenses=month_expenses,
+            net=month_net,
+            savings_rate=month_savings_rate,
+            income_sources=month_income_sources,
+            top_expenses=month_top_expenses
+        ))
+
+    return IncomeExpenseDetailResponse(
+        summary=summary,
+        monthly_breakdown=monthly_breakdown,
+        income_by_source=income_sources,
         period_start=start_date,
         period_end=end_date
     )

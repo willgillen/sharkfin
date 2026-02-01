@@ -124,3 +124,32 @@ class SpendingTrendsResponse(BaseModel):
     months: List[str]  # List of months in order
     period_start: date
     period_end: date
+
+
+class IncomeSource(BaseModel):
+    """Income from a single source/category."""
+    category_id: int
+    category_name: str
+    amount: Decimal
+    percentage: Decimal
+    transaction_count: int
+
+
+class MonthlyIncomeExpense(BaseModel):
+    """Monthly breakdown with income and expense details."""
+    month: str  # Format: "2024-01"
+    income: Decimal
+    expenses: Decimal
+    net: Decimal
+    savings_rate: Decimal
+    income_sources: List[IncomeSource]
+    top_expenses: List[CategorySpending]
+
+
+class IncomeExpenseDetailResponse(BaseModel):
+    """Detailed income vs expenses response."""
+    summary: IncomeVsExpenses
+    monthly_breakdown: List[MonthlyIncomeExpense]
+    income_by_source: List[IncomeSource]
+    period_start: date
+    period_end: date
