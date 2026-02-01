@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
-import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse } from "@/types";
+import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ReportHeader from "@/components/reports/ReportHeader";
 import { DateRange, getDefaultDateRange } from "@/components/reports/DateRangePicker";
 import CategorySpendingChart from "@/components/charts/CategorySpendingChart";
 import IncomeTrendChart from "@/components/charts/IncomeTrendChart";
+import NetWorthChart from "@/components/charts/NetWorthChart";
 import { formatCurrency, formatPercentage } from "@/lib/utils/format";
 
 type ReportType = "overview" | "spending" | "income" | "net-worth" | "cash-flow" | "sankey";
@@ -49,7 +50,7 @@ const REPORT_NAV: ReportNavItem[] = [
     name: "Net Worth",
     description: "Track wealth over time",
     icon: "💰",
-    available: false, // Coming soon
+    available: true,
   },
   {
     id: "cash-flow",
@@ -82,6 +83,7 @@ export default function ReportsPage() {
   // Report data
   const [spendingData, setSpendingData] = useState<SpendingByCategoryResponse | null>(null);
   const [incomeData, setIncomeData] = useState<IncomeVsExpensesResponse | null>(null);
+  const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -150,6 +152,21 @@ export default function ReportsPage() {
         );
         const income = await reportsAPI.getIncomeVsExpenses(Math.min(months, 24));
         setIncomeData(income);
+      }
+
+      if (activeReport === "net-worth") {
+        // Calculate months from date range
+        const start = new Date(dateRange.startDate);
+        const end = new Date(dateRange.endDate);
+        const months = Math.max(
+          1,
+          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
+        );
+        const netWorth = await reportsAPI.getNetWorthHistory(
+          Math.min(months, 60),
+          selectedAccountId || undefined
+        );
+        setNetWorthData(netWorth);
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load report data");
@@ -223,7 +240,7 @@ export default function ReportsPage() {
             selectedAccountId={selectedAccountId}
             onAccountChange={setSelectedAccountId}
             accountsLoading={accountsLoading}
-            showAccountFilter={activeReport !== "net-worth"}
+            showAccountFilter={true}
           />
 
           {error && (
@@ -541,9 +558,205 @@ export default function ReportsPage() {
                 </div>
               )}
 
+              {/* Net Worth Report */}
+              {activeReport === "net-worth" && netWorthData && (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Total Assets</div>
+                      <div className="mt-1 text-2xl font-bold text-success-600">
+                        {formatCurrency(netWorthData.current.total_assets)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Total Liabilities</div>
+                      <div className="mt-1 text-2xl font-bold text-danger-600">
+                        {formatCurrency(netWorthData.current.total_liabilities)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Net Worth</div>
+                      <div
+                        className={`mt-1 text-2xl font-bold ${
+                          parseFloat(netWorthData.current.net_worth) >= 0
+                            ? "text-success-600"
+                            : "text-danger-600"
+                        }`}
+                      >
+                        {formatCurrency(netWorthData.current.net_worth)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Worth History Chart */}
+                  <div className="bg-surface rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-4">
+                      Net Worth Over Time
+                    </h3>
+                    <NetWorthChart data={netWorthData.history} />
+                  </div>
+
+                  {/* Accounts Breakdown */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Assets */}
+                    <div className="bg-surface rounded-lg shadow">
+                      <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-semibold text-success-600">Assets</h3>
+                      </div>
+                      <div className="p-4">
+                        {netWorthData.accounts
+                          .filter((a) => a.is_asset)
+                          .map((account) => (
+                            <div
+                              key={account.account_id}
+                              className="flex justify-between items-center py-2 border-b border-border last:border-0"
+                            >
+                              <div>
+                                <div className="font-medium text-text-primary">
+                                  {account.account_name}
+                                </div>
+                                <div className="text-xs text-text-tertiary capitalize">
+                                  {account.account_type.replace("_", " ")}
+                                </div>
+                              </div>
+                              <div className="font-semibold text-success-600">
+                                {formatCurrency(account.balance)}
+                              </div>
+                            </div>
+                          ))}
+                        {netWorthData.accounts.filter((a) => a.is_asset).length === 0 && (
+                          <p className="text-text-tertiary text-sm">No asset accounts</p>
+                        )}
+                        <div className="flex justify-between items-center pt-4 mt-2 border-t border-border">
+                          <div className="font-semibold text-text-primary">Total Assets</div>
+                          <div className="font-bold text-success-600">
+                            {formatCurrency(netWorthData.current.total_assets)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Liabilities */}
+                    <div className="bg-surface rounded-lg shadow">
+                      <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-semibold text-danger-600">Liabilities</h3>
+                      </div>
+                      <div className="p-4">
+                        {netWorthData.accounts
+                          .filter((a) => !a.is_asset)
+                          .map((account) => (
+                            <div
+                              key={account.account_id}
+                              className="flex justify-between items-center py-2 border-b border-border last:border-0"
+                            >
+                              <div>
+                                <div className="font-medium text-text-primary">
+                                  {account.account_name}
+                                </div>
+                                <div className="text-xs text-text-tertiary capitalize">
+                                  {account.account_type.replace("_", " ")}
+                                </div>
+                              </div>
+                              <div className="font-semibold text-danger-600">
+                                {formatCurrency(Math.abs(parseFloat(account.balance)))}
+                              </div>
+                            </div>
+                          ))}
+                        {netWorthData.accounts.filter((a) => !a.is_asset).length === 0 && (
+                          <p className="text-text-tertiary text-sm">No liability accounts</p>
+                        )}
+                        <div className="flex justify-between items-center pt-4 mt-2 border-t border-border">
+                          <div className="font-semibold text-text-primary">Total Liabilities</div>
+                          <div className="font-bold text-danger-600">
+                            {formatCurrency(netWorthData.current.total_liabilities)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Net Worth History Table */}
+                  <div className="bg-surface rounded-lg shadow">
+                    <div className="p-6 border-b border-border">
+                      <h3 className="text-lg font-semibold text-text-primary">Monthly History</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-surface-secondary">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Assets
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Liabilities
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Net Worth
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Change
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {netWorthData.history.map((point, index) => {
+                            const prevPoint = index > 0 ? netWorthData.history[index - 1] : null;
+                            const change = prevPoint
+                              ? parseFloat(point.net_worth) - parseFloat(prevPoint.net_worth)
+                              : 0;
+                            return (
+                              <tr key={point.date} className="hover:bg-surface-secondary">
+                                <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                                  {new Date(point.date).toLocaleDateString("en-US", {
+                                    month: "long",
+                                    year: "numeric",
+                                  })}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-success-600">
+                                  {formatCurrency(point.total_assets)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-danger-600">
+                                  {formatCurrency(point.total_liabilities)}
+                                </td>
+                                <td
+                                  className={`px-6 py-4 text-sm text-right font-semibold ${
+                                    parseFloat(point.net_worth) >= 0
+                                      ? "text-success-600"
+                                      : "text-danger-600"
+                                  }`}
+                                >
+                                  {formatCurrency(point.net_worth)}
+                                </td>
+                                <td
+                                  className={`px-6 py-4 text-sm text-right ${
+                                    change >= 0 ? "text-success-600" : "text-danger-600"
+                                  }`}
+                                >
+                                  {index > 0 ? (
+                                    <>
+                                      {change >= 0 ? "+" : ""}
+                                      {formatCurrency(change.toString())}
+                                    </>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Coming Soon Reports */}
-              {(activeReport === "net-worth" ||
-                activeReport === "cash-flow" ||
+              {(activeReport === "cash-flow" ||
                 activeReport === "sankey") && (
                 <div className="bg-surface rounded-lg shadow p-12 text-center">
                   <div className="text-6xl mb-4">

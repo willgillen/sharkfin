@@ -73,3 +73,29 @@ class DashboardSummary(BaseModel):
     top_spending_categories: List[CategorySpending]
     period_start: date
     period_end: date
+
+
+class NetWorthDataPoint(BaseModel):
+    """Net worth at a point in time."""
+    date: date
+    total_assets: Decimal
+    total_liabilities: Decimal
+    net_worth: Decimal
+
+
+class AccountBalance(BaseModel):
+    """Balance details for a single account."""
+    account_id: int
+    account_name: str
+    account_type: str
+    balance: Decimal
+    is_asset: bool
+
+
+class NetWorthHistoryResponse(BaseModel):
+    """Response for net worth history report."""
+    current: NetWorthDataPoint
+    history: List[NetWorthDataPoint]
+    accounts: List[AccountBalance]
+    period_start: date
+    period_end: date

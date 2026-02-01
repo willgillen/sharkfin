@@ -494,6 +494,30 @@ export interface IncomeVsExpensesResponse {
   period_end: string;
 }
 
+// Net Worth Report types
+export interface NetWorthDataPoint {
+  date: string;
+  total_assets: string;
+  total_liabilities: string;
+  net_worth: string;
+}
+
+export interface AccountBalance {
+  account_id: number;
+  account_name: string;
+  account_type: string;
+  balance: string;
+  is_asset: boolean;
+}
+
+export interface NetWorthHistoryResponse {
+  current: NetWorthDataPoint;
+  history: NetWorthDataPoint[];
+  accounts: AccountBalance[];
+  period_start: string;
+  period_end: string;
+}
+
 // API Error types
 export interface APIError {
   detail: string | { msg: string; type: string }[];

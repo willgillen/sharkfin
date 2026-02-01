@@ -21,7 +21,10 @@ from app.schemas.dashboard import (
     MonthlyTrend,
     SpendingByCategoryResponse,
     CategorySpending,
-    BudgetStatus
+    BudgetStatus,
+    NetWorthDataPoint,
+    AccountBalance,
+    NetWorthHistoryResponse
 )
 
 router = APIRouter()
@@ -308,6 +311,100 @@ def get_income_vs_expenses(
     return IncomeVsExpensesResponse(
         current_period=current_period,
         monthly_trends=monthly_trends,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
+@router.get("/net-worth-history", response_model=NetWorthHistoryResponse)
+def get_net_worth_history(
+    months: int = Query(12, ge=1, le=60, description="Number of months of history to include"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account (optional)"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get net worth history over time with monthly data points."""
+
+    end_date = date.today()
+    start_date = end_date - relativedelta(months=months)
+
+    # Get all user accounts (or filtered by account_id)
+    accounts_query = db.query(AccountModel).filter(
+        AccountModel.user_id == current_user.id,
+        AccountModel.is_active == True
+    )
+    if account_id:
+        accounts_query = accounts_query.filter(AccountModel.id == account_id)
+    accounts = accounts_query.all()
+
+    # Define asset and liability account types
+    asset_types = [AccountType.CHECKING, AccountType.SAVINGS, AccountType.INVESTMENT, AccountType.CASH]
+    liability_types = [AccountType.CREDIT_CARD, AccountType.LOAN]
+
+    # Calculate current balances for each account
+    account_balances = []
+    current_assets = Decimal("0.00")
+    current_liabilities = Decimal("0.00")
+
+    for account in accounts:
+        balance = account.calculate_balance(db, as_of_date=end_date)
+        is_asset = account.type in asset_types
+
+        if is_asset:
+            current_assets += balance
+        elif account.type in liability_types:
+            current_liabilities += abs(balance)
+
+        account_balances.append(AccountBalance(
+            account_id=account.id,
+            account_name=account.name,
+            account_type=account.type.value,
+            balance=balance,
+            is_asset=is_asset
+        ))
+
+    current_net_worth = current_assets - current_liabilities
+
+    current = NetWorthDataPoint(
+        date=end_date,
+        total_assets=current_assets,
+        total_liabilities=current_liabilities,
+        net_worth=current_net_worth
+    )
+
+    # Calculate historical net worth for each month
+    history = []
+    for i in range(months):
+        # Calculate date for end of each month going back
+        month_date = end_date - relativedelta(months=i)
+        # Get the last day of that month
+        if i > 0:
+            month_date = date(month_date.year, month_date.month, 1) - relativedelta(days=1)
+
+        month_assets = Decimal("0.00")
+        month_liabilities = Decimal("0.00")
+
+        for account in accounts:
+            balance = account.calculate_balance(db, as_of_date=month_date)
+
+            if account.type in asset_types:
+                month_assets += balance
+            elif account.type in liability_types:
+                month_liabilities += abs(balance)
+
+        month_net_worth = month_assets - month_liabilities
+
+        history.insert(0, NetWorthDataPoint(
+            date=month_date,
+            total_assets=month_assets,
+            total_liabilities=month_liabilities,
+            net_worth=month_net_worth
+        ))
+
+    return NetWorthHistoryResponse(
+        current=current,
+        history=history,
+        accounts=account_balances,
         period_start=start_date,
         period_end=end_date
     )
