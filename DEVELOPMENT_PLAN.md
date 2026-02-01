@@ -12,8 +12,8 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Development Progress Checklist
 
-**Last Updated**: January 31, 2026
-**Current Phase**: Phase 2 - Advanced Features (Week 16: Settings & Preferences)
+**Last Updated**: February 1, 2026
+**Current Phase**: Phase 2 - Advanced Features (Week 18-19: Goals & Advanced Reporting)
 
 
 
@@ -85,8 +85,9 @@ This application aims to provide feature parity with applications like Mint (now
 
 ---
 
-### Week 16: Settings & Preferences System
+### Week 16: Settings & Preferences System ✅ COMPLETE
 **Priority**: High - Infrastructure for Future Features
+**Status**: Completed February 1, 2026
 
 > **Architecture Note**: Settings are split into two categories:
 > - **App Settings** (`app_settings` table): System-wide configuration (API keys, server defaults)
@@ -94,76 +95,56 @@ This application aims to provide feature parity with applications like Mint (now
 >
 > This architecture was established during Logo.dev integration (see `IconProviderSettings`).
 
-#### 16.1 Settings Infrastructure (PARTIALLY COMPLETE ✓)
-
-**Already Implemented:**
+#### 16.1 Settings Infrastructure ✅ COMPLETE
 - [x] `app_settings` table for system-wide settings (API keys, etc.)
 - [x] `AppSettingsService` for app settings CRUD
 - [x] `users.ui_preferences` JSONB column for per-user preferences
 - [x] `UserPreferences` Pydantic schema with validation
 - [x] Basic settings API at `/api/v1/settings/...`
 - [x] User preferences updated via `PUT /api/v1/users/me`
+- [x] `UserPreferencesService` with typed getters/setters and defaults
+- [x] `DEFAULT_USER_PREFERENCES` constant with all default values
+- [x] `GET /api/v1/users/me/preferences` endpoint (returns merged defaults + user prefs)
+- [x] `PATCH /api/v1/users/me/preferences` endpoint (partial update)
+- [x] `DELETE /api/v1/users/me/preferences/{key}` endpoint (reset to default)
+- [x] Expanded `UserPreferences` schema with all preference fields
+- [x] Tests: 24 tests passing for preferences service and endpoints
 
-**To Complete:**
-- [ ] Add `UserPreferencesService` with typed getters/setters and defaults
-- [ ] Define `DEFAULT_USER_PREFERENCES` constant with all default values
-- [ ] Add `GET /api/v1/users/me/preferences` endpoint (returns merged defaults + user prefs)
-- [ ] Add `PATCH /api/v1/users/me/preferences` endpoint (partial update)
-- [ ] Add `DELETE /api/v1/users/me/preferences/{key}` endpoint (reset to default)
-- [ ] Expand `UserPreferences` schema with all preference fields:
-  - Display: `date_format`, `number_format`, `currency_symbol`, `start_of_week`
-  - Transactions: `default_sort_column`, `default_sort_order`, `rows_per_page`
-  - Import: `auto_create_payees`, `auto_apply_rules`, `duplicate_detection_strictness`
-  - Notifications: `email_notifications_enabled` (future)
-- [ ] Tests: `test_get_preferences_with_defaults()`, `test_partial_preference_update()`, `test_reset_preference()`
+#### 16.2 Settings UI ✅ COMPLETE
+- [x] Refactored Settings page with category-based navigation layout
+- [x] Left sidebar: Category tabs (Display, Transactions, Import, API Keys)
+- [x] Right panel: Settings for selected category
+- [x] Reusable `SettingItem` component supporting toggle, select, text, number inputs
+- [x] Help text/description under each setting
+- [x] "Reset to Default" button per setting
+- [x] Components: `SettingsNav.tsx`, `SettingItem.tsx`, category-specific preference components
 
-#### 16.2 Settings UI
+#### 16.3 Display Preferences ✅ COMPLETE
+- [x] Date format selector (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, MMM D, YYYY)
+- [x] Number format selector (1,234.56 vs 1.234,56 vs 1 234.56)
+- [x] Currency symbol preference
+- [x] Currency position preference (before/after amount)
+- [x] Decimal places preference (0-4)
+- [x] Start of week preference (Sunday/Monday)
 
-**Already Implemented:**
-- [x] Basic Settings page at `/dashboard/settings`
-- [x] `IconProviderSettings` component
-- [x] `ApiKeySettings` component
+#### 16.4 Transaction Preferences ✅ COMPLETE
+- [x] Default sort column preference (date, payee, amount, category)
+- [x] Default sort order preference (asc/desc)
+- [x] Rows per page preference (25, 50, 100)
+- [x] Visible columns preference (persist column toggle state)
 
-**To Complete:**
-- [ ] Refactor Settings page with category-based navigation layout
-- [ ] Left sidebar: Category tabs (Display, Transactions, Import, API Keys)
-- [ ] Right panel: Settings for selected category
-- [ ] Create reusable `SettingItem` component supporting:
-  - Toggle (boolean)
-  - Select (dropdown)
-  - Text input
-  - Number input with min/max
-- [ ] Add help text/description under each setting
-- [ ] Add "Reset to Default" button per setting
-- [ ] Move existing components into category sections
-- [ ] Files: Refactor `settings/page.tsx`, create `SettingsNav.tsx`, `SettingItem.tsx`
+#### 16.5 Import Preferences ✅ COMPLETE
+- [x] Auto-create payees toggle (default: true)
+- [x] Auto-apply rules toggle (default: true)
+- [x] Duplicate detection strictness (strict, moderate, relaxed)
+- [x] Default account for imports preference
 
-#### 16.3 Display Preferences
-- [ ] Add date format selector (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, relative)
-- [ ] Add number format selector (1,234.56 vs 1.234,56)
-- [ ] Add currency display preference (symbol position, decimal places)
-- [ ] Add start of week preference (Sunday/Monday)
-- [ ] Create `useDisplayPreferences()` hook
-- [ ] Apply date formatting throughout app (transactions, reports, etc.)
-- [ ] Apply number formatting (amounts, balances)
-- [ ] Tests: `test_date_format_preference()`, `test_number_format_preference()`
-
-#### 16.4 Transaction Preferences
-- [ ] Add default sort column preference
-- [ ] Add default sort order preference (asc/desc)
-- [ ] Add rows per page preference (25, 50, 100)
-- [ ] Add visible columns preference (persist column toggle state)
-- [ ] Apply preferences to transaction list on load
-- [ ] Tests: `test_transaction_sort_preference()`, `test_visible_columns_preference()`
-
-#### 16.5 Import Preferences
-- [ ] Add auto-create payees toggle (default: true)
-- [ ] Add auto-apply rules toggle (default: true)
-- [ ] Add duplicate detection strictness (strict, moderate, relaxed)
-- [ ] Add default account for imports preference
-- [ ] Apply preferences during CSV import process
-- [ ] Show current preferences in import wizard
-- [ ] Tests: `test_import_preferences_applied()`
+#### 16.6 Account-Centric Transactions View ✅ COMPLETE (Added)
+- [x] `AccountSelector` component for prominent account selection
+- [x] Transactions page always views one account at a time
+- [x] Account selection persisted in URL (?account=123)
+- [x] QuickAddBar uses selected account automatically (no dropdown)
+- [x] Running balance always available (single account filter)
 
 ### Week 17: Testing & Development Tools
 **Priority**: Medium - Developer Experience & UAT Support
@@ -208,16 +189,84 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Phase 2 (Continued): Advanced Features (Weeks 18-24)
 
-#### Week 18-19: Goals & Advanced Reporting ⏳
-- [ ] Backend: Savings goals model and API
-- [ ] Backend: Debt tracking with payoff calculations
-- [ ] Backend: Net worth tracking over time
-- [ ] Backend: Cash flow forecasting
-- [ ] Frontend: Goals management page
-- [ ] Frontend: Goal progress visualization
-- [ ] Frontend: Net worth trend chart
-- [ ] Frontend: Cash flow forecast view
-- [ ] Tests: Goals and advanced reports tests
+#### Week 18-19: Reports & Analytics 🚀 CURRENT FOCUS
+**Priority**: High - Core reporting capabilities for financial insight
+
+> **Current State**: Basic reports exist in `backend/app/api/v1/reports.py`:
+> - Dashboard summary with net worth, income/expenses, budget status
+> - Spending by category breakdown
+> - Income vs expenses with monthly trends
+> - Simple charts on dashboard (CategorySpendingChart, IncomeTrendChart)
+>
+> **Gap Analysis**: No dedicated Reports page, limited visualizations, no export capability
+
+##### 18.1 Reports Infrastructure & Navigation (Priority 1)
+- [ ] Create `/dashboard/reports` page with report type selector
+- [ ] Create `ReportsLayout` component with sidebar navigation
+- [ ] Add date range picker component (preset ranges: MTD, QTD, YTD, Last 30/90 days, Custom)
+- [ ] Create `useReportData` hook for loading with caching
+- [ ] Add account filter support (single account or all accounts)
+- [ ] Create shared `ReportHeader` component (title, date range, export button)
+
+##### 18.2 Net Worth Report (Priority 2)
+**Business Value**: Track financial progress over time
+- [ ] Backend: `GET /api/v1/reports/net-worth-history` endpoint
+  - Calculate net worth at end of each month (assets - liabilities)
+  - Support date range parameter
+  - Return array of {month, assets, liabilities, net_worth}
+- [ ] Frontend: `NetWorthReport` page component
+- [ ] Line chart: Net worth trend over time
+- [ ] Stacked area chart: Assets vs Liabilities breakdown
+- [ ] Summary cards: Current net worth, Change since last period, All-time high
+- [ ] Account breakdown table showing contribution to net worth
+- [ ] Tests: `test_net_worth_history_calculation()`, `test_net_worth_monthly_aggregation()`
+
+##### 18.3 Spending Trends Report (Priority 3)
+**Business Value**: Understand spending patterns and identify areas for improvement
+- [ ] Backend: `GET /api/v1/reports/spending-trends` endpoint
+  - Monthly spending by category over time
+  - Support comparison periods (this month vs last month, this year vs last year)
+  - Calculate average spending per category
+- [ ] Frontend: `SpendingTrendsReport` page component
+- [ ] Stacked bar chart: Monthly spending by top categories
+- [ ] Heat map: Spending by category over months
+- [ ] Month-over-month comparison with change indicators (↑↓)
+- [ ] Drill-down: Click category to see transactions
+- [ ] Tests: `test_spending_trends_monthly()`, `test_spending_comparison_periods()`
+
+##### 18.4 Income vs Expenses Report (Priority 4)
+**Business Value**: Monitor cash flow and savings rate
+- [ ] Backend: Enhance existing `/api/v1/reports/income-vs-expenses`
+  - Add income source breakdown
+  - Add expense category breakdown
+  - Add year-over-year comparison
+- [ ] Frontend: `IncomeVsExpensesReport` page component
+- [ ] Dual bar chart: Income vs Expenses by month
+- [ ] Sankey diagram or waterfall: Income sources → Expense categories
+- [ ] Savings rate trend line
+- [ ] Income stability metrics (variance, consistency)
+- [ ] Tests: `test_income_source_breakdown()`, `test_savings_rate_calculation()`
+
+##### 18.5 Cash Flow Forecast (Priority 5)
+**Business Value**: Plan ahead and avoid cash shortfalls
+- [ ] Backend: `GET /api/v1/reports/cash-flow-forecast` endpoint
+  - Analyze recurring transactions (bills, income)
+  - Project forward 30/60/90 days
+  - Identify upcoming large expenses
+  - Calculate projected balance by date
+- [ ] Frontend: `CashFlowForecastReport` page component
+- [ ] Timeline chart: Projected balance over next 90 days
+- [ ] Upcoming bills list with due dates and amounts
+- [ ] Warning indicators for low balance periods
+- [ ] "What-if" toggle to exclude planned expenses
+- [ ] Tests: `test_recurring_transaction_detection()`, `test_cash_flow_projection()`
+
+##### 18.6 Report Export (All Reports)
+- [ ] Add PDF export using @react-pdf/renderer or similar
+- [ ] Add CSV export for data download
+- [ ] Add Excel export option (xlsx)
+- [ ] Email report option (future)
+- [ ] Scheduled report generation (future)
 
 #### Week 20-21: Bill Tracking & Recurring Transactions ⏳
 - [ ] Backend: Recurring transaction templates
