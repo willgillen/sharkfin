@@ -1,11 +1,19 @@
 // User types
+export type IconProvider = "simple_icons" | "logo_dev";
+
+export interface UserPreferences {
+  icon_provider?: IconProvider;
+  transactions_visible_columns?: Record<string, boolean>;
+  [key: string]: any;
+}
+
 export interface User {
   id: number;
   email: string;
   full_name: string;
   is_active: boolean;
   is_superuser: boolean;
-  ui_preferences: Record<string, any> | null;
+  ui_preferences: UserPreferences | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -653,4 +661,29 @@ export interface AcceptSuggestionRequest {
   category_id: number;
   priority?: number;
   enabled?: boolean;
+}
+
+// Settings types
+export interface IconProviderInfo {
+  available: boolean;
+  requires_api_key: boolean;
+  requires_attribution: boolean;
+  description: string;
+}
+
+export interface IconProviderStatus {
+  providers: {
+    simple_icons: IconProviderInfo;
+    logo_dev: IconProviderInfo;
+  };
+  default_provider: IconProvider;
+}
+
+export interface LogoDevSettings {
+  api_key_configured: boolean;
+  description: string;
+}
+
+export interface LogoDevSettingsUpdate {
+  api_key: string | null;
 }

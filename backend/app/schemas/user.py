@@ -1,6 +1,24 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from typing import Optional, Dict, Any, Literal
 from datetime import datetime
+
+
+class UserPreferences(BaseModel):
+    """Schema for user UI preferences."""
+
+    # Icon provider preference
+    icon_provider: Literal["simple_icons", "logo_dev"] = Field(
+        default="simple_icons",
+        description="Preferred icon provider for merchant logos"
+    )
+
+    # Transaction display preferences
+    transactions_visible_columns: Optional[Dict[str, bool]] = Field(
+        default=None,
+        description="Which columns to show in transactions table"
+    )
+
+    model_config = ConfigDict(extra="allow")  # Allow additional preferences
 
 
 class UserBase(BaseModel):

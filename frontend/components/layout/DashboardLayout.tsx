@@ -23,6 +23,7 @@ const moreNavigation = [
   { name: "Categories", href: "/dashboard/categories", group: "Settings" },
   { name: "Payees", href: "/dashboard/payees", group: "Settings" },
   { name: "Rules", href: "/dashboard/rules", group: "Settings" },
+  { name: "Preferences", href: "/dashboard/settings", group: "Settings" },
   { name: "Import Transactions", href: "/dashboard/import", group: "Tools" },
   { name: "Import History", href: "/dashboard/import/history", group: "Tools" },
 ];

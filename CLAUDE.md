@@ -64,6 +64,7 @@ docker-compose exec frontend npm run test:coverage
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and component design
 - [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) - Feature roadmap and technical specs
 - [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - High-level project goals
+- [STYLE_GUIDE.md](STYLE_GUIDE.md) - Frontend visual design system and color tokens
 
 **Architecture Principles:**
 - Maintain clear separation between layers (API, Services, Models)
@@ -216,6 +217,10 @@ def db_session():
 - Avoid `any` type - use proper TypeScript types
 - Use ESLint: `docker-compose exec frontend npm run lint`
 - Use Prettier: `docker-compose exec frontend npm run format`
+- **CRITICAL: Follow [STYLE_GUIDE.md](STYLE_GUIDE.md) for all UI components**
+  - Use semantic color tokens (e.g., `text-text-primary`, `bg-danger-50`, `border-border`)
+  - Never use raw Tailwind colors (e.g., `text-red-600`, `bg-gray-50`)
+  - All colors are defined in `frontend/tailwind.config.ts`
 
 **Documentation:**
 - Add docstrings to all functions and classes
@@ -562,6 +567,7 @@ After clearing, you can re-import transactions and payees will be automatically 
 - **Test first, code second**
 - **Run tests after every change**
 - **Follow the architecture plan**
+- **Follow the style guide for all frontend components**
 - **Use Docker for everything**
 - **Keep seed and test data updated**
 - **Document as you go**
@@ -569,4 +575,4 @@ After clearing, you can re-import transactions and payees will be automatically 
 
 ---
 
-*Last Updated: 2026-01-25*
+*Last Updated: 2026-01-31*

@@ -7,6 +7,7 @@ from app.models.import_history import ImportHistory, ImportedTransaction
 from app.models.categorization_rule import CategorizationRule
 from app.models.payee import Payee
 from app.models.payee_matching_pattern import PayeeMatchingPattern
+from app.models.app_settings import AppSettings, SettingKeys
 
 __all__ = [
     "User",
@@ -19,4 +20,6 @@ __all__ = [
     "CategorizationRule",
     "Payee",
     "PayeeMatchingPattern",
+    "AppSettings",
+    "SettingKeys",
 ]

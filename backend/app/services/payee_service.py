@@ -3,10 +3,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 import re
+import logging
 
 from app.models.payee import Payee
 from app.schemas.payee import PayeeCreate, PayeeUpdate
 from app.services.payee_icon_service import payee_icon_service
+from app.services.icon_provider_service import get_icon_provider_service, IconProvider
+
+logger = logging.getLogger(__name__)
 
 
 class PayeeService:
@@ -23,7 +27,8 @@ class PayeeService:
         self,
         user_id: int,
         canonical_name: str,
-        default_category_id: Optional[int] = None
+        default_category_id: Optional[int] = None,
+        icon_provider: Optional[str] = None
     ) -> Payee:
         """
         Get existing payee or create new one.
@@ -34,16 +39,21 @@ class PayeeService:
             user_id: User ID who owns the payee
             canonical_name: Raw payee name (will be normalized)
             default_category_id: Optional default category
+            icon_provider: User's preferred icon provider ("simple_icons" or "logo_dev")
 
         Returns:
             Payee entity (existing or newly created)
         """
+        logger.info(f"[PayeeService.get_or_create] canonical_name='{canonical_name}', icon_provider={icon_provider}")
+
         # Normalize the name
         normalized_name = self._normalize_payee_name(canonical_name)
+        logger.debug(f"[PayeeService.get_or_create] normalized_name='{normalized_name}'")
 
         if not normalized_name:
             # If normalization results in empty string, use original (truncated)
             normalized_name = canonical_name.strip()[:200]
+            logger.debug(f"[PayeeService.get_or_create] Using truncated original: '{normalized_name}'")
 
         # Try to find existing payee
         payee = self.db.query(Payee).filter(
@@ -52,16 +62,13 @@ class PayeeService:
         ).first()
 
         if payee:
+            logger.info(f"[PayeeService.get_or_create] Found existing payee id={payee.id}, logo_url={payee.logo_url[:50] if payee.logo_url else None}")
             return payee
 
         # Auto-suggest icon for new payee
-        icon_suggestion = payee_icon_service.suggest_icon(normalized_name)
-        # Use lower threshold (0.5) for real-world transaction descriptions with store numbers/locations
-        logo_url = (
-            icon_suggestion.get("icon_value")
-            if icon_suggestion.get("confidence", 0) >= 0.5
-            else None
-        )
+        logger.info(f"[PayeeService.get_or_create] Creating new payee, calling _suggest_icon_for_payee")
+        logo_url = self._suggest_icon_for_payee(normalized_name, icon_provider)
+        logger.info(f"[PayeeService.get_or_create] Icon suggestion result: {logo_url[:80] if logo_url else None}")
 
         # Create new payee with auto-suggested icon
         payee = Payee(
@@ -75,7 +82,184 @@ class PayeeService:
         self.db.commit()
         self.db.refresh(payee)
 
+        logger.info(f"[PayeeService.get_or_create] Created payee id={payee.id}, name='{normalized_name}', logo_url={logo_url[:50] if logo_url else None}")
         return payee
+
+    def _suggest_icon_for_payee(
+        self,
+        payee_name: str,
+        icon_provider: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Suggest an icon URL for a payee based on the user's preferred provider.
+
+        Args:
+            payee_name: The normalized payee name
+            icon_provider: User's preferred provider ("simple_icons" or "logo_dev")
+
+        Returns:
+            Icon URL or emoji string, or None if confidence is too low
+        """
+        logger.info(f"[_suggest_icon] payee_name='{payee_name}', icon_provider={icon_provider}")
+
+        # Import extraction service for merchant JSON lookups
+        from app.services.payee_extraction_service import PayeeExtractionService
+        extraction_service = PayeeExtractionService(self.db)
+
+        # If user prefers Logo.dev and it's available, try merchant JSON first
+        if icon_provider == IconProvider.LOGO_DEV.value:
+            logger.info(f"[_suggest_icon] User prefers Logo.dev, checking availability")
+            icon_service = get_icon_provider_service(self.db)
+            logger.info(f"[_suggest_icon] Logo.dev available: {icon_service.logo_dev_available}")
+
+            if icon_service.logo_dev_available:
+                # STRATEGY 0: Try pattern matching against merchant JSON files FIRST
+                # This uses the regex patterns in merchant/*.json to find known merchants
+                # and their configured logo_dev_domain - highest confidence!
+                merchant_info = extraction_service.find_matching_merchant(payee_name)
+                logger.info(f"[_suggest_icon] Pattern match lookup for payee_name '{payee_name}': {merchant_info}")
+
+                if merchant_info:
+                    # Strategy 0a: Use explicit logo_dev_domain if configured
+                    if merchant_info.logo_dev_domain:
+                        logger.info(f"[_suggest_icon] Using explicit domain from pattern match: {merchant_info.logo_dev_domain}")
+                        result = icon_service.get_logo_dev_url(domain=merchant_info.logo_dev_domain)
+                        if result:
+                            logger.info(f"[_suggest_icon] Logo.dev URL from pattern-matched domain: {result.icon_value[:60]}")
+                            return result.icon_value
+
+                    # Strategy 0b: Infer domain from the matched merchant's canonical name
+                    # (e.g., "McDonald's" -> "mcdonalds.com", "Starbucks" -> "starbucks.com")
+                    inferred_domain = self._infer_domain_from_name(merchant_info.name)
+                    logger.info(f"[_suggest_icon] Inferred domain from merchant name '{merchant_info.name}': {inferred_domain}")
+                    if inferred_domain:
+                        result = icon_service.get_logo_dev_url(domain=inferred_domain)
+                        if result:
+                            logger.info(f"[_suggest_icon] Logo.dev URL from inferred merchant domain: {result.icon_value[:60]}")
+                            return result.icon_value
+
+        # Get the base icon suggestion from hardcoded brand mappings (fallback)
+        icon_suggestion = payee_icon_service.suggest_icon(payee_name)
+        confidence = icon_suggestion.get("confidence", 0)
+        logger.info(f"[_suggest_icon] icon_suggestion: confidence={confidence}, icon_type={icon_suggestion.get('icon_type')}, matched_term={icon_suggestion.get('matched_term')}")
+
+        # Use lower threshold (0.5) for real-world transaction descriptions
+        if confidence < 0.5:
+            logger.info(f"[_suggest_icon] Confidence {confidence} < 0.5, returning None")
+            return None
+
+        # If user prefers Logo.dev and it's available, try additional strategies
+        if icon_provider == IconProvider.LOGO_DEV.value:
+            icon_service = get_icon_provider_service(self.db)
+
+            if icon_service.logo_dev_available:
+                # Get the matched brand term from icon suggestion (e.g., "starbucks" from "Starbucks Coffee Shop")
+                matched_term = icon_suggestion.get("matched_term")
+                matched_slug = icon_suggestion.get("slug")
+
+                # Strategy 1: Try to find merchant by the matched term (more reliable than full payee name)
+                # This handles cases like "Test Starbucks Import" where matched_term is "starbucks"
+                if matched_term:
+                    # Try title-cased version of matched term (e.g., "starbucks" -> "Starbucks")
+                    merchant_info = extraction_service.get_merchant_info(matched_term.title())
+                    logger.info(f"[_suggest_icon] Merchant info lookup for matched_term '{matched_term.title()}': {merchant_info}")
+
+                    if merchant_info and merchant_info.logo_dev_domain:
+                        logger.info(f"[_suggest_icon] Using explicit domain from matched_term: {merchant_info.logo_dev_domain}")
+                        result = icon_service.get_logo_dev_url(domain=merchant_info.logo_dev_domain)
+                        if result:
+                            logger.info(f"[_suggest_icon] Logo.dev URL from explicit domain: {result.icon_value[:60]}")
+                            return result.icon_value
+
+                # Strategy 2: Try to find merchant by full payee name
+                merchant_info = extraction_service.get_merchant_info(payee_name)
+                logger.info(f"[_suggest_icon] Merchant info lookup for payee_name '{payee_name}': {merchant_info}")
+
+                if merchant_info and merchant_info.logo_dev_domain:
+                    logger.info(f"[_suggest_icon] Using explicit domain from payee_name: {merchant_info.logo_dev_domain}")
+                    result = icon_service.get_logo_dev_url(domain=merchant_info.logo_dev_domain)
+                    if result:
+                        logger.info(f"[_suggest_icon] Logo.dev URL from explicit domain: {result.icon_value[:60]}")
+                        return result.icon_value
+
+                # Strategy 3 & 4: Infer domain from matched term or payee name
+                # ONLY do this for brand matches, not emoji matches!
+                # (e.g., "starbucks" -> "starbucks.com" is valid, but "shop" -> "shop.com" is not)
+                icon_type = icon_suggestion.get("icon_type")
+                if icon_type == "brand":
+                    # Strategy 3: Infer domain from matched term (more reliable)
+                    if matched_term:
+                        inferred_domain = self._infer_domain_from_name(matched_term)
+                        logger.info(f"[_suggest_icon] Inferred domain from matched_term '{matched_term}': {inferred_domain}")
+
+                        if inferred_domain:
+                            result = icon_service.get_logo_dev_url(domain=inferred_domain)
+                            if result:
+                                logger.info(f"[_suggest_icon] Logo.dev URL from inferred matched_term domain: {result.icon_value[:60]}")
+                                return result.icon_value
+
+                    # Strategy 4: Last resort - infer domain from full payee name
+                    inferred_domain = self._infer_domain_from_name(payee_name)
+                    logger.info(f"[_suggest_icon] Inferred domain from payee_name '{payee_name}': {inferred_domain}")
+
+                    if inferred_domain:
+                        result = icon_service.get_logo_dev_url(domain=inferred_domain)
+                        if result:
+                            logger.info(f"[_suggest_icon] Logo.dev URL from inferred payee_name domain: {result.icon_value[:60]}")
+                            return result.icon_value
+                else:
+                    logger.info(f"[_suggest_icon] Skipping domain inference for non-brand icon_type='{icon_type}'")
+
+                # If we couldn't find a Logo.dev icon, fall through to Simple Icons
+            else:
+                logger.warning(f"[_suggest_icon] Logo.dev requested but not available!")
+        else:
+            logger.info(f"[_suggest_icon] Using Simple Icons (icon_provider={icon_provider})")
+
+        # Default: use Simple Icons (original behavior)
+        result = icon_suggestion.get("icon_value")
+        logger.info(f"[_suggest_icon] Returning Simple Icons: {result[:60] if result else None}")
+        return result
+
+    def _infer_domain_from_name(self, payee_name: str) -> Optional[str]:
+        """
+        Infer a likely domain from a payee/merchant name.
+
+        Logo.dev can often find logos from simple domain guesses.
+        E.g., "Starbucks" -> "starbucks.com", "Target" -> "target.com"
+
+        Args:
+            payee_name: The canonical payee name
+
+        Returns:
+            Inferred domain like "starbucks.com", or None if can't infer
+        """
+        if not payee_name:
+            return None
+
+        # Clean the name for domain inference
+        name = payee_name.strip().lower()
+
+        # Remove common suffixes that aren't part of the domain
+        suffixes_to_remove = [
+            ' bank', ' credit union', ' financial', ' insurance',
+            ' store', ' market', ' supermarket', ' supercenter',
+            ' restaurant', ' cafe', ' coffee', ' grill',
+            ' inc', ' llc', ' corp', ' co', ' ltd',
+        ]
+        for suffix in suffixes_to_remove:
+            if name.endswith(suffix):
+                name = name[:-len(suffix)].strip()
+
+        # Remove special characters, keep only alphanumeric
+        # "McDonald's" -> "mcdonalds", "7-Eleven" -> "7eleven"
+        clean_name = ''.join(c for c in name if c.isalnum())
+
+        if not clean_name or len(clean_name) < 2:
+            return None
+
+        # Return as .com domain (most common for businesses)
+        return f"{clean_name}.com"
 
     def increment_usage(self, payee_id: int) -> None:
         """

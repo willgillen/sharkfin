@@ -3,6 +3,9 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import gzip
+import logging
+
+logger = logging.getLogger(__name__)
 from app.api.deps import get_current_active_user, get_db
 from app.models.user import User
 from app.models.account import Account
@@ -216,6 +219,24 @@ def find_category_by_name(db: Session, user_id: int, category_name: str) -> Opti
         if category_lower in cat.name.lower():
             return cat.id
 
+    return None
+
+
+def get_user_icon_provider(user: User) -> Optional[str]:
+    """
+    Get the user's preferred icon provider from their UI preferences.
+
+    Args:
+        user: User object
+
+    Returns:
+        Icon provider string ("simple_icons" or "logo_dev"), or None if not set
+    """
+    if user.ui_preferences and isinstance(user.ui_preferences, dict):
+        icon_provider = user.ui_preferences.get("icon_provider")
+        logger.info(f"[get_user_icon_provider] user={user.id}, ui_preferences={user.ui_preferences}, icon_provider={icon_provider}")
+        return icon_provider
+    logger.info(f"[get_user_icon_provider] user={user.id}, ui_preferences is None or not dict")
     return None
 
 
@@ -535,6 +556,7 @@ async def execute_csv_import(
         error_count = 0
         payee_service = PayeeService(db)
         extraction_service = PayeeExtractionService(db)
+        user_icon_provider = get_user_icon_provider(current_user)
 
         for trans_data in mapped_transactions:
             try:
@@ -552,10 +574,11 @@ async def execute_csv_import(
                     # Apply user override if exists
                     final_payee_name = payee_overrides.get(extracted_name, extracted_name)
 
-                    # Create or get payee with final name
+                    # Create or get payee with final name (respecting user's icon provider preference)
                     payee_entity = payee_service.get_or_create(
                         user_id=current_user.id,
-                        canonical_name=final_payee_name
+                        canonical_name=final_payee_name,
+                        icon_provider=user_icon_provider
                     )
                     payee_id = payee_entity.id
 
@@ -672,6 +695,7 @@ async def execute_ofx_import(
         error_count = 0
         payee_service = PayeeService(db)
         extraction_service = PayeeExtractionService(db)
+        user_icon_provider = get_user_icon_provider(current_user)
 
         for idx, trans_data in enumerate(transactions):
             if idx in skip_row_list:
@@ -692,10 +716,11 @@ async def execute_ofx_import(
                     # Apply user override if exists
                     final_payee_name = payee_overrides.get(extracted_name, extracted_name)
 
-                    # Create or get payee with final name
+                    # Create or get payee with final name (respecting user's icon provider preference)
                     payee_entity = payee_service.get_or_create(
                         user_id=current_user.id,
-                        canonical_name=final_payee_name
+                        canonical_name=final_payee_name,
+                        icon_provider=user_icon_provider
                     )
                     payee_id = payee_entity.id
 
@@ -1291,6 +1316,7 @@ async def execute_csv_import_with_decisions(
         # Services
         payee_service = PayeeService(db)
         matching_service = IntelligentPayeeMatchingService(db)
+        user_icon_provider = get_user_icon_provider(current_user)
 
         # Step 1: Create new payees and patterns
         new_payees = {}  # Map transaction_index -> payee_id
@@ -1302,11 +1328,12 @@ async def execute_csv_import_with_decisions(
                     db, current_user.id, decision.new_payee_category
                 )
 
-                # User wants to create new payee
+                # User wants to create new payee (respecting user's icon provider preference)
                 payee = payee_service.get_or_create(
                     user_id=current_user.id,
                     canonical_name=decision.new_payee_name,
-                    default_category_id=default_category_id
+                    default_category_id=default_category_id,
+                    icon_provider=user_icon_provider
                 )
                 new_payees[decision.transaction_index] = payee.id
                 if default_category_id:
@@ -1404,7 +1431,8 @@ async def execute_csv_import_with_decisions(
                         if extracted_name:
                             payee_entity = payee_service.get_or_create(
                                 user_id=current_user.id,
-                                canonical_name=extracted_name
+                                canonical_name=extracted_name,
+                                icon_provider=user_icon_provider
                             )
                             payee_id = payee_entity.id
                 else:
@@ -1414,7 +1442,7 @@ async def execute_csv_import_with_decisions(
                         PayeeModel.user_id == current_user.id
                     ).first()
 
-                # Get category from payee's default_category if available
+                # Get category from payee's default_category if available (CSV intelligent import)
                 category_id = None
                 if payee_entity and payee_entity.default_category_id:
                     category_id = payee_entity.default_category_id
@@ -1521,6 +1549,7 @@ async def execute_ofx_import_with_decisions(
         # Services
         payee_service = PayeeService(db)
         matching_service = IntelligentPayeeMatchingService(db)
+        user_icon_provider = get_user_icon_provider(current_user)
 
         # Step 1: Create new payees and patterns
         new_payees = {}  # Map transaction_index -> payee_id
@@ -1532,11 +1561,12 @@ async def execute_ofx_import_with_decisions(
                     db, current_user.id, decision.new_payee_category
                 )
 
-                # User wants to create new payee
+                # User wants to create new payee (respecting user's icon provider preference)
                 payee = payee_service.get_or_create(
                     user_id=current_user.id,
                     canonical_name=decision.new_payee_name,
-                    default_category_id=default_category_id
+                    default_category_id=default_category_id,
+                    icon_provider=user_icon_provider
                 )
                 new_payees[decision.transaction_index] = payee.id
                 if default_category_id:
@@ -1623,7 +1653,8 @@ async def execute_ofx_import_with_decisions(
                         if extracted_name:
                             payee_entity = payee_service.get_or_create(
                                 user_id=current_user.id,
-                                canonical_name=extracted_name
+                                canonical_name=extracted_name,
+                                icon_provider=user_icon_provider
                             )
                             payee_id = payee_entity.id
                 else:
@@ -1633,7 +1664,7 @@ async def execute_ofx_import_with_decisions(
                         PayeeModel.user_id == current_user.id
                     ).first()
 
-                # Get category from payee's default_category if available
+                # Get category from payee's default_category if available (OFX intelligent import)
                 category_id = None
                 if payee_entity and payee_entity.default_category_id:
                     category_id = payee_entity.default_category_id

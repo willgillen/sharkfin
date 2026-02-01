@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     EMAIL_FROM: Optional[str] = None
 
+    # Optional: Logo.dev Integration (for merchant icons)
+    LOGO_DEV_API_KEY: Optional[str] = None
+
+    @property
+    def logo_dev_enabled(self) -> bool:
+        """Logo.dev is enabled when an API key is configured."""
+        return self.LOGO_DEV_API_KEY is not None
+
     # Application
     APP_NAME: str = "Shark Fin API"
     APP_VERSION: str = "0.1.0"

@@ -25,6 +25,8 @@
     "name": "Required. Canonical payee name (properly capitalized)",
     "category": "Required. Category slug for category lookup",
     "simple_icons_slug": "Optional. Simple Icons slug for brand logo",
+    "logo_dev_domain": "Optional. Domain for Logo.dev API lookup (e.g., 'chase.com')",
+    "logo_dev_ticker": "Optional. Stock ticker for Logo.dev API lookup (e.g., 'AAPL')",
     "aliases": "Optional. Array of alternative names"
   },
   "categories": [

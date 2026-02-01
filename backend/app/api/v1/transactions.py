@@ -57,9 +57,14 @@ def create_transaction(
     # If payee string provided but no payee_id, create/find payee entity
     if transaction_data.payee and not payee_id:
         payee_service = PayeeService(db)
+        # Get user's icon provider preference
+        icon_provider = None
+        if current_user.ui_preferences and isinstance(current_user.ui_preferences, dict):
+            icon_provider = current_user.ui_preferences.get("icon_provider")
         payee = payee_service.get_or_create(
             user_id=current_user.id,
-            canonical_name=transaction_data.payee
+            canonical_name=transaction_data.payee,
+            icon_provider=icon_provider
         )
         payee_id = payee.id
         # Increment usage statistics
@@ -366,9 +371,14 @@ def update_transaction(
     # If payee string provided, create/find payee entity
     if 'payee' in update_data and update_data['payee'] and 'payee_id' not in update_data:
         payee_service = PayeeService(db)
+        # Get user's icon provider preference
+        icon_provider = None
+        if current_user.ui_preferences and isinstance(current_user.ui_preferences, dict):
+            icon_provider = current_user.ui_preferences.get("icon_provider")
         payee = payee_service.get_or_create(
             user_id=current_user.id,
-            canonical_name=update_data['payee']
+            canonical_name=update_data['payee'],
+            icon_provider=icon_provider
         )
         update_data['payee_id'] = payee.id
         payee_service.increment_usage(payee.id)

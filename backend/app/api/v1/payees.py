@@ -468,21 +468,104 @@ def test_pattern(
 @router.get("/icons/suggest", response_model=IconSuggestion)
 def suggest_icon(
     name: str = Query(..., min_length=1, description="Payee name to suggest icon for"),
+    db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ) -> IconSuggestion:
     """
     Suggest an icon (brand logo or emoji) for a payee name.
 
-    - First attempts to match against 500+ known brand names
+    Uses the user's icon provider preference (Simple Icons or Logo.dev).
+
+    - First attempts to match against known merchants in JSON config
+    - Falls back to hardcoded brand mappings
     - Falls back to emoji suggestions based on keywords
-    - Returns CDN URL for brand logos or emoji format for emojis
 
     The returned `icon_value` can be stored directly in the payee's `logo_url` field.
-    Brand icons: Full CDN URL (e.g., "https://cdn.simpleicons.org/starbucks/006241")
+    Brand icons: Full CDN URL
     Emoji icons: "emoji:{char}" format (e.g., "emoji:☕")
     """
-    result = payee_icon_service.suggest_icon(name)
-    return IconSuggestion(**result)
+    from app.services.icon_provider_service import get_icon_provider_service, IconProvider
+    from app.services.payee_extraction_service import PayeeExtractionService
+
+    # Get user's icon provider preference
+    icon_provider = None
+    if current_user.ui_preferences:
+        icon_provider = current_user.ui_preferences.get("icon_provider")
+
+    # Get base suggestion from payee_icon_service (brand mappings + emoji)
+    base_result = payee_icon_service.suggest_icon(name)
+
+    # If user prefers Logo.dev and it's available, try to get a Logo.dev URL
+    if icon_provider == IconProvider.LOGO_DEV.value:
+        icon_service = get_icon_provider_service(db)
+
+        if icon_service.logo_dev_available:
+            extraction_service = PayeeExtractionService(db)
+
+            # Strategy 1: Try pattern matching against merchant JSON files
+            merchant_info = extraction_service.find_matching_merchant(name)
+            if merchant_info:
+                # Use explicit logo_dev_domain if configured
+                if merchant_info.logo_dev_domain:
+                    result = icon_service.get_logo_dev_url(domain=merchant_info.logo_dev_domain)
+                    if result:
+                        return IconSuggestion(
+                            icon_type="brand",
+                            icon_value=result.icon_value,
+                            brand_color=result.brand_color,
+                            matched_term=merchant_info.name,
+                            confidence=0.95,
+                        )
+
+                # Infer domain from merchant canonical name
+                from app.services.payee_service import PayeeService
+                payee_service = PayeeService(db)
+                inferred_domain = payee_service._infer_domain_from_name(merchant_info.name)
+                if inferred_domain:
+                    result = icon_service.get_logo_dev_url(domain=inferred_domain)
+                    if result:
+                        return IconSuggestion(
+                            icon_type="brand",
+                            icon_value=result.icon_value,
+                            brand_color=result.brand_color,
+                            matched_term=merchant_info.name,
+                            confidence=0.90,
+                        )
+
+            # Strategy 2: If we have a brand match from base suggestion, use Logo.dev
+            if base_result.get("icon_type") == "brand":
+                matched_term = base_result.get("matched_term")
+                if matched_term:
+                    # Try to get merchant info for this brand
+                    merchant_info = extraction_service.get_merchant_info(matched_term.title())
+                    if merchant_info and merchant_info.logo_dev_domain:
+                        result = icon_service.get_logo_dev_url(domain=merchant_info.logo_dev_domain)
+                        if result:
+                            return IconSuggestion(
+                                icon_type="brand",
+                                icon_value=result.icon_value,
+                                brand_color=base_result.get("brand_color"),
+                                matched_term=matched_term,
+                                confidence=base_result.get("confidence", 0.8),
+                            )
+
+                    # Infer domain from matched term
+                    from app.services.payee_service import PayeeService
+                    payee_service = PayeeService(db)
+                    inferred_domain = payee_service._infer_domain_from_name(matched_term)
+                    if inferred_domain:
+                        result = icon_service.get_logo_dev_url(domain=inferred_domain)
+                        if result:
+                            return IconSuggestion(
+                                icon_type="brand",
+                                icon_value=result.icon_value,
+                                brand_color=base_result.get("brand_color"),
+                                matched_term=matched_term,
+                                confidence=base_result.get("confidence", 0.8),
+                            )
+
+    # Fall back to base result (Simple Icons or emoji)
+    return IconSuggestion(**base_result)
 
 
 @router.get("/icons/parse", response_model=IconParsed)

@@ -12,16 +12,28 @@ by removing common noise patterns like:
 import re
 import json
 import os
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
+from dataclasses import dataclass
 from sqlalchemy.orm import Session
 from app.models.payee import Payee
 from Levenshtein import ratio
 from app.services.payee_category_suggestion_service import payee_category_suggestion_service
 
 
+@dataclass
+class MerchantInfo:
+    """Information about a known merchant."""
+    pattern: str
+    name: str
+    category: Optional[str] = None
+    simple_icons_slug: Optional[str] = None
+    logo_dev_domain: Optional[str] = None
+
+
 class PayeeExtractionService:
     def __init__(self, db: Session):
         self.db = db
+        self._merchant_info_list: List[MerchantInfo] = []
         self.known_merchants = self._load_known_merchants()
 
     def _load_known_merchants(self) -> List[Tuple[str, str, Optional[str]]]:
@@ -35,6 +47,9 @@ class PayeeExtractionService:
         Returns:
             List of tuples: [(pattern, canonical_name, category), ...]
             category may be None if not specified in config
+
+        Also populates self._merchant_info_list with full MerchantInfo objects
+        that include logo_dev_domain and simple_icons_slug.
         """
         config_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
@@ -42,6 +57,7 @@ class PayeeExtractionService:
         )
 
         merchants = []
+        self._merchant_info_list = []
 
         # Try new multi-file structure first
         merchants_dir = os.path.join(config_dir, 'merchants')
@@ -63,6 +79,14 @@ class PayeeExtractionService:
                             category = merchant.get('category')
                             if pattern and name:
                                 merchants.append((pattern, name, category))
+                                # Also store full merchant info
+                                self._merchant_info_list.append(MerchantInfo(
+                                    pattern=pattern,
+                                    name=name,
+                                    category=category,
+                                    simple_icons_slug=merchant.get('simple_icons_slug'),
+                                    logo_dev_domain=merchant.get('logo_dev_domain')
+                                ))
                 except json.JSONDecodeError as e:
                     print(f"Error parsing {filename}: {e}")
                 except Exception as e:
@@ -84,6 +108,14 @@ class PayeeExtractionService:
                     category = merchant.get('category')
                     if pattern and name:
                         merchants.append((pattern, name, category))
+                        # Also store full merchant info
+                        self._merchant_info_list.append(MerchantInfo(
+                            pattern=pattern,
+                            name=name,
+                            category=category,
+                            simple_icons_slug=merchant.get('simple_icons_slug'),
+                            logo_dev_domain=merchant.get('logo_dev_domain')
+                        ))
                 print(f"Loaded {len(merchants)} known merchants from legacy file")
                 return merchants
         except FileNotFoundError:
@@ -95,6 +127,36 @@ class PayeeExtractionService:
         except Exception as e:
             print(f"Error loading known merchants config: {e}")
             return []
+
+    def get_merchant_info(self, merchant_name: str) -> Optional[MerchantInfo]:
+        """
+        Get full merchant info by canonical name.
+
+        Args:
+            merchant_name: The canonical merchant name to look up
+
+        Returns:
+            MerchantInfo with logo_dev_domain, simple_icons_slug, etc. or None
+        """
+        for info in self._merchant_info_list:
+            if info.name.lower() == merchant_name.lower():
+                return info
+        return None
+
+    def find_matching_merchant(self, description: str) -> Optional[MerchantInfo]:
+        """
+        Find a matching merchant from the known merchants list.
+
+        Args:
+            description: Transaction description to match against
+
+        Returns:
+            MerchantInfo if a match is found, None otherwise
+        """
+        for info in self._merchant_info_list:
+            if re.search(info.pattern, description, re.IGNORECASE):
+                return info
+        return None
 
     def extract_payee_name(self, description: str) -> Tuple[str, float]:
         """

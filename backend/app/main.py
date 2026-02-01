@@ -1,6 +1,24 @@
+import logging
+import sys
+
+# Configure logging FIRST, before any other imports
+# This ensures all loggers created during import get the correct configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,  # Explicitly use stdout
+    force=True  # Force reconfiguration even if already configured
+)
+
+# Set specific loggers to DEBUG for import/payee debugging
+logging.getLogger('app.services.payee_service').setLevel(logging.DEBUG)
+logging.getLogger('app.api.v1.imports').setLevel(logging.DEBUG)
+
+# Now import everything else
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules, payees
+
+from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules, payees, settings
 
 app = FastAPI(
     title="Shark Fin API",
@@ -28,6 +46,7 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["imports"])
 app.include_router(rules.router, prefix="/api/v1/rules", tags=["rules"])
 app.include_router(payees.router, prefix="/api/v1/payees", tags=["payees"])
+app.include_router(settings.router, prefix="/api/v1", tags=["settings"])
 
 @app.get("/")
 async def root():
