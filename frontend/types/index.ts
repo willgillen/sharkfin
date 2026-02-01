@@ -518,6 +518,29 @@ export interface NetWorthHistoryResponse {
   period_end: string;
 }
 
+// Spending Trends types
+export interface CategoryMonthlySpending {
+  month: string;
+  amount: string;
+  transaction_count: number;
+}
+
+export interface CategoryTrend {
+  category_id: number;
+  category_name: string;
+  total_amount: string;
+  average_amount: string;
+  monthly_data: CategoryMonthlySpending[];
+}
+
+export interface SpendingTrendsResponse {
+  total_spending: string;
+  categories: CategoryTrend[];
+  months: string[];
+  period_start: string;
+  period_end: string;
+}
+
 // API Error types
 export interface APIError {
   detail: string | { msg: string; type: string }[];

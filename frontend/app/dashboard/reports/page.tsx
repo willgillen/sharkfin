@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
-import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse } from "@/types";
+import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ReportHeader from "@/components/reports/ReportHeader";
 import { DateRange, getDefaultDateRange } from "@/components/reports/DateRangePicker";
 import CategorySpendingChart from "@/components/charts/CategorySpendingChart";
 import IncomeTrendChart from "@/components/charts/IncomeTrendChart";
 import NetWorthChart from "@/components/charts/NetWorthChart";
+import SpendingTrendsChart from "@/components/charts/SpendingTrendsChart";
 import { formatCurrency, formatPercentage } from "@/lib/utils/format";
 
 type ReportType = "overview" | "spending" | "income" | "net-worth" | "cash-flow" | "sankey";
@@ -82,6 +83,7 @@ export default function ReportsPage() {
 
   // Report data
   const [spendingData, setSpendingData] = useState<SpendingByCategoryResponse | null>(null);
+  const [spendingTrendsData, setSpendingTrendsData] = useState<SpendingTrendsResponse | null>(null);
   const [incomeData, setIncomeData] = useState<IncomeVsExpensesResponse | null>(null);
   const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,6 +142,22 @@ export default function ReportsPage() {
           dateRange.endDate
         );
         setSpendingData(spending);
+
+        // Also load spending trends for the spending report
+        if (activeReport === "spending") {
+          const start = new Date(dateRange.startDate);
+          const end = new Date(dateRange.endDate);
+          const months = Math.max(
+            1,
+            Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
+          );
+          const trends = await reportsAPI.getSpendingTrends(
+            Math.min(months, 24),
+            undefined,
+            selectedAccountId || undefined
+          );
+          setSpendingTrendsData(trends);
+        }
       }
 
       if (activeReport === "overview" || activeReport === "income") {
@@ -390,15 +408,83 @@ export default function ReportsPage() {
               {/* Spending Trends Report */}
               {activeReport === "spending" && spendingData && (
                 <div className="space-y-6">
-                  <div className="bg-surface rounded-lg shadow p-6">
-                    <h3 className="text-lg font-semibold text-text-primary mb-4">
-                      Spending by Category
-                    </h3>
-                    <div className="h-96">
-                      <CategorySpendingChart data={spendingData.categories} />
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Total Spending</div>
+                      <div className="mt-1 text-2xl font-bold text-danger-600">
+                        {formatCurrency(spendingData.total_spending)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Categories</div>
+                      <div className="mt-1 text-2xl font-bold text-text-primary">
+                        {spendingData.categories.length}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Transactions</div>
+                      <div className="mt-1 text-2xl font-bold text-text-primary">
+                        {spendingData.categories.reduce((sum, c) => sum + c.transaction_count, 0)}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Spending Trends Over Time */}
+                  {spendingTrendsData && (
+                    <div className="bg-surface rounded-lg shadow p-6">
+                      <h3 className="text-lg font-semibold text-text-primary mb-4">
+                        Spending Trends Over Time
+                      </h3>
+                      <SpendingTrendsChart
+                        data={spendingTrendsData.categories}
+                        months={spendingTrendsData.months}
+                      />
+                    </div>
+                  )}
+
+                  {/* Charts Row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Pie Chart */}
+                    <div className="bg-surface rounded-lg shadow p-6">
+                      <h3 className="text-lg font-semibold text-text-primary mb-4">
+                        Spending by Category
+                      </h3>
+                      <CategorySpendingChart data={spendingData.categories} />
+                    </div>
+
+                    {/* Average Spending by Category */}
+                    {spendingTrendsData && (
+                      <div className="bg-surface rounded-lg shadow p-6">
+                        <h3 className="text-lg font-semibold text-text-primary mb-4">
+                          Monthly Averages
+                        </h3>
+                        <div className="space-y-3">
+                          {spendingTrendsData.categories.slice(0, 8).map((category, index) => (
+                            <div key={category.category_id} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{
+                                    backgroundColor: [
+                                      "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
+                                      "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"
+                                    ][index % 8]
+                                  }}
+                                />
+                                <span className="text-sm text-text-primary">{category.category_name}</span>
+                              </div>
+                              <span className="text-sm font-medium text-text-primary">
+                                {formatCurrency(category.average_amount)}/mo
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category Details Table */}
                   <div className="bg-surface rounded-lg shadow">
                     <div className="p-6 border-b border-border">
                       <h3 className="text-lg font-semibold text-text-primary">Category Details</h3>
@@ -417,6 +503,9 @@ export default function ReportsPage() {
                               Amount
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Avg/Month
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                               % of Total
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
@@ -428,30 +517,40 @@ export default function ReportsPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {spendingData.categories.map((category) => (
-                            <tr key={category.category_id} className="hover:bg-surface-secondary">
-                              <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                                {category.category_name}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-right text-text-primary">
-                                {formatCurrency(category.amount)}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-right text-text-secondary">
-                                {formatPercentage(category.percentage)}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-right text-text-tertiary">
-                                {category.transaction_count}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="w-full bg-surface-secondary rounded-full h-2">
-                                  <div
-                                    className="bg-primary-600 h-2 rounded-full"
-                                    style={{ width: `${Math.min(parseFloat(category.percentage), 100)}%` }}
-                                  ></div>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                          {spendingData.categories.map((category) => {
+                            const trendCategory = spendingTrendsData?.categories.find(
+                              (c) => c.category_id === category.category_id
+                            );
+                            return (
+                              <tr key={category.category_id} className="hover:bg-surface-secondary">
+                                <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                                  {category.category_name}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-text-primary">
+                                  {formatCurrency(category.amount)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-text-secondary">
+                                  {trendCategory
+                                    ? formatCurrency(trendCategory.average_amount)
+                                    : "-"}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-text-secondary">
+                                  {formatPercentage(category.percentage)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-text-tertiary">
+                                  {category.transaction_count}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="w-full bg-surface-secondary rounded-full h-2">
+                                    <div
+                                      className="bg-primary-600 h-2 rounded-full"
+                                      style={{ width: `${Math.min(parseFloat(category.percentage), 100)}%` }}
+                                    ></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

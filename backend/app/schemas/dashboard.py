@@ -99,3 +99,28 @@ class NetWorthHistoryResponse(BaseModel):
     accounts: List[AccountBalance]
     period_start: date
     period_end: date
+
+
+class CategoryMonthlySpending(BaseModel):
+    """Monthly spending for a single category."""
+    month: str  # Format: "2024-01"
+    amount: Decimal
+    transaction_count: int
+
+
+class CategoryTrend(BaseModel):
+    """Spending trend for a category over time."""
+    category_id: int
+    category_name: str
+    total_amount: Decimal
+    average_amount: Decimal
+    monthly_data: List[CategoryMonthlySpending]
+
+
+class SpendingTrendsResponse(BaseModel):
+    """Response for spending trends over time."""
+    total_spending: Decimal
+    categories: List[CategoryTrend]
+    months: List[str]  # List of months in order
+    period_start: date
+    period_end: date

@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import { DashboardSummary, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse } from "@/types";
+import { DashboardSummary, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse } from "@/types";
 
 export const reportsAPI = {
   async getDashboard(startDate?: string, endDate?: string): Promise<DashboardSummary> {
@@ -38,6 +38,24 @@ export const reportsAPI = {
 
     const { data } = await apiClient.get<NetWorthHistoryResponse>(
       `/api/v1/reports/net-worth-history?${params.toString()}`
+    );
+    return data;
+  },
+
+  async getSpendingTrends(
+    months: number = 6,
+    categoryIds?: number[],
+    accountId?: number
+  ): Promise<SpendingTrendsResponse> {
+    const params = new URLSearchParams();
+    params.append("months", months.toString());
+    if (categoryIds && categoryIds.length > 0) {
+      params.append("category_ids", categoryIds.join(","));
+    }
+    if (accountId) params.append("account_id", accountId.toString());
+
+    const { data } = await apiClient.get<SpendingTrendsResponse>(
+      `/api/v1/reports/spending-trends?${params.toString()}`
     );
     return data;
   },

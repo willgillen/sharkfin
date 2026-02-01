@@ -24,7 +24,10 @@ from app.schemas.dashboard import (
     BudgetStatus,
     NetWorthDataPoint,
     AccountBalance,
-    NetWorthHistoryResponse
+    NetWorthHistoryResponse,
+    CategoryMonthlySpending,
+    CategoryTrend,
+    SpendingTrendsResponse
 )
 
 router = APIRouter()
@@ -405,6 +408,118 @@ def get_net_worth_history(
         current=current,
         history=history,
         accounts=account_balances,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
+@router.get("/spending-trends", response_model=SpendingTrendsResponse)
+def get_spending_trends(
+    months: int = Query(6, ge=1, le=24, description="Number of months to include"),
+    category_ids: Optional[str] = Query(None, description="Comma-separated category IDs to filter (optional)"),
+    account_id: Optional[int] = Query(None, description="Filter by specific account (optional)"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """Get spending trends by category over time."""
+
+    end_date = date.today()
+    start_date = end_date - relativedelta(months=months)
+
+    # Parse category IDs if provided
+    filter_category_ids = None
+    if category_ids:
+        filter_category_ids = [int(id.strip()) for id in category_ids.split(",") if id.strip()]
+
+    # Build list of months
+    month_list = []
+    for i in range(months):
+        month_date = end_date - relativedelta(months=i)
+        month_str = date(month_date.year, month_date.month, 1).strftime("%Y-%m")
+        month_list.insert(0, month_str)
+
+    # Base query filters
+    base_filters = [
+        TransactionModel.user_id == current_user.id,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ]
+
+    if account_id:
+        base_filters.append(TransactionModel.account_id == account_id)
+
+    # Get total spending
+    total_query = db.query(func.sum(TransactionModel.amount)).filter(*base_filters)
+    total_spending = total_query.scalar() or Decimal("0.00")
+
+    # Get all categories with spending in this period
+    category_query = db.query(
+        CategoryModel.id,
+        CategoryModel.name
+    ).join(
+        TransactionModel,
+        TransactionModel.category_id == CategoryModel.id
+    ).filter(*base_filters).group_by(
+        CategoryModel.id,
+        CategoryModel.name
+    ).order_by(
+        func.sum(TransactionModel.amount).desc()
+    )
+
+    if filter_category_ids:
+        category_query = category_query.filter(CategoryModel.id.in_(filter_category_ids))
+
+    categories_result = category_query.all()
+
+    # Build category trends
+    category_trends = []
+    for cat_id, cat_name in categories_result:
+        monthly_data = []
+        total_amount = Decimal("0.00")
+
+        for month_str in month_list:
+            # Parse month string to get date range
+            year, month = map(int, month_str.split("-"))
+            month_start = date(year, month, 1)
+            month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
+
+            # Query for this category in this month
+            month_filters = base_filters + [
+                TransactionModel.category_id == cat_id,
+                TransactionModel.date >= month_start,
+                TransactionModel.date <= month_end
+            ]
+
+            result = db.query(
+                func.sum(TransactionModel.amount).label("amount"),
+                func.count(TransactionModel.id).label("count")
+            ).filter(*month_filters).first()
+
+            amount = result.amount or Decimal("0.00")
+            count = result.count or 0
+            total_amount += amount
+
+            monthly_data.append(CategoryMonthlySpending(
+                month=month_str,
+                amount=amount,
+                transaction_count=count
+            ))
+
+        average_amount = total_amount / len(month_list) if month_list else Decimal("0.00")
+
+        category_trends.append(CategoryTrend(
+            category_id=cat_id,
+            category_name=cat_name,
+            total_amount=total_amount,
+            average_amount=average_amount,
+            monthly_data=monthly_data
+        ))
+
+    return SpendingTrendsResponse(
+        total_spending=total_spending,
+        categories=category_trends,
+        months=month_list,
         period_start=start_date,
         period_end=end_date
     )
