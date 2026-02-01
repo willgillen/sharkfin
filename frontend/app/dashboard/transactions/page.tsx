@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI } from "@/lib/api";
 import { Transaction, Account, Category, TransactionType } from "@/types";
@@ -11,20 +11,25 @@ import QuickAddBar from "@/components/transactions/QuickAddBar";
 import { PayeeIconSmall } from "@/components/payees/PayeeIcon";
 import ColumnFilter, { SortOrder } from "@/components/transactions/ColumnFilter";
 import ColumnSelector, { ColumnConfig } from "@/components/transactions/ColumnSelector";
+import AccountSelector from "@/components/transactions/AccountSelector";
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
 
-  // Filters
-  const [accountFilter, setAccountFilter] = useState<string>("");
+  // Selected account (required - always viewing one account)
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
+  // Other filters
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [starredFilter, setStarredFilter] = useState<boolean | undefined>(undefined);
@@ -36,13 +41,12 @@ export default function TransactionsPage() {
   const [sortBy, setSortBy] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
-  // Column visibility
+  // Column visibility - account column hidden by default since we always view one account
   const AVAILABLE_COLUMNS: ColumnConfig[] = [
     { id: "star", label: "⭐ Star", required: false },
     { id: "notes", label: "💬 Notes", required: false },
     { id: "date", label: "Date", required: true },
     { id: "description", label: "Payee / Description", required: false },
-    { id: "account", label: "Account", required: false },
     { id: "category", label: "Category", required: false },
     { id: "amount", label: "Amount", required: true },
     { id: "balance", label: "Balance", required: false },
@@ -64,12 +68,46 @@ export default function TransactionsPage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
+  // Load accounts first, then set selected account from URL or default to first
   useEffect(() => {
     if (isAuthenticated) {
-      loadData();
+      loadAccounts();
       loadColumnPreferences();
     }
   }, [isAuthenticated]);
+
+  const loadAccounts = async () => {
+    try {
+      setAccountsLoading(true);
+      const [accts, cats] = await Promise.all([
+        accountsAPI.getAll(),
+        categoriesAPI.getAll(),
+      ]);
+      setAccounts(accts);
+      setCategories(cats);
+
+      // Get account from URL or default to first account
+      const urlAccountId = searchParams.get("account");
+      if (urlAccountId && accts.some((a) => a.id === parseInt(urlAccountId))) {
+        setSelectedAccountId(parseInt(urlAccountId));
+      } else if (accts.length > 0) {
+        setSelectedAccountId(accts[0].id);
+        // Update URL with default account
+        router.replace(`/dashboard/transactions?account=${accts[0].id}`, { scroll: false });
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to load accounts");
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  // Load transactions when selected account changes
+  useEffect(() => {
+    if (isAuthenticated && selectedAccountId !== null) {
+      loadTransactions(true);
+    }
+  }, [selectedAccountId]);
 
   const loadColumnPreferences = async () => {
     try {
@@ -94,14 +132,17 @@ export default function TransactionsPage() {
     }
   };
 
-  // Reload when filters or sorting change
+  // Reload when filters or sorting change (but not when account changes - that's handled separately)
   useEffect(() => {
-    if (isAuthenticated && !loading) {
-      loadData(true);
+    if (isAuthenticated && selectedAccountId !== null && !accountsLoading) {
+      loadTransactions(true);
     }
-  }, [accountFilter, categoryFilter, typeFilter, starredFilter, payeeFilter, startDateFilter, endDateFilter, sortBy, sortOrder]);
+  }, [categoryFilter, typeFilter, starredFilter, payeeFilter, startDateFilter, endDateFilter, sortBy, sortOrder]);
 
-  const loadData = async (reset: boolean = true) => {
+  const loadTransactions = async (reset: boolean = true) => {
+    // Don't load if no account is selected
+    if (selectedAccountId === null) return;
+
     try {
       // Don't load more if we've hit the max limit
       if (!reset && transactions.length >= MAX_TRANSACTIONS) {
@@ -122,7 +163,7 @@ export default function TransactionsPage() {
         limit: PAGE_SIZE,
         sort_by: sortBy,
         sort_order: sortOrder || "desc",
-        ...(accountFilter && { account_id: parseInt(accountFilter) }),
+        account_id: selectedAccountId, // Always filter by selected account
         ...(categoryFilter && { category_id: parseInt(categoryFilter) }),
         ...(typeFilter && { type: typeFilter }),
         ...(starredFilter !== undefined && { is_starred: starredFilter }),
@@ -131,22 +172,12 @@ export default function TransactionsPage() {
         ...(endDateFilter && { end_date: endDateFilter }),
       };
 
-      const [txns, accts, cats] = await Promise.all([
-        transactionsAPI.getAll(params),
-        reset ? accountsAPI.getAll() : Promise.resolve(accounts),
-        reset ? categoriesAPI.getAll() : Promise.resolve(categories),
-      ]);
-
+      const txns = await transactionsAPI.getAll(params);
       const newTransactions = reset ? txns : [...transactions, ...txns];
 
       // Enforce MAX_TRANSACTIONS limit
       const limitedTransactions = newTransactions.slice(0, MAX_TRANSACTIONS);
       setTransactions(limitedTransactions);
-
-      if (reset) {
-        setAccounts(accts);
-        setCategories(cats);
-      }
 
       // Check if there are more transactions available
       const reachedMax = limitedTransactions.length >= MAX_TRANSACTIONS;
@@ -155,18 +186,21 @@ export default function TransactionsPage() {
 
       setError("");
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to load data");
+      setError(err.response?.data?.detail || "Failed to load transactions");
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   };
 
+  // Keep old function name for compatibility with QuickAddBar
+  const loadData = (reset: boolean = true) => loadTransactions(reset);
+
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && transactions.length < MAX_TRANSACTIONS) {
-      loadData(false);
+      loadTransactions(false);
     }
-  }, [loadingMore, hasMore, transactions.length]);
+  }, [loadingMore, hasMore, transactions.length, selectedAccountId]);
 
   // Infinite scroll detection
   useEffect(() => {
@@ -191,6 +225,12 @@ export default function TransactionsPage() {
     }
   }, [loadMore, loadingMore, hasMore]);
 
+  const handleAccountChange = (accountId: number) => {
+    setSelectedAccountId(accountId);
+    // Update URL with new account
+    router.replace(`/dashboard/transactions?account=${accountId}`, { scroll: false });
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this transaction?")) {
       return;
@@ -213,10 +253,6 @@ export default function TransactionsPage() {
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to toggle star");
     }
-  };
-
-  const getAccountName = (accountId: number): string => {
-    return accounts.find((a) => a.id === accountId)?.name || "Unknown";
   };
 
   const getCategoryName = (categoryId: number | null): string => {
@@ -276,11 +312,21 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        {/* Quick Add Bar */}
-        <QuickAddBar onTransactionAdded={loadData} />
+        {/* Account Selector - Always visible */}
+        <AccountSelector
+          accounts={accounts}
+          selectedAccountId={selectedAccountId}
+          onAccountChange={handleAccountChange}
+          loading={accountsLoading}
+        />
+
+        {/* Quick Add Bar - only show when account is selected */}
+        {selectedAccountId && (
+          <QuickAddBar accountId={selectedAccountId} onTransactionAdded={loadData} />
+        )}
 
         {/* Active Filters Chips */}
-        {(accountFilter || categoryFilter || typeFilter || starredFilter !== undefined || payeeFilter || startDateFilter || endDateFilter) && (
+        {(categoryFilter || typeFilter || starredFilter !== undefined || payeeFilter || startDateFilter || endDateFilter) && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="text-sm text-text-secondary">Active filters:</span>
 
@@ -317,16 +363,6 @@ export default function TransactionsPage() {
               </button>
             )}
 
-            {accountFilter && (
-              <button
-                onClick={() => setAccountFilter("")}
-                className="inline-flex items-center px-3 py-1 text-sm bg-primary-100 text-primary-800 rounded-full hover:bg-primary-200"
-              >
-                Account: {accounts.find((a) => a.id === parseInt(accountFilter))?.name}
-                <span className="ml-2">×</span>
-              </button>
-            )}
-
             {categoryFilter && (
               <button
                 onClick={() => setCategoryFilter("")}
@@ -349,7 +385,6 @@ export default function TransactionsPage() {
 
             <button
               onClick={() => {
-                setAccountFilter("");
                 setCategoryFilter("");
                 setTypeFilter("");
                 setStarredFilter(undefined);
@@ -364,9 +399,19 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        {loading ? (
+        {accountsLoading || loading ? (
           <div className="text-center py-12">
             <p className="text-text-secondary">Loading transactions...</p>
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="text-center py-12 bg-surface rounded-lg shadow">
+            <p className="text-text-secondary mb-4">No accounts found. Create an account to start tracking transactions.</p>
+            <button
+              onClick={() => router.push("/dashboard/accounts/new")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+            >
+              + Create Account
+            </button>
           </div>
         ) : transactions.length > 0 ? (
           <>
@@ -425,15 +470,6 @@ export default function TransactionsPage() {
                         width="20rem"
                       />
                     )}
-                    {visibleColumns.includes("account") && (
-                      <ColumnFilter
-                        label="Account"
-                        filterable
-                        filterOptions={accounts.map((a) => ({ label: a.name, value: a.id.toString() }))}
-                        currentFilter={accountFilter}
-                        onFilter={(value) => setAccountFilter(value?.toString() || "")}
-                      />
-                    )}
                     {visibleColumns.includes("category") && (
                       <ColumnFilter
                         label="Category"
@@ -467,16 +503,14 @@ export default function TransactionsPage() {
                       <th
                         className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider"
                         title={
-                          !accountFilter
-                            ? "Filter by account to see running balance"
-                            : sortBy !== "date"
+                          sortBy !== "date"
                             ? "Sort by date to see running balance"
                             : "Running balance after each transaction"
                         }
                       >
                         Balance
-                        {(!accountFilter || sortBy !== "date") && (
-                          <span className="ml-1 text-warning-500" title="Balance requires account filter and date sort">
+                        {sortBy !== "date" && (
+                          <span className="ml-1 text-warning-500" title="Sort by date to see running balance">
                             ⚠
                           </span>
                         )}
@@ -542,11 +576,6 @@ export default function TransactionsPage() {
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes("account") && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
-                          {getAccountName(transaction.account_id)}
-                        </td>
-                      )}
                       {visibleColumns.includes("category") && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-text-tertiary">
                           {getCategoryName(transaction.category_id)}
@@ -571,9 +600,7 @@ export default function TransactionsPage() {
                             <span
                               className="text-text-disabled cursor-help"
                               title={
-                                !accountFilter
-                                  ? "Filter by a single account to see running balance"
-                                  : sortBy !== "date"
+                                sortBy !== "date"
                                   ? "Sort by date to see running balance"
                                   : "Balance not available"
                               }

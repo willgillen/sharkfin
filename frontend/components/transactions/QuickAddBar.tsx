@@ -1,23 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { transactionsAPI, accountsAPI, categoriesAPI } from "@/lib/api";
-import { Account, Category, TransactionType, PayeeSuggestion } from "@/types";
+import { transactionsAPI, categoriesAPI } from "@/lib/api";
+import { Category, TransactionType, PayeeSuggestion } from "@/types";
 
 interface QuickAddBarProps {
+  accountId: number;
   onTransactionAdded: () => void;
 }
 
-export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
+export default function QuickAddBar({ accountId, onTransactionAdded }: QuickAddBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [payee, setPayee] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [accountId, setAccountId] = useState<number | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.DEBIT);
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [payeeSuggestions, setPayeeSuggestions] = useState<PayeeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -29,26 +28,17 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
   const payeeInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Load accounts and categories on mount
+  // Load categories on mount
   useEffect(() => {
-    loadData();
+    loadCategories();
   }, []);
 
-  const loadData = async () => {
+  const loadCategories = async () => {
     try {
-      const [accountsData, categoriesData] = await Promise.all([
-        accountsAPI.getAll(),
-        categoriesAPI.getAll(),
-      ]);
-      setAccounts(accountsData);
+      const categoriesData = await categoriesAPI.getAll();
       setCategories(categoriesData);
-
-      // Set default account to first account
-      if (accountsData.length > 0 && !accountId) {
-        setAccountId(accountsData[0].id);
-      }
     } catch (err) {
-      console.error("Failed to load data:", err);
+      console.error("Failed to load categories:", err);
     }
   };
 
@@ -88,8 +78,8 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
   };
 
   const handleSubmit = async () => {
-    if (!payee || !amount || !accountId) {
-      setError("Please fill in payee, amount, and account");
+    if (!payee || !amount) {
+      setError("Please fill in payee and amount");
       return;
     }
 
@@ -107,7 +97,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
         payee,
         amount: Math.abs(parsedAmount).toString(),
         account_id: accountId,
-        category_id: categoryId,
+        category_id: categoryId ?? undefined,
         type: transactionType,
         description: "",
       });
@@ -209,7 +199,7 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-3">
+          <div className="grid grid-cols-6 gap-3">
         {/* Date */}
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-1">Date</label>
@@ -320,31 +310,11 @@ export default function QuickAddBar({ onTransactionAdded }: QuickAddBarProps) {
           </select>
         </div>
 
-        {/* Account */}
-        <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1">
-            Account <span className="text-danger-500">*</span>
-          </label>
-          <select
-            value={accountId || ""}
-            onChange={(e) => setAccountId(e.target.value ? parseInt(e.target.value) : null)}
-            onKeyDown={(e) => handleKeyDown(e)}
-            className="w-full px-2 py-1.5 text-sm text-text-primary border border-border rounded-md focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="">Select...</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Add Button */}
         <div className="flex items-end">
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !payee || !amount || !accountId}
+            disabled={isSubmitting || !payee || !amount}
             className={`w-full px-4 py-1.5 text-sm font-medium rounded-md ${
               success
                 ? "bg-success-600 text-text-inverse"
