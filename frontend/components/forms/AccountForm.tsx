@@ -7,7 +7,7 @@ import { getErrorMessage } from "@/lib/utils/errors";
 
 interface AccountFormProps {
   account?: Account;
-  onSubmit: (data: AccountCreate | AccountUpdate) => Promise<void>;
+  onSubmit: (data: AccountCreate) => Promise<void>;
   onCancel: () => void;
 }
 

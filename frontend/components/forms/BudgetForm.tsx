@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/lib/utils/errors";
 
 interface BudgetFormProps {
   budget?: Budget;
-  onSubmit: (data: BudgetCreate | BudgetUpdate) => Promise<void>;
+  onSubmit: (data: BudgetCreate) => Promise<void>;
   onCancel: () => void;
 }
 

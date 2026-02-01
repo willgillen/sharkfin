@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/lib/utils/errors";
 
 interface TransactionFormProps {
   transaction?: Transaction;
-  onSubmit: (data: TransactionCreate | TransactionUpdate) => Promise<void>;
+  onSubmit: (data: TransactionCreate) => Promise<void>;
   onCancel: () => void;
 }
 

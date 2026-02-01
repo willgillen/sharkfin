@@ -12,8 +12,8 @@ This application aims to provide feature parity with applications like Mint (now
 
 ## Development Progress Checklist
 
-**Last Updated**: January 25, 2026
-**Current Phase**: Phase 2 - Advanced Features (Account Balance Architecture Refactor)
+**Last Updated**: January 31, 2026
+**Current Phase**: Phase 2 - Advanced Features (Week 16: Settings & Preferences)
 
 
 
@@ -88,33 +88,82 @@ This application aims to provide feature parity with applications like Mint (now
 ### Week 16: Settings & Preferences System
 **Priority**: High - Infrastructure for Future Features
 
-#### 16.1 Settings Infrastructure
-- [ ] Create `user_settings` table (migration)
-- [ ] Create `UserSetting` model with user_id, category, key, value (JSONB)
-- [ ] Create `SettingsService` with CRUD operations
-- [ ] Create Pydantic schemas for settings
-- [ ] API endpoints: `GET/PUT/DELETE /api/v1/settings/{category}/{key}`
-- [ ] 6 setting categories: General, Transactions, Import, Display, Notifications, Privacy
-- [ ] Tests: `test_create_user_setting()`, `test_get_user_settings()`, `test_reset_setting_to_default()`
+> **Architecture Note**: Settings are split into two categories:
+> - **App Settings** (`app_settings` table): System-wide configuration (API keys, server defaults)
+> - **User Preferences** (`users.ui_preferences` JSONB): Per-user display and behavior preferences
+>
+> This architecture was established during Logo.dev integration (see `IconProviderSettings`).
+
+#### 16.1 Settings Infrastructure (PARTIALLY COMPLETE ✓)
+
+**Already Implemented:**
+- [x] `app_settings` table for system-wide settings (API keys, etc.)
+- [x] `AppSettingsService` for app settings CRUD
+- [x] `users.ui_preferences` JSONB column for per-user preferences
+- [x] `UserPreferences` Pydantic schema with validation
+- [x] Basic settings API at `/api/v1/settings/...`
+- [x] User preferences updated via `PUT /api/v1/users/me`
+
+**To Complete:**
+- [ ] Add `UserPreferencesService` with typed getters/setters and defaults
+- [ ] Define `DEFAULT_USER_PREFERENCES` constant with all default values
+- [ ] Add `GET /api/v1/users/me/preferences` endpoint (returns merged defaults + user prefs)
+- [ ] Add `PATCH /api/v1/users/me/preferences` endpoint (partial update)
+- [ ] Add `DELETE /api/v1/users/me/preferences/{key}` endpoint (reset to default)
+- [ ] Expand `UserPreferences` schema with all preference fields:
+  - Display: `date_format`, `number_format`, `currency_symbol`, `start_of_week`
+  - Transactions: `default_sort_column`, `default_sort_order`, `rows_per_page`
+  - Import: `auto_create_payees`, `auto_apply_rules`, `duplicate_detection_strictness`
+  - Notifications: `email_notifications_enabled` (future)
+- [ ] Tests: `test_get_preferences_with_defaults()`, `test_partial_preference_update()`, `test_reset_preference()`
 
 #### 16.2 Settings UI
-- [ ] Create VS Code/Obsidian-inspired layout
-- [ ] Left sidebar: Category navigation
-- [ ] Right panel: Settings for selected category
-- [ ] Search box: Filter settings by keyword
-- [ ] Help text under each setting
-- [ ] Setting types: text, number, select, toggle, color picker, checkbox
-- [ ] Save/Cancel buttons
-- [ ] Reset to default per setting
-- [ ] Files: `settings/page.tsx`, `SettingsCategory.tsx`, `SettingItem.tsx`
 
-#### 16.3 Settings Integration
-- [ ] Create `useSettings()` hook
-- [ ] Load settings on app mount
-- [ ] Apply transaction column preferences
-- [ ] Apply import preferences (duplicate strictness, auto-apply rules)
-- [ ] Apply display preferences (date format, number format)
-- [ ] Tests: Test settings load and application
+**Already Implemented:**
+- [x] Basic Settings page at `/dashboard/settings`
+- [x] `IconProviderSettings` component
+- [x] `ApiKeySettings` component
+
+**To Complete:**
+- [ ] Refactor Settings page with category-based navigation layout
+- [ ] Left sidebar: Category tabs (Display, Transactions, Import, API Keys)
+- [ ] Right panel: Settings for selected category
+- [ ] Create reusable `SettingItem` component supporting:
+  - Toggle (boolean)
+  - Select (dropdown)
+  - Text input
+  - Number input with min/max
+- [ ] Add help text/description under each setting
+- [ ] Add "Reset to Default" button per setting
+- [ ] Move existing components into category sections
+- [ ] Files: Refactor `settings/page.tsx`, create `SettingsNav.tsx`, `SettingItem.tsx`
+
+#### 16.3 Display Preferences
+- [ ] Add date format selector (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, relative)
+- [ ] Add number format selector (1,234.56 vs 1.234,56)
+- [ ] Add currency display preference (symbol position, decimal places)
+- [ ] Add start of week preference (Sunday/Monday)
+- [ ] Create `useDisplayPreferences()` hook
+- [ ] Apply date formatting throughout app (transactions, reports, etc.)
+- [ ] Apply number formatting (amounts, balances)
+- [ ] Tests: `test_date_format_preference()`, `test_number_format_preference()`
+
+#### 16.4 Transaction Preferences
+- [ ] Add default sort column preference
+- [ ] Add default sort order preference (asc/desc)
+- [ ] Add rows per page preference (25, 50, 100)
+- [ ] Add visible columns preference (persist column toggle state)
+- [ ] Apply preferences to transaction list on load
+- [ ] Tests: `test_transaction_sort_preference()`, `test_visible_columns_preference()`
+
+#### 16.5 Import Preferences
+- [ ] Add auto-create payees toggle (default: true)
+- [ ] Add auto-apply rules toggle (default: true)
+- [ ] Add duplicate detection strictness (strict, moderate, relaxed)
+- [ ] Add default account for imports preference
+- [ ] Apply preferences during CSV import process
+- [ ] Show current preferences in import wizard
+- [ ] Tests: `test_import_preferences_applied()`
 
 ### Week 17: Testing & Development Tools
 **Priority**: Medium - Developer Experience & UAT Support

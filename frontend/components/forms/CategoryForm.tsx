@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/lib/utils/errors";
 
 interface CategoryFormProps {
   category?: Category;
-  onSubmit: (data: CategoryCreate | CategoryUpdate) => Promise<void>;
+  onSubmit: (data: CategoryCreate) => Promise<void>;
   onCancel: () => void;
 }
 

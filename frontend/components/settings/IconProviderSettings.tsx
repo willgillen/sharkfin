@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react";
 import { usersAPI } from "@/lib/api/users";
 import { settingsAPI } from "@/lib/api/settings";
-import { IconProviderStatus, IconProvider, User } from "@/types";
+import { IconProviderStatus, IconProvider, User, UserPreferences } from "@/types";
 
 interface IconProviderSettingsProps {
   user: User;
   onUpdate?: (user: User) => void;
+  onPreferencesUpdate?: (prefs: UserPreferences) => void;
 }
 
-export default function IconProviderSettings({ user, onUpdate }: IconProviderSettingsProps) {
+export default function IconProviderSettings({ user, onUpdate, onPreferencesUpdate }: IconProviderSettingsProps) {
   const [providerStatus, setProviderStatus] = useState<IconProviderStatus | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<IconProvider>(
     user.ui_preferences?.icon_provider || "simple_icons"
@@ -39,11 +40,16 @@ export default function IconProviderSettings({ user, onUpdate }: IconProviderSet
     setSuccess(false);
 
     try {
-      const updatedUser = await usersAPI.updatePreferences({
+      const updatedPrefs = await usersAPI.updatePreferences({
         icon_provider: provider,
       });
       setSuccess(true);
-      onUpdate?.(updatedUser);
+      onPreferencesUpdate?.(updatedPrefs);
+      // If we have a full user update callback, refresh the user to get updated data
+      if (onUpdate) {
+        const refreshedUser = await usersAPI.getMe();
+        onUpdate(refreshedUser);
+      }
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError("Failed to save preference. Please try again.");

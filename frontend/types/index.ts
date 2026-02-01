@@ -1,10 +1,78 @@
 // User types
 export type IconProvider = "simple_icons" | "logo_dev";
 
+// Date format options
+export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "MMM D, YYYY";
+
+// Number format options
+export type NumberFormat = "1,234.56" | "1.234,56" | "1 234.56";
+
+// Currency position
+export type CurrencyPosition = "before" | "after";
+
+// Start of week
+export type StartOfWeek = "sunday" | "monday";
+
+// Rows per page options
+export type RowsPerPage = 25 | 50 | 100;
+
+// Transaction sort columns
+export type TransactionSortColumn = "date" | "payee" | "amount" | "category";
+
+// Sort order
+export type SortOrder = "asc" | "desc";
+
+// Duplicate detection strictness
+export type DuplicateStrictness = "strict" | "moderate" | "relaxed";
+
 export interface UserPreferences {
-  icon_provider?: IconProvider;
+  // Display preferences
+  date_format?: DateFormat;
+  number_format?: NumberFormat;
+  currency_symbol?: string;
+  currency_position?: CurrencyPosition;
+  currency_decimals?: number;
+  start_of_week?: StartOfWeek;
+
+  // Transaction preferences
+  transactions_sort_column?: TransactionSortColumn;
+  transactions_sort_order?: SortOrder;
+  transactions_rows_per_page?: RowsPerPage;
   transactions_visible_columns?: Record<string, boolean>;
+
+  // Import preferences
+  import_auto_create_payees?: boolean;
+  import_auto_apply_rules?: boolean;
+  import_duplicate_strictness?: DuplicateStrictness;
+  import_default_account_id?: number;
+
+  // Appearance preferences
+  icon_provider?: IconProvider;
+
+  // Allow other fields for flexibility
   [key: string]: any;
+}
+
+// Preference metadata for UI rendering
+export interface PreferenceOption {
+  value: string | number | boolean;
+  label: string;
+}
+
+export interface PreferenceMetadataItem {
+  type: "select" | "boolean" | "number" | "string";
+  label: string;
+  description: string;
+  category: string;
+  default: any;
+  options?: PreferenceOption[];
+  min?: number;
+  max?: number;
+}
+
+export interface PreferencesMetadata {
+  categories: Record<string, string[]>;
+  preferences: Record<string, PreferenceMetadataItem>;
 }
 
 export interface User {
