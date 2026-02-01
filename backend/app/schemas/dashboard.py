@@ -153,3 +153,49 @@ class IncomeExpenseDetailResponse(BaseModel):
     income_by_source: List[IncomeSource]
     period_start: date
     period_end: date
+
+
+class CashFlowProjection(BaseModel):
+    """Projected cash flow for a future month."""
+    month: str  # Format: "2024-01"
+    projected_income: Decimal
+    projected_expenses: Decimal
+    projected_net: Decimal
+    projected_balance: Decimal
+    confidence: str  # "high", "medium", "low"
+
+
+class CashFlowForecastResponse(BaseModel):
+    """Response for cash flow forecast."""
+    current_balance: Decimal
+    avg_monthly_income: Decimal
+    avg_monthly_expenses: Decimal
+    avg_monthly_net: Decimal
+    projections: List[CashFlowProjection]
+    historical_months_used: int
+    forecast_months: int
+
+
+class SankeyNode(BaseModel):
+    """Node in the Sankey diagram."""
+    id: str
+    name: str
+    value: Decimal
+
+
+class SankeyLink(BaseModel):
+    """Link between nodes in the Sankey diagram."""
+    source: str
+    target: str
+    value: Decimal
+
+
+class SankeyDiagramResponse(BaseModel):
+    """Response for Sankey diagram data."""
+    nodes: List[SankeyNode]
+    links: List[SankeyLink]
+    total_income: Decimal
+    total_expenses: Decimal
+    net_savings: Decimal
+    period_start: date
+    period_end: date

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
-import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse } from "@/types";
+import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse, CashFlowForecastResponse, SankeyDiagramResponse } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ReportHeader from "@/components/reports/ReportHeader";
 import { DateRange, getDefaultDateRange } from "@/components/reports/DateRangePicker";
@@ -12,6 +12,8 @@ import CategorySpendingChart from "@/components/charts/CategorySpendingChart";
 import IncomeTrendChart from "@/components/charts/IncomeTrendChart";
 import NetWorthChart from "@/components/charts/NetWorthChart";
 import SpendingTrendsChart from "@/components/charts/SpendingTrendsChart";
+import CashFlowForecastChart from "@/components/charts/CashFlowForecastChart";
+import SankeyDiagramChart from "@/components/charts/SankeyDiagramChart";
 import { formatCurrency, formatPercentage } from "@/lib/utils/format";
 
 type ReportType = "overview" | "spending" | "income" | "net-worth" | "cash-flow" | "sankey";
@@ -58,14 +60,14 @@ const REPORT_NAV: ReportNavItem[] = [
     name: "Cash Flow Forecast",
     description: "Project future balances",
     icon: "🔮",
-    available: false, // Coming soon
+    available: true,
   },
   {
     id: "sankey",
     name: "Money Flow",
     description: "Visualize income to expenses",
     icon: "🌊",
-    available: false, // Coming soon
+    available: true,
   },
 ];
 
@@ -87,8 +89,11 @@ export default function ReportsPage() {
   const [incomeData, setIncomeData] = useState<IncomeVsExpensesResponse | null>(null);
   const [incomeDetailData, setIncomeDetailData] = useState<IncomeExpenseDetailResponse | null>(null);
   const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
+  const [cashFlowData, setCashFlowData] = useState<CashFlowForecastResponse | null>(null);
+  const [sankeyData, setSankeyData] = useState<SankeyDiagramResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   // Auth redirect
   useEffect(() => {
@@ -196,6 +201,24 @@ export default function ReportsPage() {
         );
         setNetWorthData(netWorth);
       }
+
+      if (activeReport === "cash-flow") {
+        const cashFlow = await reportsAPI.getCashFlowForecast(
+          6, // historical months to analyze
+          6, // forecast months
+          selectedAccountId || undefined
+        );
+        setCashFlowData(cashFlow);
+      }
+
+      if (activeReport === "sankey") {
+        const sankey = await reportsAPI.getSankeyDiagram(
+          dateRange.startDate,
+          dateRange.endDate,
+          selectedAccountId || undefined
+        );
+        setSankeyData(sankey);
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load report data");
     } finally {
@@ -206,6 +229,44 @@ export default function ReportsPage() {
   const handleReportChange = (reportId: ReportType) => {
     setActiveReport(reportId);
     router.replace(`/dashboard/reports?report=${reportId}`, { scroll: false });
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      const months = Math.max(
+        1,
+        Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
+      );
+
+      switch (activeReport) {
+        case "overview":
+        case "spending":
+          await reportsAPI.exportSpendingByCategory(dateRange.startDate, dateRange.endDate);
+          break;
+        case "income":
+          await reportsAPI.exportIncomeVsExpenses(Math.min(months, 24));
+          break;
+        case "net-worth":
+          await reportsAPI.exportNetWorthHistory(Math.min(months, 60));
+          break;
+        case "cash-flow":
+        case "sankey":
+          // For these reports, export transactions for the period
+          await reportsAPI.exportTransactions(
+            dateRange.startDate,
+            dateRange.endDate,
+            selectedAccountId || undefined
+          );
+          break;
+      }
+    } catch (err: any) {
+      setError("Failed to export report");
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (authLoading || !isAuthenticated) {
@@ -269,6 +330,30 @@ export default function ReportsPage() {
             onAccountChange={setSelectedAccountId}
             accountsLoading={accountsLoading}
             showAccountFilter={true}
+            actions={
+              <button
+                onClick={handleExport}
+                disabled={loading || exporting}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {exporting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export CSV
+                  </>
+                )}
+              </button>
+            }
           />
 
           {error && (
@@ -968,18 +1053,284 @@ export default function ReportsPage() {
                 </div>
               )}
 
-              {/* Coming Soon Reports */}
-              {(activeReport === "cash-flow" ||
-                activeReport === "sankey") && (
-                <div className="bg-surface rounded-lg shadow p-12 text-center">
-                  <div className="text-6xl mb-4">
-                    {REPORT_NAV.find((r) => r.id === activeReport)?.icon}
+              {/* Cash Flow Forecast Report */}
+              {activeReport === "cash-flow" && cashFlowData && (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Current Balance</div>
+                      <div className="mt-1 text-2xl font-bold text-primary-600">
+                        {formatCurrency(cashFlowData.current_balance)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Avg Monthly Income</div>
+                      <div className="mt-1 text-2xl font-bold text-success-600">
+                        {formatCurrency(cashFlowData.avg_monthly_income)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Avg Monthly Expenses</div>
+                      <div className="mt-1 text-2xl font-bold text-danger-600">
+                        {formatCurrency(cashFlowData.avg_monthly_expenses)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Avg Monthly Net</div>
+                      <div
+                        className={`mt-1 text-2xl font-bold ${
+                          parseFloat(cashFlowData.avg_monthly_net) >= 0
+                            ? "text-success-600"
+                            : "text-danger-600"
+                        }`}
+                      >
+                        {formatCurrency(cashFlowData.avg_monthly_net)}
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-text-primary mb-2">Coming Soon</h3>
-                  <p className="text-text-secondary max-w-md mx-auto">
-                    The {REPORT_NAV.find((r) => r.id === activeReport)?.name} report is currently
-                    under development. Check back soon!
-                  </p>
+
+                  {/* Forecast Chart */}
+                  <div className="bg-surface rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-4">
+                      Cash Flow Projection
+                    </h3>
+                    <p className="text-sm text-text-tertiary mb-4">
+                      Based on {cashFlowData.historical_months_used} months of historical data
+                    </p>
+                    <CashFlowForecastChart
+                      projections={cashFlowData.projections}
+                      currentBalance={cashFlowData.current_balance}
+                    />
+                  </div>
+
+                  {/* Confidence Legend */}
+                  <div className="bg-surface rounded-lg shadow p-4">
+                    <h4 className="text-sm font-semibold text-text-primary mb-3">
+                      Projection Confidence
+                    </h4>
+                    <div className="flex gap-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-success-500"></div>
+                        <span className="text-sm text-text-secondary">High - Low variance in historical data</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-warning-500"></div>
+                        <span className="text-sm text-text-secondary">Medium - Moderate variance</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-danger-500"></div>
+                        <span className="text-sm text-text-secondary">Low - High variance in data</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projection Table */}
+                  <div className="bg-surface rounded-lg shadow">
+                    <div className="p-6 border-b border-border">
+                      <h3 className="text-lg font-semibold text-text-primary">
+                        Monthly Projections
+                      </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-surface-secondary">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Month
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Projected Income
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Projected Expenses
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Projected Net
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Projected Balance
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              Confidence
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {cashFlowData.projections.map((projection) => (
+                            <tr key={projection.month} className="hover:bg-surface-secondary">
+                              <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                                {new Date(projection.month + "-01").toLocaleDateString("en-US", {
+                                  month: "long",
+                                  year: "numeric",
+                                })}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-right text-success-600">
+                                {formatCurrency(projection.projected_income)}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-right text-danger-600">
+                                {formatCurrency(projection.projected_expenses)}
+                              </td>
+                              <td
+                                className={`px-6 py-4 text-sm text-right font-medium ${
+                                  parseFloat(projection.projected_net) >= 0
+                                    ? "text-success-600"
+                                    : "text-danger-600"
+                                }`}
+                              >
+                                {formatCurrency(projection.projected_net)}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-right font-semibold text-primary-600">
+                                {formatCurrency(projection.projected_balance)}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    projection.confidence === "high"
+                                      ? "bg-success-100 text-success-800"
+                                      : projection.confidence === "medium"
+                                      ? "bg-warning-100 text-warning-800"
+                                      : "bg-danger-100 text-danger-800"
+                                  }`}
+                                >
+                                  {projection.confidence.charAt(0).toUpperCase() +
+                                    projection.confidence.slice(1)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sankey / Money Flow Report */}
+              {activeReport === "sankey" && sankeyData && (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Total Income</div>
+                      <div className="mt-1 text-2xl font-bold text-success-600">
+                        {formatCurrency(sankeyData.total_income)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Total Expenses</div>
+                      <div className="mt-1 text-2xl font-bold text-danger-600">
+                        {formatCurrency(sankeyData.total_expenses)}
+                      </div>
+                    </div>
+                    <div className="bg-surface rounded-lg shadow p-4">
+                      <div className="text-sm font-medium text-text-tertiary">Net Savings</div>
+                      <div
+                        className={`mt-1 text-2xl font-bold ${
+                          parseFloat(sankeyData.net_savings) >= 0
+                            ? "text-primary-600"
+                            : "text-danger-600"
+                        }`}
+                      >
+                        {formatCurrency(sankeyData.net_savings)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sankey Diagram */}
+                  <div className="bg-surface rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      Money Flow Diagram
+                    </h3>
+                    <p className="text-sm text-text-tertiary mb-6">
+                      Shows how income flows through to expenses and savings for the selected period
+                    </p>
+                    <div className="overflow-x-auto">
+                      <SankeyDiagramChart
+                        nodes={sankeyData.nodes}
+                        links={sankeyData.links}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="bg-surface rounded-lg shadow p-4">
+                    <h4 className="text-sm font-semibold text-text-primary mb-3">
+                      How to Read This Chart
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-text-secondary">
+                      <div className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded bg-success-500 mt-0.5 flex-shrink-0"></div>
+                        <span><strong>Green nodes</strong> represent income sources on the left</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded bg-danger-500 mt-0.5 flex-shrink-0"></div>
+                        <span><strong>Red nodes</strong> represent expense categories on the right</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded bg-primary-500 mt-0.5 flex-shrink-0"></div>
+                        <span><strong>Blue node</strong> represents net savings (income - expenses)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded bg-gray-300 mt-0.5 flex-shrink-0"></div>
+                        <span><strong>Flow width</strong> represents the relative size of money movement</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Breakdown Tables */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Income Sources */}
+                    <div className="bg-surface rounded-lg shadow">
+                      <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-semibold text-success-600">Income Sources</h3>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {sankeyData.nodes
+                          .filter((n) => n.id.startsWith("income_"))
+                          .map((node) => (
+                            <div
+                              key={node.id}
+                              className="flex justify-between items-center py-2 border-b border-border last:border-0"
+                            >
+                              <span className="text-text-primary">{node.name}</span>
+                              <span className="font-semibold text-success-600">
+                                {formatCurrency(node.value)}
+                              </span>
+                            </div>
+                          ))}
+                        {sankeyData.nodes.filter((n) => n.id.startsWith("income_")).length === 0 && (
+                          <p className="text-text-tertiary text-sm">No income recorded</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expense Categories */}
+                    <div className="bg-surface rounded-lg shadow">
+                      <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-semibold text-danger-600">Expense Categories</h3>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {sankeyData.nodes
+                          .filter((n) => n.id.startsWith("expense_"))
+                          .sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+                          .map((node) => (
+                            <div
+                              key={node.id}
+                              className="flex justify-between items-center py-2 border-b border-border last:border-0"
+                            >
+                              <span className="text-text-primary">{node.name}</span>
+                              <span className="font-semibold text-danger-600">
+                                {formatCurrency(node.value)}
+                              </span>
+                            </div>
+                          ))}
+                        {sankeyData.nodes.filter((n) => n.id.startsWith("expense_")).length === 0 && (
+                          <p className="text-text-tertiary text-sm">No expenses recorded</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </>

@@ -829,3 +829,46 @@ export interface LogoDevSettings {
 export interface LogoDevSettingsUpdate {
   api_key: string | null;
 }
+
+// Cash Flow Forecast types
+export interface CashFlowProjection {
+  month: string;
+  projected_income: string;
+  projected_expenses: string;
+  projected_net: string;
+  projected_balance: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface CashFlowForecastResponse {
+  current_balance: string;
+  avg_monthly_income: string;
+  avg_monthly_expenses: string;
+  avg_monthly_net: string;
+  projections: CashFlowProjection[];
+  historical_months_used: number;
+  forecast_months: number;
+}
+
+// Sankey Diagram types
+export interface SankeyNode {
+  id: string;
+  name: string;
+  value: string;
+}
+
+export interface SankeyLink {
+  source: string;
+  target: string;
+  value: string;
+}
+
+export interface SankeyDiagramResponse {
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+  total_income: string;
+  total_expenses: string;
+  net_savings: string;
+  period_start: string;
+  period_end: string;
+}
