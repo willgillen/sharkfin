@@ -6,3 +6,6 @@ export type { SelectProps } from "./Select";
 
 export { default as Textarea } from "./Textarea";
 export type { TextareaProps } from "./Textarea";
+
+export { default as PayeeAutocomplete } from "./PayeeAutocomplete";
+export type { PayeeAutocompleteProps } from "./PayeeAutocomplete";

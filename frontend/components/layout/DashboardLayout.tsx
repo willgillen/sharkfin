@@ -2,6 +2,7 @@
 
 import { ReactNode, useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 
@@ -11,11 +12,10 @@ interface DashboardLayoutProps {
 
 // Main navigation items (always visible)
 const mainNavigation = [
-  { name: "Dashboard", href: "/dashboard" },
+  { name: "Dashboard", href: "/dashboard/reports" },
   { name: "Accounts", href: "/dashboard/accounts" },
   { name: "Transactions", href: "/dashboard/transactions" },
   { name: "Budgets", href: "/dashboard/budgets" },
-  { name: "Reports", href: "/dashboard/reports" },
 ];
 
 // Additional items in "More" dropdown
@@ -61,8 +61,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* Left side: Logo and Navigation */}
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link href="/dashboard" className="text-2xl font-bold text-text-primary">
-                  🦈 Shark Fin
+                <Link href="/dashboard/reports" className="flex items-center gap-3">
+                  <Image
+                    src="/sharkfin_logo.png"
+                    alt="Shark Fin Logo"
+                    width={44}
+                    height={44}
+                    className="rounded-lg"
+                  />
+                  <span className="text-xl font-bold text-text-primary">Shark Fin</span>
                 </Link>
               </div>
 

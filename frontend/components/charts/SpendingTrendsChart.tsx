@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { CategoryTrend } from "@/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatMonthYear } from "@/lib/utils/format";
 
 // Color palette for categories
 const CATEGORY_COLORS = [
@@ -46,10 +46,7 @@ export default function SpendingTrendsChart({
   // Transform data for stacked bar chart
   const chartData = months.map((month) => {
     const monthData: Record<string, any> = {
-      month: new Date(month + "-01").toLocaleDateString("en-US", {
-        month: "short",
-        year: "2-digit",
-      }),
+      month: formatMonthYear(month),
     };
 
     filteredData.forEach((category) => {

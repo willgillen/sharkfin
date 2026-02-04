@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { MonthlyTrend } from "@/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatMonthYear } from "@/lib/utils/format";
 
 interface IncomeTrendChartProps {
   data: MonthlyTrend[];
@@ -19,10 +19,7 @@ interface IncomeTrendChartProps {
 
 export default function IncomeTrendChart({ data }: IncomeTrendChartProps) {
   const chartData = data.map((item) => ({
-    month: new Date(item.month + "-01").toLocaleDateString("en-US", {
-      month: "short",
-      year: "2-digit",
-    }),
+    month: formatMonthYear(item.month),
     income: parseFloat(item.income),
     expenses: Math.abs(parseFloat(item.expenses)),
     net: parseFloat(item.net),

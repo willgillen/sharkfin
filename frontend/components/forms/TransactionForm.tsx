@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Transaction, TransactionCreate, TransactionUpdate, TransactionType, Account, Category } from "@/types";
-import { accountsAPI, categoriesAPI } from "@/lib/api";
-import { Input, Select, Textarea } from "@/components/ui";
+import { Transaction, TransactionCreate, TransactionUpdate, TransactionType, Account, Category, PayeeWithCategory } from "@/types";
+import { accountsAPI, categoriesAPI, payeesAPI } from "@/lib/api";
+import { Input, Select, Textarea, PayeeAutocomplete } from "@/components/ui";
 import { getErrorMessage } from "@/lib/utils/errors";
 
 interface TransactionFormProps {
@@ -15,6 +15,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ transaction, onSubmit, onCancel }: TransactionFormProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedPayee, setSelectedPayee] = useState<PayeeWithCategory | null>(null);
   const [formData, setFormData] = useState({
     account_id: transaction?.account_id || 0,
     category_id: transaction?.category_id || 0,
@@ -22,11 +23,12 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
     amount: transaction?.amount || "0.00",
     date: transaction?.date || new Date().toISOString().split("T")[0],
     description: transaction?.description || "",
-    payee: transaction?.payee_name || transaction?.payee || "",
+    payee_id: transaction?.payee_id || undefined as number | undefined,
     notes: transaction?.notes || "",
     is_recurring: transaction?.is_recurring || false,
     tags: transaction?.tags || [],
   });
+  const [payeeInputValue, setPayeeInputValue] = useState(transaction?.payee_name || transaction?.payee || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +49,19 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
       if (!transaction && accts.length > 0) {
         setFormData(prev => ({ ...prev, account_id: accts[0].id }));
       }
+
+      // Load existing payee if editing a transaction with a payee_id
+      if (transaction?.payee_id) {
+        try {
+          const payee = await payeesAPI.getById(transaction.payee_id);
+          setSelectedPayee({
+            ...payee,
+            default_category_name: null, // Will be populated if needed
+          });
+        } catch {
+          // Payee may have been deleted, that's okay
+        }
+      }
     } catch (err) {
       console.error("Failed to load data:", err);
     }
@@ -61,6 +76,7 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
       const submitData: any = {
         ...formData,
         category_id: formData.category_id || undefined,
+        payee_id: formData.payee_id || undefined,
       };
 
       // Remove empty strings and convert to undefined (for proper JSON serialization)
@@ -75,6 +91,26 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
       setError(getErrorMessage(err, "Failed to save transaction"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePayeeSelect = (payee: PayeeWithCategory | null) => {
+    setSelectedPayee(payee);
+    setFormData(prev => ({
+      ...prev,
+      payee_id: payee?.id || undefined,
+    }));
+    if (payee) {
+      setPayeeInputValue(payee.canonical_name);
+      // If payee has a default category and no category is selected, use it
+      if (payee.default_category_id && !formData.category_id) {
+        setFormData(prev => ({
+          ...prev,
+          category_id: payee.default_category_id || 0,
+        }));
+      }
+    } else {
+      setPayeeInputValue("");
     }
   };
 
@@ -165,14 +201,14 @@ export default function TransactionForm({ transaction, onSubmit, onCancel }: Tra
         </div>
 
         <div>
-          <Input
+          <PayeeAutocomplete
             label="Payee"
-            id="payee"
-            name="payee"
-            type="text"
-            value={formData.payee}
-            onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
-            placeholder="e.g., Starbucks, Amazon"
+            value={selectedPayee}
+            inputValue={payeeInputValue}
+            onSelect={handlePayeeSelect}
+            onInputChange={setPayeeInputValue}
+            placeholder="Search or create payee..."
+            helperText="Select an existing payee or create a new one"
           />
         </div>
 

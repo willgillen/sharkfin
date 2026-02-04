@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI } from "@/lib/api";
+import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI, reportsAPI } from "@/lib/api";
 import { Transaction, Account, Category, TransactionType } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -25,6 +25,7 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   // Selected account (required - always viewing one account)
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
@@ -73,8 +74,31 @@ export default function TransactionsPage() {
     if (isAuthenticated) {
       loadAccounts();
       loadColumnPreferences();
+      // Initialize filters from URL params
+      initFiltersFromUrl();
     }
   }, [isAuthenticated]);
+
+  // Initialize filters from URL parameters (for drill-down from reports)
+  const initFiltersFromUrl = () => {
+    const urlCategoryId = searchParams.get("category_id");
+    const urlStartDate = searchParams.get("start_date");
+    const urlEndDate = searchParams.get("end_date");
+    const urlType = searchParams.get("type");
+
+    if (urlCategoryId) {
+      setCategoryFilter(urlCategoryId);
+    }
+    if (urlStartDate) {
+      setStartDateFilter(urlStartDate);
+    }
+    if (urlEndDate) {
+      setEndDateFilter(urlEndDate);
+    }
+    if (urlType) {
+      setTypeFilter(urlType);
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -278,6 +302,26 @@ export default function TransactionsPage() {
     return labels[type];
   };
 
+  const handleExportCSV = async () => {
+    if (!selectedAccountId) return;
+
+    setExporting(true);
+    try {
+      await reportsAPI.exportTransactions({
+        startDate: startDateFilter || undefined,
+        endDate: endDateFilter || undefined,
+        accountId: selectedAccountId,
+        categoryId: categoryFilter ? parseInt(categoryFilter) : undefined,
+        type: typeFilter || undefined,
+        payeeSearch: payeeFilter || undefined,
+      });
+    } catch (err: any) {
+      setError("Failed to export transactions");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -297,6 +341,28 @@ export default function TransactionsPage() {
               visibleColumns={visibleColumns}
               onColumnsChange={handleColumnsChange}
             />
+            <button
+              onClick={handleExportCSV}
+              disabled={!selectedAccountId || exporting}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-primary bg-surface border border-border rounded-md hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {exporting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export CSV
+                </>
+              )}
+            </button>
             <button
               onClick={() => router.push("/dashboard/transactions/new")}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"

@@ -36,6 +36,7 @@ from app.schemas.dashboard import (
     IncomeExpenseDetailResponse,
     CashFlowProjection,
     CashFlowForecastResponse,
+    RecurringBill,
     SankeyNode,
     SankeyLink,
     SankeyDiagramResponse
@@ -825,6 +826,121 @@ def get_cash_flow_forecast(
             confidence=confidence
         ))
 
+    # Detect recurring bills by analyzing expense patterns
+    # Look for payees that appear in multiple months with similar amounts
+    recurring_bills = []
+
+    # Get all debit transactions with payee info in the historical period
+    from app.models.payee import Payee as PayeeModel
+    from collections import defaultdict
+
+    expense_txns = db.query(
+        TransactionModel.payee_id,
+        TransactionModel.payee,
+        TransactionModel.amount,
+        TransactionModel.date,
+        TransactionModel.category_id
+    ).filter(
+        *base_filters,
+        TransactionModel.type == TransactionType.DEBIT,
+        TransactionModel.date >= start_date,
+        TransactionModel.date <= end_date
+    ).order_by(TransactionModel.date.desc()).all()
+
+    # Group transactions by payee (using payee_id or payee string)
+    payee_transactions = defaultdict(list)
+    for txn in expense_txns:
+        # Use payee_id if available, otherwise use payee string
+        payee_key = f"id_{txn.payee_id}" if txn.payee_id else f"str_{txn.payee}" if txn.payee else None
+        if payee_key:
+            payee_transactions[payee_key].append({
+                "amount": txn.amount,
+                "date": txn.date,
+                "category_id": txn.category_id,
+                "payee_id": txn.payee_id,
+                "payee_str": txn.payee
+            })
+
+    # Analyze each payee for recurring patterns
+    for payee_key, transactions in payee_transactions.items():
+        if len(transactions) < 2:
+            continue  # Need at least 2 occurrences to be "recurring"
+
+        # Check if amounts are similar (within 10% variance)
+        amounts = [float(t["amount"]) for t in transactions]
+        avg_amount = sum(amounts) / len(amounts)
+        if avg_amount == 0:
+            continue
+
+        amount_variance = max(abs(a - avg_amount) / avg_amount for a in amounts)
+        if amount_variance > 0.15:  # More than 15% variance means not consistent
+            continue
+
+        # Check frequency by looking at dates
+        dates = sorted([t["date"] for t in transactions], reverse=True)
+        if len(dates) < 2:
+            continue
+
+        # Calculate average days between transactions
+        intervals = [(dates[i] - dates[i+1]).days for i in range(len(dates)-1)]
+        avg_interval = sum(intervals) / len(intervals) if intervals else 0
+
+        # Determine frequency (monthly = ~30 days, quarterly = ~90 days, annual = ~365 days)
+        if 20 <= avg_interval <= 40:
+            frequency = "monthly"
+            months_occurred = len(transactions)
+        elif 80 <= avg_interval <= 100:
+            frequency = "quarterly"
+            months_occurred = len(transactions)
+        elif 350 <= avg_interval <= 380:
+            frequency = "annual"
+            months_occurred = len(transactions)
+        else:
+            continue  # Not a recognized frequency pattern
+
+        # Get payee name
+        payee_name = None
+        if transactions[0]["payee_id"]:
+            payee = db.query(PayeeModel).filter(PayeeModel.id == transactions[0]["payee_id"]).first()
+            if payee:
+                payee_name = payee.canonical_name
+        if not payee_name:
+            payee_name = transactions[0]["payee_str"] or "Unknown"
+
+        # Get category name
+        category_name = None
+        if transactions[0]["category_id"]:
+            category = db.query(CategoryModel).filter(CategoryModel.id == transactions[0]["category_id"]).first()
+            if category:
+                category_name = category.name
+
+        # Calculate next expected date
+        last_paid = dates[0]
+        if frequency == "monthly":
+            next_expected = last_paid + relativedelta(months=1)
+        elif frequency == "quarterly":
+            next_expected = last_paid + relativedelta(months=3)
+        else:
+            next_expected = last_paid + relativedelta(years=1)
+
+        # Only include if next expected is in the future or very recent
+        if next_expected < end_date - relativedelta(days=7):
+            continue
+
+        recurring_bills.append(RecurringBill(
+            payee_name=payee_name,
+            category_name=category_name,
+            typical_amount=Decimal(str(round(avg_amount, 2))),
+            frequency=frequency,
+            last_paid=last_paid,
+            next_expected=next_expected if next_expected > end_date else None,
+            occurrences=len(transactions)
+        ))
+
+    # Sort by typical amount (highest first) and limit to top 15
+    recurring_bills.sort(key=lambda x: float(x.typical_amount), reverse=True)
+    recurring_bills = recurring_bills[:15]
+
     return CashFlowForecastResponse(
         current_balance=current_balance,
         avg_monthly_income=avg_income,
@@ -832,7 +948,8 @@ def get_cash_flow_forecast(
         avg_monthly_net=avg_net,
         projections=projections,
         historical_months_used=historical_months,
-        forecast_months=forecast_months
+        forecast_months=forecast_months,
+        recurring_bills=recurring_bills
     )
 
 
@@ -985,32 +1102,39 @@ def get_sankey_diagram(
 
 @router.get("/export/transactions")
 def export_transactions_csv(
-    start_date: Optional[date] = Query(None, description="Start date (defaults to current month)"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to all time)"),
     end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     account_id: Optional[int] = Query(None, description="Filter by specific account (optional)"),
     category_id: Optional[int] = Query(None, description="Filter by specific category (optional)"),
+    type: Optional[str] = Query(None, description="Filter by transaction type: DEBIT, CREDIT, TRANSFER"),
+    payee_search: Optional[str] = Query(None, description="Search payee name"),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
     """Export transactions to CSV file."""
 
-    # Default to current month if dates not provided
+    # Default end date to today if not provided
     if not end_date:
         end_date = date.today()
-    if not start_date:
-        start_date = date(end_date.year, end_date.month, 1)
 
     # Query transactions
     query = db.query(TransactionModel).filter(
         TransactionModel.user_id == current_user.id,
-        TransactionModel.date >= start_date,
         TransactionModel.date <= end_date
     )
+
+    # Apply start date filter if provided
+    if start_date:
+        query = query.filter(TransactionModel.date >= start_date)
 
     if account_id:
         query = query.filter(TransactionModel.account_id == account_id)
     if category_id:
         query = query.filter(TransactionModel.category_id == category_id)
+    if type:
+        query = query.filter(TransactionModel.type == TransactionType(type))
+    if payee_search:
+        query = query.filter(TransactionModel.payee.ilike(f"%{payee_search}%"))
 
     transactions = query.order_by(TransactionModel.date.desc()).all()
 
@@ -1029,6 +1153,13 @@ def export_transactions_csv(
         account = db.query(AccountModel).filter(AccountModel.id == txn.account_id).first()
         category = db.query(CategoryModel).filter(CategoryModel.id == txn.category_id).first() if txn.category_id else None
 
+        # Use linked payee entity name if available, otherwise fall back to legacy payee field
+        payee_name = ""
+        if txn.payee_entity:
+            payee_name = txn.payee_entity.canonical_name
+        elif txn.payee:
+            payee_name = txn.payee
+
         writer.writerow([
             txn.date.strftime("%Y-%m-%d"),
             txn.description,
@@ -1036,13 +1167,16 @@ def export_transactions_csv(
             txn.type.value,
             account.name if account else "",
             category.name if category else "",
-            txn.payee or "",
+            payee_name,
             txn.notes or ""
         ])
 
     # Create streaming response
     output.seek(0)
-    filename = f"transactions_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv"
+    if start_date:
+        filename = f"transactions_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv"
+    else:
+        filename = f"transactions_all_to_{end_date.strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),

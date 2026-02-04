@@ -357,7 +357,8 @@ export interface TransactionCreate {
   date: string;
   description: string;
   notes?: string;
-  payee?: string;
+  payee_id?: number;  // Linked Payee entity (preferred)
+  payee?: string;     // Legacy free-text payee (deprecated)
   is_recurring?: boolean;
   tags?: string[];
 }
@@ -370,7 +371,8 @@ export interface TransactionUpdate {
   date?: string;
   description?: string;
   notes?: string;
-  payee?: string;
+  payee_id?: number;  // Linked Payee entity (preferred)
+  payee?: string;     // Legacy free-text payee (deprecated)
   is_recurring?: boolean;
   tags?: string[];
 }
@@ -625,6 +627,7 @@ export interface ImportExecuteResponse {
   duplicate_count: number;
   error_count: number;
   message: string;
+  errors?: string[];
 }
 
 export interface ImportHistoryResponse {
@@ -651,7 +654,7 @@ export interface ImportHistoryResponse {
 export interface SmartRuleSuggestionResponse {
   suggested_name: string;
   payee_pattern: string;
-  payee_match_type: string;
+  payee_match_type: MatchType;
   matching_row_indices: number[];
   sample_descriptions: string[];
   confidence: number;
@@ -840,6 +843,16 @@ export interface CashFlowProjection {
   confidence: "high" | "medium" | "low";
 }
 
+export interface RecurringBill {
+  payee_name: string;
+  category_name: string | null;
+  typical_amount: string;
+  frequency: "monthly" | "quarterly" | "annual";
+  last_paid: string | null;
+  next_expected: string | null;
+  occurrences: number;
+}
+
 export interface CashFlowForecastResponse {
   current_balance: string;
   avg_monthly_income: string;
@@ -848,6 +861,7 @@ export interface CashFlowForecastResponse {
   projections: CashFlowProjection[];
   historical_months_used: number;
   forecast_months: number;
+  recurring_bills: RecurringBill[];
 }
 
 // Sankey Diagram types

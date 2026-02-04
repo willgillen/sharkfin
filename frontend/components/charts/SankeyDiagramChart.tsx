@@ -18,16 +18,27 @@ const NODE_COLORS: Record<string, string> = {
 };
 
 // Generate colors for nodes based on their type
-function getNodeColor(nodeId: string): string {
+function getNodeColor(nodeId: string | undefined): string {
+  if (!nodeId || typeof nodeId !== "string") return NODE_COLORS.expense;
   if (nodeId === "total_income") return NODE_COLORS.total_income;
   if (nodeId === "savings") return NODE_COLORS.savings;
   if (nodeId.startsWith("income_")) return NODE_COLORS.income;
   return NODE_COLORS.expense;
 }
 
-// Custom node component
+// Custom node component - receives payload with our node data
 function CustomNode({ x, y, width, height, payload }: any) {
-  const color = getNodeColor(payload.id);
+  // payload contains our node data including the 'id' field we set
+  const nodeId = payload?.id;
+  const color = getNodeColor(nodeId);
+  const name = payload?.name || "";
+
+  // Determine label position based on node type
+  // Income nodes (left side) get label on left, expense nodes (right side) get label on right
+  const isLeftSide = nodeId?.startsWith("income_") || nodeId === "total_income";
+  const labelX = isLeftSide ? x - 8 : x + width + 8;
+  const textAnchor = isLeftSide ? "end" : "start";
+
   return (
     <Layer>
       <Rectangle
@@ -40,38 +51,56 @@ function CustomNode({ x, y, width, height, payload }: any) {
         rx={4}
         ry={4}
       />
-      {/* Node label */}
+      {/* Node label - positioned outside the node */}
       <text
-        x={x + width / 2}
+        x={labelX}
         y={y + height / 2}
-        textAnchor="middle"
+        textAnchor={textAnchor}
         dominantBaseline="middle"
         fontSize={12}
-        fill="#fff"
+        fill="#374151"
         fontWeight={500}
       >
-        {payload.name.length > 12 ? payload.name.slice(0, 10) + "..." : payload.name}
+        {name.length > 15 ? name.slice(0, 13) + "..." : name}
       </text>
     </Layer>
   );
 }
 
-// Custom link component
-function CustomLink({
-  sourceX,
-  targetX,
-  sourceY,
-  targetY,
-  sourceControlX,
-  targetControlX,
-  linkWidth,
-  payload,
-}: any) {
-  const sourceColor = getNodeColor(payload.source);
-  const targetColor = getNodeColor(payload.target);
+// Custom link component with gradient coloring
+// The recharts Sankey provides sourceY/targetY as the TOP of the link area
+function CustomLink(props: any) {
+  const {
+    sourceX,
+    targetX,
+    sourceY,
+    targetY,
+    sourceControlX,
+    targetControlX,
+    linkWidth,
+    payload,
+    index,
+  } = props;
 
-  // Create gradient path from source to target
-  const gradientId = `gradient-${payload.source}-${payload.target}`;
+  // payload.source and payload.target are indices, not string IDs
+  // We store the original IDs as sourceName and targetName
+  const sourceId = payload?.sourceName;
+  const targetId = payload?.targetName;
+  const sourceColor = getNodeColor(sourceId);
+  const targetColor = getNodeColor(targetId);
+
+  // Create gradient for the link
+  const gradientId = `sankey-link-gradient-${index}`;
+
+  // Calculate the half-width offset to center the link
+  const halfWidth = linkWidth / 2;
+
+  // Top edge of the curved band
+  const sy0 = sourceY - halfWidth;
+  const ty0 = targetY - halfWidth;
+  // Bottom edge of the curved band
+  const sy1 = sourceY + halfWidth;
+  const ty1 = targetY + halfWidth;
 
   return (
     <Layer>
@@ -83,10 +112,10 @@ function CustomLink({
       </defs>
       <path
         d={`
-          M${sourceX},${sourceY}
-          C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}
-          L${targetX},${targetY + linkWidth}
-          C${targetControlX},${targetY + linkWidth} ${sourceControlX},${sourceY + linkWidth} ${sourceX},${sourceY + linkWidth}
+          M${sourceX},${sy0}
+          C${sourceControlX},${sy0} ${targetControlX},${ty0} ${targetX},${ty0}
+          L${targetX},${ty1}
+          C${targetControlX},${ty1} ${sourceControlX},${sy1} ${sourceX},${sy1}
           Z
         `}
         fill={`url(#${gradientId})`}
@@ -123,6 +152,7 @@ export default function SankeyDiagramChart({
         source: sourceIndex,
         target: targetIndex,
         value: parseFloat(link.value),
+        // Store original string IDs for color lookups
         sourceName: link.source,
         targetName: link.target,
       };
@@ -171,19 +201,22 @@ export default function SankeyDiagramChart({
   }
 
   // Calculate appropriate height based on number of nodes
-  const height = Math.max(400, Math.min(chartNodes.length * 50, 600));
+  const numExpenseNodes = nodes.filter(n => n.id.startsWith("expense_")).length;
+  const numIncomeNodes = nodes.filter(n => n.id.startsWith("income_")).length;
+  const maxNodes = Math.max(numExpenseNodes, numIncomeNodes, 3);
+  const height = Math.max(350, Math.min(maxNodes * 60, 550));
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height, minWidth: "600px" }}>
       <Sankey
-        width={800}
+        width={700}
         height={height}
         data={{ nodes: chartNodes, links: chartLinks }}
         node={<CustomNode />}
         link={<CustomLink />}
-        nodePadding={30}
-        nodeWidth={20}
-        margin={{ top: 20, right: 200, bottom: 20, left: 200 }}
+        nodePadding={24}
+        nodeWidth={16}
+        margin={{ top: 20, right: 120, bottom: 20, left: 120 }}
       >
         <Tooltip content={<CustomTooltip />} />
       </Sankey>

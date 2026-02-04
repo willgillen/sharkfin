@@ -483,3 +483,737 @@ class TestReportsAPI:
         assert Decimal(data["account_summary"]["total_assets"]) == Decimal("0.00")
         assert Decimal(data["income_vs_expenses"]["total_expenses"]) == Decimal("0.00")
         assert len(data["top_spending_categories"]) == 0
+
+    def test_net_worth_history(self, client, auth_headers, test_user, db_session):
+        """Test net worth history calculation over multiple months."""
+        from app.models.account import Account, AccountType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create accounts with opening balances
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD",
+            opening_balance=Decimal("5000.00")
+        )
+        savings = Account(
+            user_id=test_user.id,
+            name="Savings",
+            type=AccountType.SAVINGS,
+            currency="USD",
+            opening_balance=Decimal("10000.00")
+        )
+        credit_card = Account(
+            user_id=test_user.id,
+            name="Credit Card",
+            type=AccountType.CREDIT_CARD,
+            currency="USD",
+            opening_balance=Decimal("-1000.00")
+        )
+        db_session.add_all([checking, savings, credit_card])
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create transactions over several months
+        today = date.today()
+        for i in range(3):
+            month_date = today - relativedelta(months=i)
+            month_start = date(month_date.year, month_date.month, 1)
+
+            # Income each month
+            income_tx = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                type=TransactionType.CREDIT,
+                amount=Decimal("3000.00"),
+                date=month_start
+            )
+            # Expense each month
+            expense_tx = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("2000.00"),
+                date=month_start + relativedelta(days=5)
+            )
+            db_session.add_all([income_tx, expense_tx])
+
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/net-worth-history?months=6", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "history" in data
+        assert len(data["history"]) <= 6
+        # Each history entry should have required fields (NetWorthDataPoint has 'date', not 'month')
+        for entry in data["history"]:
+            assert "date" in entry
+            assert "total_assets" in entry
+            assert "total_liabilities" in entry
+            assert "net_worth" in entry
+
+        # Verify current net worth calculation (uses 'current' object, not 'current_net_worth')
+        # The exact net worth depends on how account balances are calculated.
+        # Just verify the structure is correct and net_worth is a valid number
+        assert "current" in data
+        assert "net_worth" in data["current"]
+        assert "total_assets" in data["current"]
+        assert "total_liabilities" in data["current"]
+        # Verify assets > liabilities (we have net positive balance)
+        assert Decimal(data["current"]["total_assets"]) > Decimal(data["current"]["total_liabilities"])
+
+    def test_net_worth_history_with_account_filter(self, client, auth_headers, test_user, db_session):
+        """Test net worth history filtering by account."""
+        from app.models.account import Account, AccountType
+
+        # Create two accounts
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD",
+            opening_balance=Decimal("5000.00")
+        )
+        savings = Account(
+            user_id=test_user.id,
+            name="Savings",
+            type=AccountType.SAVINGS,
+            currency="USD",
+            opening_balance=Decimal("10000.00")
+        )
+        db_session.add_all([checking, savings])
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Query for specific account
+        response = client.get(
+            f"/api/v1/reports/net-worth-history?months=3&account_id={checking.id}",
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # When filtering by account, should only show that account's balance
+        assert "current" in data
+        assert "net_worth" in data["current"]
+
+    def test_spending_trends(self, client, auth_headers, test_user, db_session):
+        """Test spending trends over multiple months by category."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create categories
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        dining = Category(
+            user_id=test_user.id,
+            name="Dining",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([groceries, dining])
+        db_session.commit()
+        db_session.refresh(groceries)
+        db_session.refresh(dining)
+
+        # Create transactions over 3 months
+        today = date.today()
+        for i in range(3):
+            month_date = today - relativedelta(months=i)
+            month_start = date(month_date.year, month_date.month, 1)
+
+            # Grocery spending
+            tx1 = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=groceries.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("400.00") + Decimal(i * 50),  # Increasing trend
+                date=month_start
+            )
+            # Dining spending
+            tx2 = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=dining.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("200.00"),
+                date=month_start
+            )
+            db_session.add_all([tx1, tx2])
+
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/spending-trends?months=3", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "categories" in data
+        assert "months" in data
+        assert len(data["months"]) == 3
+
+        # Check category data
+        assert len(data["categories"]) == 2
+        for category in data["categories"]:
+            assert "category_id" in category
+            assert "category_name" in category
+            assert "monthly_data" in category
+            assert "total_amount" in category
+            assert "average_amount" in category
+            assert len(category["monthly_data"]) == 3
+
+    def test_spending_trends_with_category_filter(self, client, auth_headers, test_user, db_session):
+        """Test spending trends filtering by specific categories."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create categories
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        dining = Category(
+            user_id=test_user.id,
+            name="Dining",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([groceries, dining])
+        db_session.commit()
+        db_session.refresh(groceries)
+        db_session.refresh(dining)
+
+        # Create transactions
+        today = date.today()
+        month_start = date(today.year, today.month, 1)
+
+        tx1 = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=groceries.id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("300.00"),
+            date=month_start
+        )
+        tx2 = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=dining.id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("150.00"),
+            date=month_start
+        )
+        db_session.add_all([tx1, tx2])
+        db_session.commit()
+
+        # Filter for only groceries
+        response = client.get(
+            f"/api/v1/reports/spending-trends?months=1&category_ids={groceries.id}",
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should only have groceries category
+        assert len(data["categories"]) == 1
+        assert data["categories"][0]["category_name"] == "Groceries"
+
+    def test_income_expense_detail(self, client, auth_headers, test_user, db_session):
+        """Test detailed income and expense breakdown."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create categories
+        salary = Category(
+            user_id=test_user.id,
+            name="Salary",
+            type=CategoryType.INCOME
+        )
+        freelance = Category(
+            user_id=test_user.id,
+            name="Freelance",
+            type=CategoryType.INCOME
+        )
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([salary, freelance, groceries])
+        db_session.commit()
+        db_session.refresh(salary)
+        db_session.refresh(freelance)
+        db_session.refresh(groceries)
+
+        # Create transactions
+        today = date.today()
+        month_start = date(today.year, today.month, 1)
+
+        txns = [
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=salary.id,
+                type=TransactionType.CREDIT,
+                amount=Decimal("5000.00"),
+                date=month_start
+            ),
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=freelance.id,
+                type=TransactionType.CREDIT,
+                amount=Decimal("1000.00"),
+                date=month_start
+            ),
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=groceries.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("500.00"),
+                date=month_start
+            ),
+        ]
+        db_session.add_all(txns)
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/income-expense-detail?months=1", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Response uses 'income_by_source' and 'summary', not 'income_sources' and 'expense_categories'
+        assert "income_by_source" in data
+        assert "summary" in data
+        assert "monthly_breakdown" in data
+
+        # Check income sources
+        assert len(data["income_by_source"]) == 2
+        total_income = sum(Decimal(s["amount"]) for s in data["income_by_source"])
+        assert total_income == Decimal("6000.00")
+
+        # Check summary totals
+        assert Decimal(data["summary"]["total_income"]) == Decimal("6000.00")
+        assert Decimal(data["summary"]["total_expenses"]) == Decimal("500.00")
+
+    def test_cash_flow_forecast(self, client, auth_headers, test_user, db_session):
+        """Test cash flow forecast projection."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account with opening balance
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD",
+            opening_balance=Decimal("5000.00")
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create categories
+        salary = Category(
+            user_id=test_user.id,
+            name="Salary",
+            type=CategoryType.INCOME
+        )
+        rent = Category(
+            user_id=test_user.id,
+            name="Rent",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([salary, rent])
+        db_session.commit()
+        db_session.refresh(salary)
+        db_session.refresh(rent)
+
+        # Create consistent transactions over past 3 months for forecasting
+        today = date.today()
+        for i in range(3):
+            month_date = today - relativedelta(months=i)
+            month_start = date(month_date.year, month_date.month, 1)
+
+            income_tx = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=salary.id,
+                type=TransactionType.CREDIT,
+                amount=Decimal("4000.00"),
+                date=month_start
+            )
+            expense_tx = Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=rent.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("1500.00"),
+                date=month_start + relativedelta(days=5)
+            )
+            db_session.add_all([income_tx, expense_tx])
+
+        db_session.commit()
+
+        response = client.get(
+            "/api/v1/reports/cash-flow-forecast?historical_months=3&forecast_months=3",
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "current_balance" in data
+        assert "projections" in data
+        assert "avg_monthly_income" in data
+        assert "avg_monthly_expenses" in data
+        assert "avg_monthly_net" in data
+
+        # Check projections
+        assert len(data["projections"]) == 3
+        for projection in data["projections"]:
+            assert "month" in projection
+            assert "projected_income" in projection
+            assert "projected_expenses" in projection
+            assert "projected_net" in projection
+            assert "projected_balance" in projection
+            assert "confidence" in projection
+            assert projection["confidence"] in ["high", "medium", "low"]
+
+        # Verify average calculations
+        assert Decimal(data["avg_monthly_income"]) == Decimal("4000.00")
+        assert Decimal(data["avg_monthly_expenses"]) == Decimal("1500.00")
+        assert Decimal(data["avg_monthly_net"]) == Decimal("2500.00")
+
+    def test_sankey_diagram(self, client, auth_headers, test_user, db_session):
+        """Test Sankey diagram data generation."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        # Create categories
+        salary = Category(
+            user_id=test_user.id,
+            name="Salary",
+            type=CategoryType.INCOME
+        )
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        utilities = Category(
+            user_id=test_user.id,
+            name="Utilities",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add_all([salary, groceries, utilities])
+        db_session.commit()
+        db_session.refresh(salary)
+        db_session.refresh(groceries)
+        db_session.refresh(utilities)
+
+        # Create transactions
+        today = date.today()
+        month_start = date(today.year, today.month, 1)
+
+        txns = [
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=salary.id,
+                type=TransactionType.CREDIT,
+                amount=Decimal("5000.00"),
+                date=month_start
+            ),
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=groceries.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("600.00"),
+                date=month_start
+            ),
+            Transaction(
+                user_id=test_user.id,
+                account_id=checking.id,
+                category_id=utilities.id,
+                type=TransactionType.DEBIT,
+                amount=Decimal("200.00"),
+                date=month_start
+            ),
+        ]
+        db_session.add_all(txns)
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/sankey-diagram", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "nodes" in data
+        assert "links" in data
+        assert "total_income" in data
+        assert "total_expenses" in data
+        assert "net_savings" in data
+
+        # Check totals
+        assert Decimal(data["total_income"]) == Decimal("5000.00")
+        assert Decimal(data["total_expenses"]) == Decimal("800.00")
+        assert Decimal(data["net_savings"]) == Decimal("4200.00")
+
+        # Check nodes exist for income, expenses, and savings
+        node_ids = [n["id"] for n in data["nodes"]]
+        assert any("income" in nid for nid in node_ids)
+        assert any("expense" in nid or "savings" in nid for nid in node_ids)
+
+        # Check links connect nodes
+        assert len(data["links"]) > 0
+        for link in data["links"]:
+            assert "source" in link
+            assert "target" in link
+            assert "value" in link
+
+    def test_sankey_diagram_with_date_range(self, client, auth_headers, test_user, db_session):
+        """Test Sankey diagram with custom date range."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account and category
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        income_cat = Category(
+            user_id=test_user.id,
+            name="Income",
+            type=CategoryType.INCOME
+        )
+        db_session.add(income_cat)
+        db_session.commit()
+        db_session.refresh(income_cat)
+
+        # Create transactions in different months
+        jan_tx = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=income_cat.id,
+            type=TransactionType.CREDIT,
+            amount=Decimal("1000.00"),
+            date=date(2024, 1, 15)
+        )
+        feb_tx = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=income_cat.id,
+            type=TransactionType.CREDIT,
+            amount=Decimal("2000.00"),
+            date=date(2024, 2, 15)
+        )
+        db_session.add_all([jan_tx, feb_tx])
+        db_session.commit()
+
+        # Query for January only
+        response = client.get(
+            "/api/v1/reports/sankey-diagram?start_date=2024-01-01&end_date=2024-01-31",
+            headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(data["total_income"]) == Decimal("1000.00")
+
+    def test_export_transactions_csv(self, client, auth_headers, test_user, db_session):
+        """Test CSV export of transactions."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+
+        # Create account and category
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add(groceries)
+        db_session.commit()
+        db_session.refresh(groceries)
+
+        # Create transaction
+        tx = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=groceries.id,
+            type=TransactionType.DEBIT,
+            amount=Decimal("50.00"),
+            date=date.today(),
+            description="Test transaction"
+        )
+        db_session.add(tx)
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/export/transactions", headers=auth_headers)
+
+        assert response.status_code == 200
+        assert "text/csv" in response.headers["content-type"]
+        assert "content-disposition" in response.headers
+
+        # Check CSV content
+        content = response.text
+        lines = content.strip().split("\n")
+        assert len(lines) >= 2  # Header + at least one data row
+        assert "Date" in lines[0]
+        assert "Amount" in lines[0]
+        assert "50.00" in lines[1]
+
+    def test_export_transactions_csv_with_payee_entity(self, client, auth_headers, test_user, db_session):
+        """Test CSV export uses linked payee name when available."""
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, CategoryType
+        from app.models.transaction import Transaction, TransactionType
+        from app.models.payee import Payee
+
+        # Create account
+        checking = Account(
+            user_id=test_user.id,
+            name="Checking",
+            type=AccountType.CHECKING,
+            currency="USD"
+        )
+        db_session.add(checking)
+        db_session.commit()
+        db_session.refresh(checking)
+
+        groceries = Category(
+            user_id=test_user.id,
+            name="Groceries",
+            type=CategoryType.EXPENSE
+        )
+        db_session.add(groceries)
+        db_session.commit()
+        db_session.refresh(groceries)
+
+        # Create payee entity
+        payee = Payee(
+            user_id=test_user.id,
+            canonical_name="Whole Foods Market"
+        )
+        db_session.add(payee)
+        db_session.commit()
+        db_session.refresh(payee)
+
+        # Create transaction with linked payee
+        tx = Transaction(
+            user_id=test_user.id,
+            account_id=checking.id,
+            category_id=groceries.id,
+            payee_id=payee.id,
+            payee="WHOLEFOODS #123",  # Legacy field with raw description
+            type=TransactionType.DEBIT,
+            amount=Decimal("75.00"),
+            date=date.today(),
+            description="Grocery shopping"
+        )
+        db_session.add(tx)
+        db_session.commit()
+
+        response = client.get("/api/v1/reports/export/transactions", headers=auth_headers)
+
+        assert response.status_code == 200
+        content = response.text
+
+        # Should use the canonical name, not the raw payee field
+        assert "Whole Foods Market" in content
+        # The raw payee field should NOT appear
+        assert "WHOLEFOODS #123" not in content
+
+    def test_all_new_report_endpoints_require_auth(self, client):
+        """Test that all new report endpoints require authentication."""
+        endpoints = [
+            "/api/v1/reports/net-worth-history",
+            "/api/v1/reports/spending-trends",
+            "/api/v1/reports/income-expense-detail",
+            "/api/v1/reports/cash-flow-forecast",
+            "/api/v1/reports/sankey-diagram",
+            "/api/v1/reports/export/transactions",
+            "/api/v1/reports/export/spending-by-category",
+            "/api/v1/reports/export/income-vs-expenses",
+            "/api/v1/reports/export/net-worth-history",
+        ]
+
+        for endpoint in endpoints:
+            response = client.get(endpoint)
+            assert response.status_code == 401, f"Endpoint {endpoint} should require auth"

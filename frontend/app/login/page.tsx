@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Input } from "@/components/ui";
 
@@ -32,16 +33,24 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
       <div className="max-w-md w-full space-y-8 p-8 bg-surface rounded-lg shadow-md">
-        <div>
+        <div className="flex flex-col items-center">
+          <Image
+            src="/sharkfin_logo.png"
+            alt="Shark Fin Logo"
+            width={140}
+            height={140}
+            className="mb-4"
+            priority
+          />
           <h1 className="text-4xl font-bold text-center text-text-primary">
-            🦈 Shark Fin
+            Shark Fin
           </h1>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-text-primary">
+          <h2 className="mt-4 text-center text-xl text-text-secondary">
             Sign in to your account
           </h2>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} action="#">
           {error && (
             <div className="rounded-md bg-danger-50 p-4">
               <p className="text-sm text-danger-800">{error}</p>

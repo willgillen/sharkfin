@@ -1,11 +1,13 @@
 "use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Sector } from "recharts";
 import { CategorySpending } from "@/types";
 import { formatCurrency } from "@/lib/utils/format";
+import { useState } from "react";
 
 interface CategorySpendingChartProps {
   data: CategorySpending[];
+  onCategoryClick?: (categoryId: number, categoryName: string) => void;
 }
 
 const COLORS = [
@@ -19,11 +21,14 @@ const COLORS = [
   "#f97316", // orange-500
 ];
 
-export default function CategorySpendingChart({ data }: CategorySpendingChartProps) {
+export default function CategorySpendingChart({ data, onCategoryClick }: CategorySpendingChartProps) {
+  const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
+
   const chartData = data.map((item) => ({
     name: item.category_name,
     value: parseFloat(item.amount),
     percentage: parseFloat(item.percentage),
+    category_id: item.category_id,
   }));
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -37,10 +42,55 @@ export default function CategorySpendingChart({ data }: CategorySpendingChartPro
           <p className="text-xs text-text-tertiary">
             {payload[0].payload.percentage.toFixed(1)}% of total
           </p>
+          {onCategoryClick && (
+            <p className="text-xs text-primary-500 mt-1">
+              Click to view transactions
+            </p>
+          )}
         </div>
       );
     }
     return null;
+  };
+
+  // Active shape for hover effect
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;
+
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 10}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          style={{ cursor: onCategoryClick ? "pointer" : "default" }}
+        />
+        <text x={cx} y={cy - 10} textAnchor="middle" fill="#333" className="text-sm font-medium">
+          {payload.name}
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#666" className="text-xs">
+          {(percent * 100).toFixed(1)}%
+        </text>
+      </g>
+    );
+  };
+
+  const handleClick = (data: any, index: number) => {
+    if (onCategoryClick && chartData[index]) {
+      onCategoryClick(chartData[index].category_id, chartData[index].name);
+    }
+  };
+
+  const handleMouseEnter = (_: any, index: number) => {
+    setActiveIndex(index);
+  };
+
+  const handleMouseLeave = () => {
+    setActiveIndex(undefined);
   };
 
   if (chartData.length === 0) {
@@ -62,10 +112,20 @@ export default function CategorySpendingChart({ data }: CategorySpendingChartPro
           outerRadius={100}
           fill="#8884d8"
           dataKey="value"
-          label={({ name, percentage }) => `${name} (${percentage.toFixed(0)}%)`}
+          label={activeIndex === undefined ? ({ name, percentage }) => `${name} (${percentage.toFixed(0)}%)` : false}
+          activeIndex={activeIndex}
+          activeShape={renderActiveShape}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: onCategoryClick ? "pointer" : "default" }}
         >
           {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={COLORS[index % COLORS.length]}
+              style={{ cursor: onCategoryClick ? "pointer" : "default" }}
+            />
           ))}
         </Pie>
         <Tooltip content={<CustomTooltip />} />

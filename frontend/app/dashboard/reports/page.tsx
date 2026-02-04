@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
-import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse, CashFlowForecastResponse, SankeyDiagramResponse } from "@/types";
+import { Account, SpendingByCategoryResponse, IncomeVsExpensesResponse, NetWorthHistoryResponse, SpendingTrendsResponse, IncomeExpenseDetailResponse, CashFlowForecastResponse, SankeyDiagramResponse, DashboardSummary } from "@/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ReportHeader from "@/components/reports/ReportHeader";
 import { DateRange, getDefaultDateRange } from "@/components/reports/DateRangePicker";
@@ -14,7 +14,8 @@ import NetWorthChart from "@/components/charts/NetWorthChart";
 import SpendingTrendsChart from "@/components/charts/SpendingTrendsChart";
 import CashFlowForecastChart from "@/components/charts/CashFlowForecastChart";
 import SankeyDiagramChart from "@/components/charts/SankeyDiagramChart";
-import { formatCurrency, formatPercentage } from "@/lib/utils/format";
+import { formatCurrency, formatPercentage, formatMonthYear } from "@/lib/utils/format";
+import { exportToPdf } from "@/lib/utils/exportPdf";
 
 type ReportType = "overview" | "spending" | "income" | "net-worth" | "cash-flow" | "sankey";
 
@@ -84,6 +85,7 @@ export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<ReportType>("overview");
 
   // Report data
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
   const [spendingData, setSpendingData] = useState<SpendingByCategoryResponse | null>(null);
   const [spendingTrendsData, setSpendingTrendsData] = useState<SpendingTrendsResponse | null>(null);
   const [incomeData, setIncomeData] = useState<IncomeVsExpensesResponse | null>(null);
@@ -141,6 +143,12 @@ export default function ReportsPage() {
     setError("");
 
     try {
+      // Load dashboard data for overview (includes budget status, account summary)
+      if (activeReport === "overview") {
+        const dashboard = await reportsAPI.getDashboard(dateRange.startDate, dateRange.endDate);
+        setDashboardData(dashboard);
+      }
+
       // Load data based on active report
       if (activeReport === "overview" || activeReport === "spending") {
         const spending = await reportsAPI.getSpendingByCategory(
@@ -231,39 +239,38 @@ export default function ReportsPage() {
     router.replace(`/dashboard/reports?report=${reportId}`, { scroll: false });
   };
 
+  // Handle click on category chart to drill down to transactions
+  const handleCategoryDrillDown = (categoryId: number, categoryName: string) => {
+    // Navigate to transactions page filtered by this category
+    const params = new URLSearchParams({
+      category_id: categoryId.toString(),
+    });
+    // If we have a date range, include it
+    if (dateRange.startDate && dateRange.endDate) {
+      params.set("start_date", dateRange.startDate);
+      params.set("end_date", dateRange.endDate);
+    }
+    router.push(`/dashboard/transactions?${params.toString()}`);
+  };
+
   const handleExport = async () => {
     setExporting(true);
     try {
-      const start = new Date(dateRange.startDate);
-      const end = new Date(dateRange.endDate);
-      const months = Math.max(
-        1,
-        Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
-      );
+      const reportName = REPORT_NAV.find((r) => r.id === activeReport)?.name || "Report";
+      const dateRangeText = `${dateRange.startDate} to ${dateRange.endDate}`;
+      const accountName = selectedAccountId
+        ? accounts.find((a) => a.id === selectedAccountId)?.name
+        : "All Accounts";
+      const subtitle = `${dateRangeText} | ${accountName}`;
 
-      switch (activeReport) {
-        case "overview":
-        case "spending":
-          await reportsAPI.exportSpendingByCategory(dateRange.startDate, dateRange.endDate);
-          break;
-        case "income":
-          await reportsAPI.exportIncomeVsExpenses(Math.min(months, 24));
-          break;
-        case "net-worth":
-          await reportsAPI.exportNetWorthHistory(Math.min(months, 60));
-          break;
-        case "cash-flow":
-        case "sankey":
-          // For these reports, export transactions for the period
-          await reportsAPI.exportTransactions(
-            dateRange.startDate,
-            dateRange.endDate,
-            selectedAccountId || undefined
-          );
-          break;
-      }
+      await exportToPdf("report-content", {
+        filename: `${activeReport}-report-${dateRange.startDate}-${dateRange.endDate}.pdf`,
+        title: reportName,
+        subtitle: subtitle,
+      });
     } catch (err: any) {
-      setError("Failed to export report");
+      console.error("Export error:", err);
+      setError("Failed to export report to PDF");
     } finally {
       setExporting(false);
     }
@@ -284,7 +291,7 @@ export default function ReportsPage() {
         <div className="w-64 flex-shrink-0">
           <div className="bg-surface rounded-lg shadow p-4 sticky top-6">
             <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-3">
-              Reports
+              Dashboard
             </h2>
             <nav className="space-y-1">
               {REPORT_NAV.map((item) => (
@@ -321,7 +328,7 @@ export default function ReportsPage() {
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           <ReportHeader
-            title={REPORT_NAV.find((r) => r.id === activeReport)?.name || "Reports"}
+            title={REPORT_NAV.find((r) => r.id === activeReport)?.name || "Dashboard"}
             description={REPORT_NAV.find((r) => r.id === activeReport)?.description}
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -347,9 +354,9 @@ export default function ReportsPage() {
                 ) : (
                   <>
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    Export CSV
+                    Export PDF
                   </>
                 )}
               </button>
@@ -367,11 +374,35 @@ export default function ReportsPage() {
               <p className="text-text-secondary">Loading report data...</p>
             </div>
           ) : (
-            <>
+            <div id="report-content" className="bg-white">
               {/* Overview Report */}
               {activeReport === "overview" && (
                 <div className="space-y-6">
-                  {/* Summary Cards */}
+                  {/* Account Summary - Net Worth */}
+                  {dashboardData && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-surface rounded-lg shadow p-4">
+                        <div className="text-sm font-medium text-text-tertiary">Total Assets</div>
+                        <div className="mt-1 text-2xl font-bold text-success-600">
+                          {formatCurrency(dashboardData.account_summary.total_assets)}
+                        </div>
+                      </div>
+                      <div className="bg-surface rounded-lg shadow p-4">
+                        <div className="text-sm font-medium text-text-tertiary">Total Liabilities</div>
+                        <div className="mt-1 text-2xl font-bold text-danger-600">
+                          {formatCurrency(dashboardData.account_summary.total_liabilities)}
+                        </div>
+                      </div>
+                      <div className="bg-surface rounded-lg shadow p-4">
+                        <div className="text-sm font-medium text-text-tertiary">Net Worth</div>
+                        <div className="mt-1 text-2xl font-bold text-primary-600">
+                          {formatCurrency(dashboardData.account_summary.net_worth)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Income vs Expenses Summary Cards */}
                   {incomeData && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="bg-surface rounded-lg shadow p-4">
@@ -407,6 +438,45 @@ export default function ReportsPage() {
                     </div>
                   )}
 
+                  {/* Budget Status */}
+                  {dashboardData && dashboardData.budget_status.length > 0 && (
+                    <div className="bg-surface rounded-lg shadow p-6">
+                      <h3 className="text-lg font-semibold text-text-primary mb-4">
+                        Budget Status
+                      </h3>
+                      <div className="space-y-4">
+                        {dashboardData.budget_status.map((budget) => (
+                          <div key={budget.budget_id}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="font-medium text-text-primary">
+                                {budget.budget_name}
+                              </span>
+                              <span className="text-text-secondary">
+                                {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
+                              </span>
+                            </div>
+                            <div className="w-full bg-surface-secondary rounded-full h-2.5">
+                              <div
+                                className={`h-2.5 rounded-full ${
+                                  budget.is_over_budget
+                                    ? "bg-danger-600"
+                                    : parseFloat(budget.percentage) >= parseFloat(budget.alert_threshold)
+                                    ? "bg-warning-500"
+                                    : "bg-success-600"
+                                }`}
+                                style={{ width: `${Math.min(parseFloat(budget.percentage), 100)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-text-tertiary mt-1">
+                              {formatPercentage(budget.percentage)} used
+                              {budget.is_over_budget && " - Over budget!"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Charts Row */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Spending by Category */}
@@ -415,7 +485,13 @@ export default function ReportsPage() {
                         <h3 className="text-lg font-semibold text-text-primary mb-4">
                           Spending by Category
                         </h3>
-                        <CategorySpendingChart data={spendingData.categories} />
+                        <p className="text-xs text-text-tertiary mb-2">
+                          Click a category to view transactions
+                        </p>
+                        <CategorySpendingChart
+                          data={spendingData.categories}
+                          onCategoryClick={handleCategoryDrillDown}
+                        />
                       </div>
                     )}
 
@@ -503,13 +579,47 @@ export default function ReportsPage() {
               {/* Spending Trends Report */}
               {activeReport === "spending" && spendingData && (
                 <div className="space-y-6">
-                  {/* Summary Cards */}
+                  {/* Summary Cards with Month-over-Month Change */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-surface rounded-lg shadow p-4">
                       <div className="text-sm font-medium text-text-tertiary">Total Spending</div>
                       <div className="mt-1 text-2xl font-bold text-danger-600">
                         {formatCurrency(spendingData.total_spending)}
                       </div>
+                      {/* Month-over-month change calculation from trends data */}
+                      {spendingTrendsData && spendingTrendsData.months.length >= 2 && (() => {
+                        const months = spendingTrendsData.months;
+                        const currentMonth = months[months.length - 1];
+                        const prevMonth = months[months.length - 2];
+
+                        // Calculate total spending for each month
+                        let currentTotal = 0;
+                        let prevTotal = 0;
+                        spendingTrendsData.categories.forEach(cat => {
+                          cat.monthly_data.forEach(md => {
+                            if (md.month === currentMonth) currentTotal += parseFloat(md.amount);
+                            if (md.month === prevMonth) prevTotal += parseFloat(md.amount);
+                          });
+                        });
+
+                        const change = prevTotal > 0 ? ((currentTotal - prevTotal) / prevTotal) * 100 : 0;
+                        const isIncrease = change > 0;
+
+                        return (
+                          <div className={`mt-1 text-sm flex items-center gap-1 ${isIncrease ? "text-danger-600" : "text-success-600"}`}>
+                            {isIncrease ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                            <span>{Math.abs(change).toFixed(1)}% vs last month</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="bg-surface rounded-lg shadow p-4">
                       <div className="text-sm font-medium text-text-tertiary">Categories</div>
@@ -545,35 +655,70 @@ export default function ReportsPage() {
                       <h3 className="text-lg font-semibold text-text-primary mb-4">
                         Spending by Category
                       </h3>
-                      <CategorySpendingChart data={spendingData.categories} />
+                      <p className="text-xs text-text-tertiary mb-2">
+                        Click a category to view transactions
+                      </p>
+                      <CategorySpendingChart
+                        data={spendingData.categories}
+                        onCategoryClick={handleCategoryDrillDown}
+                      />
                     </div>
 
-                    {/* Average Spending by Category */}
+                    {/* Average Spending by Category with Month-over-Month Change */}
                     {spendingTrendsData && (
                       <div className="bg-surface rounded-lg shadow p-6">
                         <h3 className="text-lg font-semibold text-text-primary mb-4">
-                          Monthly Averages
+                          Monthly Averages & Trends
                         </h3>
                         <div className="space-y-3">
-                          {spendingTrendsData.categories.slice(0, 8).map((category, index) => (
-                            <div key={category.category_id} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{
-                                    backgroundColor: [
-                                      "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
-                                      "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"
-                                    ][index % 8]
-                                  }}
-                                />
-                                <span className="text-sm text-text-primary">{category.category_name}</span>
+                          {spendingTrendsData.categories.slice(0, 8).map((category, index) => {
+                            // Calculate month-over-month change for this category
+                            const months = spendingTrendsData.months;
+                            let momChange = 0;
+                            if (months.length >= 2) {
+                              const currentMonth = months[months.length - 1];
+                              const prevMonth = months[months.length - 2];
+                              const currentAmount = parseFloat(category.monthly_data.find(m => m.month === currentMonth)?.amount || "0");
+                              const prevAmount = parseFloat(category.monthly_data.find(m => m.month === prevMonth)?.amount || "0");
+                              momChange = prevAmount > 0 ? ((currentAmount - prevAmount) / prevAmount) * 100 : 0;
+                            }
+
+                            return (
+                              <div key={category.category_id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{
+                                      backgroundColor: [
+                                        "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
+                                        "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"
+                                      ][index % 8]
+                                    }}
+                                  />
+                                  <span className="text-sm text-text-primary">{category.category_name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-text-primary">
+                                    {formatCurrency(category.average_amount)}/mo
+                                  </span>
+                                  {months.length >= 2 && (
+                                    <span className={`text-xs flex items-center gap-0.5 ${momChange > 0 ? "text-danger-500" : momChange < 0 ? "text-success-500" : "text-text-tertiary"}`}>
+                                      {momChange > 0 ? (
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                        </svg>
+                                      ) : momChange < 0 ? (
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      ) : null}
+                                      {Math.abs(momChange).toFixed(0)}%
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-sm font-medium text-text-primary">
-                                {formatCurrency(category.average_amount)}/mo
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -601,6 +746,9 @@ export default function ReportsPage() {
                               Avg/Month
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                              MoM Change
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
                               % of Total
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
@@ -616,6 +764,18 @@ export default function ReportsPage() {
                             const trendCategory = spendingTrendsData?.categories.find(
                               (c) => c.category_id === category.category_id
                             );
+
+                            // Calculate month-over-month change
+                            let momChange: number | null = null;
+                            if (trendCategory && spendingTrendsData && spendingTrendsData.months.length >= 2) {
+                              const months = spendingTrendsData.months;
+                              const currentMonth = months[months.length - 1];
+                              const prevMonth = months[months.length - 2];
+                              const currentAmount = parseFloat(trendCategory.monthly_data.find(m => m.month === currentMonth)?.amount || "0");
+                              const prevAmount = parseFloat(trendCategory.monthly_data.find(m => m.month === prevMonth)?.amount || "0");
+                              momChange = prevAmount > 0 ? ((currentAmount - prevAmount) / prevAmount) * 100 : (currentAmount > 0 ? 100 : 0);
+                            }
+
                             return (
                               <tr key={category.category_id} className="hover:bg-surface-secondary">
                                 <td className="px-6 py-4 text-sm font-medium text-text-primary">
@@ -628,6 +788,25 @@ export default function ReportsPage() {
                                   {trendCategory
                                     ? formatCurrency(trendCategory.average_amount)
                                     : "-"}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right">
+                                  {momChange !== null ? (
+                                    <span className={`inline-flex items-center gap-1 ${momChange > 0 ? "text-danger-600" : momChange < 0 ? "text-success-600" : "text-text-tertiary"}`}>
+                                      {momChange > 0 && (
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                        </svg>
+                                      )}
+                                      {momChange < 0 && (
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      )}
+                                      {momChange === 0 ? "—" : `${momChange > 0 ? "+" : ""}${momChange.toFixed(1)}%`}
+                                    </span>
+                                  ) : (
+                                    "-"
+                                  )}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-right text-text-secondary">
                                   {formatPercentage(category.percentage)}
@@ -752,10 +931,7 @@ export default function ReportsPage() {
                               className="flex items-center gap-4 py-2 border-b border-border last:border-0"
                             >
                               <div className="w-24 text-sm text-text-primary">
-                                {new Date(month.month + "-01").toLocaleDateString("en-US", {
-                                  month: "short",
-                                  year: "2-digit",
-                                })}
+                                {formatMonthYear(month.month)}
                               </div>
                               <div className="flex-1">
                                 <div className="w-full bg-surface-secondary rounded-full h-4">
@@ -815,14 +991,11 @@ export default function ReportsPage() {
                         </thead>
                         <tbody className="divide-y divide-border">
                           {(incomeDetailData?.monthly_breakdown || incomeData.monthly_trends).map((month) => {
-                            const savingsRate = 'savings_rate' in month ? month.savings_rate : null;
+                            const savingsRate = 'savings_rate' in month ? (month.savings_rate as string) : null;
                             return (
                               <tr key={month.month} className="hover:bg-surface-secondary">
                                 <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                                  {new Date(month.month + "-01").toLocaleDateString("en-US", {
-                                    month: "long",
-                                    year: "numeric",
-                                  })}
+                                  {formatMonthYear(month.month, { month: "long", year: "numeric" })}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-right text-success-600">
                                   {formatCurrency(month.income)}
@@ -1160,10 +1333,7 @@ export default function ReportsPage() {
                           {cashFlowData.projections.map((projection) => (
                             <tr key={projection.month} className="hover:bg-surface-secondary">
                               <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                                {new Date(projection.month + "-01").toLocaleDateString("en-US", {
-                                  month: "long",
-                                  year: "numeric",
-                                })}
+                                {formatMonthYear(projection.month, { month: "long", year: "numeric" })}
                               </td>
                               <td className="px-6 py-4 text-sm text-right text-success-600">
                                 {formatCurrency(projection.projected_income)}
@@ -1203,6 +1373,118 @@ export default function ReportsPage() {
                       </table>
                     </div>
                   </div>
+
+                  {/* Recurring Bills Section */}
+                  {cashFlowData.recurring_bills && cashFlowData.recurring_bills.length > 0 && (
+                    <div className="bg-surface rounded-lg shadow">
+                      <div className="p-6 border-b border-border">
+                        <h3 className="text-lg font-semibold text-text-primary">
+                          Detected Recurring Bills
+                        </h3>
+                        <p className="text-sm text-text-tertiary mt-1">
+                          Based on patterns in your transaction history
+                        </p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-surface-secondary">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Payee
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Category
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Amount
+                              </th>
+                              <th className="px-6 py-3 text-center text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Frequency
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Last Paid
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                Next Expected
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {cashFlowData.recurring_bills.map((bill, index) => (
+                              <tr key={index} className="hover:bg-surface-secondary">
+                                <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                                  {bill.payee_name}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-text-secondary">
+                                  {bill.category_name || "-"}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right text-danger-600 font-medium">
+                                  {formatCurrency(bill.typical_amount)}
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    bill.frequency === "monthly"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : bill.frequency === "quarterly"
+                                      ? "bg-purple-100 text-purple-800"
+                                      : "bg-amber-100 text-amber-800"
+                                  }`}>
+                                    {bill.frequency.charAt(0).toUpperCase() + bill.frequency.slice(1)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-text-secondary">
+                                  {bill.last_paid
+                                    ? new Date(bill.last_paid).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric"
+                                      })
+                                    : "-"}
+                                </td>
+                                <td className="px-6 py-4 text-sm">
+                                  {bill.next_expected ? (
+                                    <span className={
+                                      new Date(bill.next_expected) <= new Date()
+                                        ? "text-danger-600 font-medium"
+                                        : new Date(bill.next_expected) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                        ? "text-warning-600 font-medium"
+                                        : "text-text-secondary"
+                                    }>
+                                      {new Date(bill.next_expected).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric"
+                                      })}
+                                      {new Date(bill.next_expected) <= new Date() && " (Due!)"}
+                                      {new Date(bill.next_expected) > new Date() &&
+                                        new Date(bill.next_expected) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) &&
+                                        " (Soon)"}
+                                    </span>
+                                  ) : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-surface-secondary">
+                            <tr>
+                              <td colSpan={2} className="px-6 py-3 text-sm font-semibold text-text-primary">
+                                Monthly Total (estimated)
+                              </td>
+                              <td className="px-6 py-3 text-sm text-right font-bold text-danger-600">
+                                {formatCurrency(
+                                  cashFlowData.recurring_bills
+                                    .filter(b => b.frequency === "monthly")
+                                    .reduce((sum, b) => sum + parseFloat(b.typical_amount), 0)
+                                    .toString()
+                                )}
+                              </td>
+                              <td colSpan={3}></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1333,7 +1615,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

@@ -13,7 +13,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { CashFlowProjection } from "@/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatMonthYear } from "@/lib/utils/format";
 
 interface CashFlowForecastChartProps {
   projections: CashFlowProjection[];
@@ -25,10 +25,7 @@ export default function CashFlowForecastChart({
   currentBalance,
 }: CashFlowForecastChartProps) {
   const chartData = projections.map((item) => ({
-    month: new Date(item.month + "-01").toLocaleDateString("en-US", {
-      month: "short",
-      year: "2-digit",
-    }),
+    month: formatMonthYear(item.month),
     income: parseFloat(item.projected_income),
     expenses: parseFloat(item.projected_expenses),
     net: parseFloat(item.projected_net),

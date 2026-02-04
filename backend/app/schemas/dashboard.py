@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from decimal import Decimal
 from datetime import date
 
@@ -165,6 +165,17 @@ class CashFlowProjection(BaseModel):
     confidence: str  # "high", "medium", "low"
 
 
+class RecurringBill(BaseModel):
+    """A detected recurring expense/bill."""
+    payee_name: str
+    category_name: Optional[str] = None
+    typical_amount: Decimal
+    frequency: str  # "monthly", "quarterly", "annual"
+    last_paid: Optional[date] = None
+    next_expected: Optional[date] = None
+    occurrences: int  # How many times it appeared in historical data
+
+
 class CashFlowForecastResponse(BaseModel):
     """Response for cash flow forecast."""
     current_balance: Decimal
@@ -174,6 +185,7 @@ class CashFlowForecastResponse(BaseModel):
     projections: List[CashFlowProjection]
     historical_months_used: int
     forecast_months: int
+    recurring_bills: List[RecurringBill] = []  # Detected recurring expenses
 
 
 class SankeyNode(BaseModel):

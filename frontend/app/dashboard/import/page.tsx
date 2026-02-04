@@ -57,7 +57,7 @@ export default function ImportPage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  const handleStepComplete = (step: ImportStep, data?: any) => {
+  const handleStepComplete = (step: string, data?: any) => {
     setError("");
 
     switch (step) {
@@ -335,7 +335,7 @@ export default function ImportPage() {
               file={file!}
               fileType={fileType!}
               accountId={accountId}
-              columnMapping={columnMapping}
+              columnMapping={columnMapping || undefined}
               skipRows={skipRows}
               onComplete={handleStepComplete}
               onBack={handleBack}

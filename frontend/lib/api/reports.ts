@@ -120,17 +120,21 @@ export const reportsAPI = {
     return `/api/v1/reports/export/${reportType}?${searchParams.toString()}`;
   },
 
-  async exportTransactions(
-    startDate?: string,
-    endDate?: string,
-    accountId?: number,
-    categoryId?: number
-  ): Promise<void> {
+  async exportTransactions(options?: {
+    startDate?: string;
+    endDate?: string;
+    accountId?: number;
+    categoryId?: number;
+    type?: string;
+    payeeSearch?: string;
+  }): Promise<void> {
     const params = new URLSearchParams();
-    if (startDate) params.append("start_date", startDate);
-    if (endDate) params.append("end_date", endDate);
-    if (accountId) params.append("account_id", accountId.toString());
-    if (categoryId) params.append("category_id", categoryId.toString());
+    if (options?.startDate) params.append("start_date", options.startDate);
+    if (options?.endDate) params.append("end_date", options.endDate);
+    if (options?.accountId) params.append("account_id", options.accountId.toString());
+    if (options?.categoryId) params.append("category_id", options.categoryId.toString());
+    if (options?.type) params.append("type", options.type);
+    if (options?.payeeSearch) params.append("payee_search", options.payeeSearch);
 
     const response = await apiClient.get(`/api/v1/reports/export/transactions?${params.toString()}`, {
       responseType: "blob",
