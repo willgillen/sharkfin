@@ -1,0 +1,143 @@
+# Shark Fin - CasaOS Compatible Docker Compose
+#
+# For use with CasaOS Custom Install feature
+#
+# Installation:
+#   1. Download this file
+#   2. Open CasaOS App Store -> Custom Install -> Import
+#   3. Upload this file and configure environment variables
+#   4. Click Install
+#
+# IMPORTANT: Change POSTGRES_PASSWORD and SECRET_KEY before installing!
+
+name: shark-fin
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shark-fin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sharkfin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_secure_password}
+      POSTGRES_DB: shark_fin
+    volumes:
+      - /DATA/AppData/shark-fin/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sharkfin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shark-fin
+    x-casaos:
+      envs:
+        - container: POSTGRES_PASSWORD
+          description:
+            en_us: Database password (CHANGE THIS to a secure password!)
+
+  redis:
+    image: redis:7-alpine
+    container_name: shark-fin-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - /DATA/AppData/shark-fin/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shark-fin
+
+  backend:
+    image: ghcr.io/willgillen/sharkfin/backend:latest
+    container_name: shark-fin-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://sharkfin:${POSTGRES_PASSWORD:-changeme_secure_password}@postgres:5432/shark_fin
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY:-please_change_this_to_a_secure_random_string_min_32_chars}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shark-fin
+    x-casaos:
+      envs:
+        - container: SECRET_KEY
+          description:
+            en_us: JWT signing key (CHANGE THIS to a random 32+ character string!)
+
+  frontend:
+    image: ghcr.io/willgillen/sharkfin/frontend:latest
+    container_name: shark-fin-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    ports:
+      - target: 3000
+        published: "3000"
+        protocol: tcp
+    depends_on:
+      - backend
+    networks:
+      - shark-fin
+    x-casaos:
+      ports:
+        - container: "3000"
+          description:
+            en_us: Web UI Port
+      volumes:
+        - container: /app
+          description:
+            en_us: Application files
+
+networks:
+  shark-fin:
+    driver: bridge
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: frontend
+  author: Will Gillen
+  category: Finance
+  description:
+    en_us: |
+      Shark Fin is an open-source, self-hosted financial planning and budgeting
+      application. Track your accounts, categorize transactions, create budgets,
+      and gain insights into your spending patterns.
+
+      Features:
+      - Multi-account tracking (checking, savings, credit cards, investments)
+      - Automatic transaction categorization with smart rules
+      - Budget creation and monitoring with alerts
+      - Financial reports and analytics (spending trends, income vs expenses)
+      - CSV/OFX/QFX import support for bank statements
+      - Payee management with merchant logo recognition
+      - Cash flow forecasting
+      - Net worth tracking
+
+      Getting Started:
+      1. Access the web UI at http://your-ip:3000
+      2. Create your account
+      3. Add your financial accounts
+      4. Import transactions from your bank
+
+      IMPORTANT: Before installing, change the POSTGRES_PASSWORD and SECRET_KEY
+      environment variables to secure values!
+  developer: Will Gillen
+  icon: https://raw.githubusercontent.com/willgillen/sharkfin/main/frontend/public/sharkfin_logo.png
+  tagline:
+    en_us: Personal finance tracking and budgeting made simple
+  title:
+    en_us: Shark Fin
+  index: /
+  port_map: "3000"

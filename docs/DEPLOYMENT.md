@@ -2,6 +2,10 @@
 
 This guide covers deploying Shark Fin to various environments using Docker.
 
+## Platform-Specific Guides
+
+- **[CasaOS Deployment Guide](DEPLOYMENT-CASAOS.md)** - For CasaOS/ZimaOS users
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -12,6 +16,7 @@ This guide covers deploying Shark Fin to various environments using Docker.
   - [Docker Compose (Recommended)](#docker-compose-recommended)
   - [Individual Containers](#individual-containers)
   - [Kubernetes](#kubernetes)
+  - [CasaOS](#casaos)
 - [Database Management](#database-management)
 - [SSL/TLS Configuration](#ssltls-configuration)
 - [Monitoring and Health Checks](#monitoring-and-health-checks)
@@ -254,6 +259,19 @@ spec:
 ```
 
 See the [examples/kubernetes](../examples/kubernetes) directory for complete Kubernetes manifests.
+
+### CasaOS
+
+CasaOS provides a user-friendly interface for Docker management. Shark Fin includes a CasaOS-compatible compose file.
+
+**Quick Install:**
+
+1. Download `docker-compose.casaos.yml` from the repository
+2. In CasaOS, go to **App Store** → **Custom Install** → **Import**
+3. Upload the file and configure your passwords
+4. Click **Install**
+
+For detailed instructions, see the [CasaOS Deployment Guide](DEPLOYMENT-CASAOS.md).
 
 ## Database Management
 
