@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { accountsAPI, reportsAPI } from "@/lib/api";
@@ -72,7 +72,22 @@ const REPORT_NAV: ReportNavItem[] = [
   },
 ];
 
+// Wrap in Suspense for useSearchParams
 export default function ReportsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </DashboardLayout>
+    }>
+      <ReportsPageContent />
+    </Suspense>
+  );
+}
+
+function ReportsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();

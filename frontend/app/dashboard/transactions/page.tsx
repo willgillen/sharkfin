@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { transactionsAPI, accountsAPI, categoriesAPI, usersAPI, reportsAPI } from "@/lib/api";
@@ -13,7 +13,22 @@ import ColumnFilter, { SortOrder } from "@/components/transactions/ColumnFilter"
 import ColumnSelector, { ColumnConfig } from "@/components/transactions/ColumnSelector";
 import AccountSelector from "@/components/transactions/AccountSelector";
 
+// Wrap in Suspense for useSearchParams
 export default function TransactionsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </DashboardLayout>
+    }>
+      <TransactionsPageContent />
+    </Suspense>
+  );
+}
+
+function TransactionsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
