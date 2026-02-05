@@ -1,0 +1,128 @@
+# Production Docker Compose for Shark Fin
+# Use this file for deploying Shark Fin to production environments
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   1. Copy .env.example to .env and configure all variables
+#   2. Ensure strong passwords are set for database and secrets
+#   3. Configure NEXT_PUBLIC_API_URL to match your domain
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shark-fin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shark-fin-internal
+    # No external port exposure in production - only internal network access
+
+  redis:
+    image: redis:7-alpine
+    container_name: shark-fin-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shark-fin-internal
+    # No external port exposure in production - only internal network access
+
+  backend:
+    image: ghcr.io/willgillen/sharkfin/backend:${SHARK_FIN_VERSION:-latest}
+    container_name: shark-fin-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shark-fin-internal
+      - shark-fin-external
+    # Backend accessible on internal network only - frontend proxies requests
+
+  frontend:
+    image: ghcr.io/willgillen/sharkfin/frontend:${SHARK_FIN_VERSION:-latest}
+    container_name: shark-fin-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shark-fin-internal
+      - shark-fin-external
+
+  # Optional: Database backup service
+  db-backup:
+    image: postgres:15-alpine
+    container_name: shark-fin-db-backup
+    restart: "no"
+    profiles: ["backup"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pg_dump -Fc > /backups/shark_fin_$(date +%Y%m%d_%H%M%S).dump
+        echo "Backup completed: shark_fin_$(date +%Y%m%d_%H%M%S).dump"
+    depends_on:
+      - postgres
+    networks:
+      - shark-fin-internal
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  shark-fin-internal:
+    driver: bridge
+    internal: true
+  shark-fin-external:
+    driver: bridge
