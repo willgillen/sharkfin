@@ -3,24 +3,38 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useSetup } from "@/lib/hooks/useSetup";
 import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
+  const { setupRequired, loading: setupLoading } = useSetup();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    // Check setup first - if setup is required, redirect to setup wizard
+    if (!setupLoading && setupRequired) {
+      router.push("/setup");
+      return;
+    }
+
+    // If setup complete and user is authenticated, redirect to dashboard
+    if (!loading && !setupLoading && isAuthenticated) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, setupRequired, setupLoading, router]);
 
-  if (loading) {
+  if (loading || setupLoading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-24">
         <p className="text-gray-600">Loading...</p>
       </main>
     );
+  }
+
+  // If setup is required, don't show this page (redirect happens in useEffect)
+  if (setupRequired) {
+    return null;
   }
 
   return (

@@ -1,19 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useSetup } from "@/lib/hooks/useSetup";
 import { Input } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { setupRequired, loading: setupLoading } = useSetup();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Redirect to setup if required
+  useEffect(() => {
+    if (!setupLoading && setupRequired) {
+      router.push("/setup");
+    }
+  }, [setupRequired, setupLoading, router]);
+
+  // Don't render if setup is required
+  if (setupLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
+        <p className="text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (setupRequired) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -18,7 +18,7 @@ logging.getLogger('app.api.v1.imports').setLevel(logging.DEBUG)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules, payees, settings
+from app.api.v1 import auth, users, accounts, categories, transactions, budgets, reports, imports, rules, payees, settings, setup
 
 app = FastAPI(
     title="Shark Fin API",
@@ -36,6 +36,9 @@ app.add_middleware(
 )
 
 # Include API v1 routers
+# Setup router - public, no auth required (only works when no users exist)
+app.include_router(setup.router, prefix="/api/v1/setup", tags=["setup"])
+
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["accounts"])

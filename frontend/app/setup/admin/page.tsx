@@ -1,50 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useSetup } from "@/lib/hooks/useSetup";
 import { Input } from "@/components/ui";
 
-export default function RegisterPage() {
+export default function SetupAdminPage() {
   const router = useRouter();
-  const { register } = useAuth();
-  const { setupRequired, loading: setupLoading } = useSetup();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // Redirect to setup if required
-  useEffect(() => {
-    if (!setupLoading && setupRequired) {
-      router.push("/setup");
-    }
-  }, [setupRequired, setupLoading, router]);
-
-  // Don't render if setup is required
-  if (setupLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
-        <p className="text-text-secondary">Loading...</p>
-      </div>
-    );
-  }
-
-  if (setupRequired) {
-    return null;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    // Validation
+    if (!fullName.trim()) {
+      setError("Full name is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
       return;
     }
 
@@ -53,20 +33,19 @@ export default function RegisterPage() {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      await register({
-        email,
-        full_name: fullName,
-        password,
-      });
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
     }
+
+    // Store in session storage for next steps
+    sessionStorage.setItem("setup_admin", JSON.stringify({
+      fullName,
+      email,
+      password
+    }));
+
+    router.push("/setup/categories");
   };
 
   return (
@@ -76,20 +55,20 @@ export default function RegisterPage() {
           <Image
             src="/sharkfin_logo.png"
             alt="Shark Fin Logo"
-            width={140}
-            height={140}
+            width={100}
+            height={100}
             className="mb-4"
             priority
           />
-          <h1 className="text-4xl font-bold text-center text-text-primary">
-            Shark Fin
+          <h1 className="text-3xl font-bold text-center text-text-primary">
+            Create Admin Account
           </h1>
-          <h2 className="mt-4 text-center text-xl text-text-secondary">
-            Create your account
-          </h2>
+          <p className="mt-2 text-center text-sm text-text-secondary">
+            This will be your administrator account with full access
+          </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit} action="#">
+        <form className="mt-8 space-y-6" onSubmit={handleContinue}>
           {error && (
             <div className="rounded-md bg-danger-50 p-4">
               <p className="text-sm text-danger-800">{error}</p>
@@ -108,7 +87,7 @@ export default function RegisterPage() {
             />
 
             <Input
-              label="Email address"
+              label="Email Address"
               id="email"
               name="email"
               type="email"
@@ -141,23 +120,20 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
+          <div className="flex justify-between pt-4">
+            <button
+              type="button"
+              onClick={() => router.push("/setup")}
+              className="px-6 py-2 border border-border rounded-md text-text-secondary hover:bg-surface-secondary transition-colors"
+            >
+              ← Back
+            </button>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-text-inverse bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-primary-600 text-text-inverse rounded-md font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
             >
-              {loading ? "Creating account..." : "Sign up"}
+              Continue →
             </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-text-secondary">
-              Already have an account?{" "}
-              <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
-                Sign in
-              </Link>
-            </p>
           </div>
         </form>
       </div>

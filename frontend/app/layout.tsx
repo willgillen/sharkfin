@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/hooks/useAuth";
+import { SetupProvider } from "@/lib/hooks/useSetup";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <SetupProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SetupProvider>
       </body>
     </html>
   );
