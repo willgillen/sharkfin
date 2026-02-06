@@ -24,7 +24,7 @@ services:
     volumes:
       - /DATA/AppData/shark-fin/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sharkfin"]
+      test: ["CMD-SHELL", "pg_isready -U sharkfin -d shark_fin"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
     image: redis:7-alpine
     container_name: shark-fin-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - /DATA/AppData/shark-fin/redis:/data
     healthcheck:
