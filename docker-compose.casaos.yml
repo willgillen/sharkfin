@@ -61,10 +61,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-please_change_this_to_a_secure_random_string_min_32_chars}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
-    ports:
-      - target: 5499
-        published: "5499"
-        protocol: tcp
+    # Backend port not exposed - accessed via frontend proxy only
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,7 +80,7 @@ services:
     container_name: shark-fin-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:5499
+      BACKEND_URL: http://backend:5499
     ports:
       - target: 5400
         published: "5400"

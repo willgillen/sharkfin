@@ -1,8 +1,9 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 
 // Create axios instance
+// Use relative URLs - Next.js API routes will proxy to backend
 const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
   },
