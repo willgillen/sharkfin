@@ -8,7 +8,7 @@ export const reportsAPI = {
     if (endDate) params.append("end_date", endDate);
 
     const { data } = await apiClient.get<DashboardSummary>(
-      `/api/v1/reports/dashboard?${params.toString()}`
+      `/v1/reports/dashboard?${params.toString()}`
     );
     return data;
   },
@@ -19,14 +19,14 @@ export const reportsAPI = {
     if (endDate) params.append("end_date", endDate);
 
     const { data } = await apiClient.get<SpendingByCategoryResponse>(
-      `/api/v1/reports/spending-by-category?${params.toString()}`
+      `/v1/reports/spending-by-category?${params.toString()}`
     );
     return data;
   },
 
   async getIncomeVsExpenses(months: number = 6): Promise<IncomeVsExpensesResponse> {
     const { data } = await apiClient.get<IncomeVsExpensesResponse>(
-      `/api/v1/reports/income-vs-expenses?months=${months}`
+      `/v1/reports/income-vs-expenses?months=${months}`
     );
     return data;
   },
@@ -37,7 +37,7 @@ export const reportsAPI = {
     if (accountId) params.append("account_id", accountId.toString());
 
     const { data } = await apiClient.get<NetWorthHistoryResponse>(
-      `/api/v1/reports/net-worth-history?${params.toString()}`
+      `/v1/reports/net-worth-history?${params.toString()}`
     );
     return data;
   },
@@ -55,7 +55,7 @@ export const reportsAPI = {
     if (accountId) params.append("account_id", accountId.toString());
 
     const { data } = await apiClient.get<SpendingTrendsResponse>(
-      `/api/v1/reports/spending-trends?${params.toString()}`
+      `/v1/reports/spending-trends?${params.toString()}`
     );
     return data;
   },
@@ -69,7 +69,7 @@ export const reportsAPI = {
     if (accountId) params.append("account_id", accountId.toString());
 
     const { data } = await apiClient.get<IncomeExpenseDetailResponse>(
-      `/api/v1/reports/income-expense-detail?${params.toString()}`
+      `/v1/reports/income-expense-detail?${params.toString()}`
     );
     return data;
   },
@@ -85,7 +85,7 @@ export const reportsAPI = {
     if (accountId) params.append("account_id", accountId.toString());
 
     const { data } = await apiClient.get<CashFlowForecastResponse>(
-      `/api/v1/reports/cash-flow-forecast?${params.toString()}`
+      `/v1/reports/cash-flow-forecast?${params.toString()}`
     );
     return data;
   },
@@ -101,7 +101,7 @@ export const reportsAPI = {
     if (accountId) params.append("account_id", accountId.toString());
 
     const { data } = await apiClient.get<SankeyDiagramResponse>(
-      `/api/v1/reports/sankey-diagram?${params.toString()}`
+      `/v1/reports/sankey-diagram?${params.toString()}`
     );
     return data;
   },
@@ -117,7 +117,7 @@ export const reportsAPI = {
         searchParams.append(key, String(value));
       }
     });
-    return `/api/v1/reports/export/${reportType}?${searchParams.toString()}`;
+    return `/v1/reports/export/${reportType}?${searchParams.toString()}`;
   },
 
   async exportTransactions(options?: {
@@ -136,7 +136,7 @@ export const reportsAPI = {
     if (options?.type) params.append("type", options.type);
     if (options?.payeeSearch) params.append("payee_search", options.payeeSearch);
 
-    const response = await apiClient.get(`/api/v1/reports/export/transactions?${params.toString()}`, {
+    const response = await apiClient.get(`/v1/reports/export/transactions?${params.toString()}`, {
       responseType: "blob",
     });
 
@@ -162,7 +162,7 @@ export const reportsAPI = {
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
-    const response = await apiClient.get(`/api/v1/reports/export/spending-by-category?${params.toString()}`, {
+    const response = await apiClient.get(`/v1/reports/export/spending-by-category?${params.toString()}`, {
       responseType: "blob",
     });
 
@@ -182,7 +182,7 @@ export const reportsAPI = {
   },
 
   async exportIncomeVsExpenses(months: number = 6): Promise<void> {
-    const response = await apiClient.get(`/api/v1/reports/export/income-vs-expenses?months=${months}`, {
+    const response = await apiClient.get(`/v1/reports/export/income-vs-expenses?months=${months}`, {
       responseType: "blob",
     });
 
@@ -202,7 +202,7 @@ export const reportsAPI = {
   },
 
   async exportNetWorthHistory(months: number = 12): Promise<void> {
-    const response = await apiClient.get(`/api/v1/reports/export/net-worth-history?months=${months}`, {
+    const response = await apiClient.get(`/v1/reports/export/net-worth-history?months=${months}`, {
       responseType: "blob",
     });
 
