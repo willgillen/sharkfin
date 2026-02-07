@@ -114,9 +114,9 @@ docker-compose down -v
 ```
 
 **Container Ports:**
-- Frontend: http://localhost:3001
-- Backend API: http://localhost:8001
-- API Docs: http://localhost:8001/docs
+- Frontend: http://localhost:5400
+- Backend API: http://localhost:5499
+- API Docs: http://localhost:5499/docs
 - PostgreSQL: localhost:5433
 - Redis: localhost:6380
 
@@ -559,7 +559,7 @@ After clearing, you can re-import transactions and payees will be automatically 
 ## Resources
 
 - **Project Documentation**: Root directory .md files
-- **API Documentation**: http://localhost:8001/docs
+- **API Documentation**: http://localhost:5499/docs
 - **GitHub Repository**: https://github.com/willgillen/sharkfin
 
 ## Remember

@@ -108,9 +108,9 @@ cp .env.example .env
 docker-compose up -d
 
 # Access the application
-# Frontend: http://localhost:3000
-# API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
+# Frontend: http://localhost:5400
+# API: http://localhost:5499
+# API Docs: http://localhost:5499/docs
 ```
 
 ## Development Status
