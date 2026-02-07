@@ -97,8 +97,6 @@ jobs:
 
     - name: Build frontend
       working-directory: ./frontend
-      env:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
       run: npm run build
 
   # Build and push Docker images
@@ -171,6 +169,8 @@ jobs:
         labels: ${{ steps.meta-backend.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          APP_VERSION=${{ steps.version.outputs.version }}
 
     - name: Build and push frontend image
       uses: docker/build-push-action@v5
@@ -185,7 +185,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: |
-          NEXT_PUBLIC_API_URL=/api
+          APP_VERSION=${{ steps.version.outputs.version }}
 
   # Create GitHub Release
   create-release:

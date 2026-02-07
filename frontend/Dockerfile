@@ -17,7 +17,10 @@ COPY . .
 EXPOSE 5400
 ENV PORT 5400
 ENV HOSTNAME "0.0.0.0"
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
 
+ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
 CMD ["npm", "run", "dev"]
 
 # Production builder
@@ -43,11 +46,15 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY entrypoint.sh ./
 
 USER nextjs
 
 EXPOSE 5400
 ENV PORT 5400
 ENV HOSTNAME "0.0.0.0"
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
 
+ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
 CMD ["node", "server.js"]

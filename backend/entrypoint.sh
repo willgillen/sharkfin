@@ -1,7 +1,10 @@
 #!/bin/bash
 set -e
 
-echo "Starting Shark Fin Backend..."
+echo "========================================="
+echo "🦈 Shark Fin Backend"
+echo "Version: ${APP_VERSION:-development}"
+echo "========================================="
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for database..."

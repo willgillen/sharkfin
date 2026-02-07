@@ -19,6 +19,8 @@ FROM base AS dev
 COPY . .
 
 EXPOSE 5499
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
 
 # Use bash entrypoint to run migrations before starting server
 ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
@@ -40,6 +42,8 @@ RUN addgroup --system --gid 1001 appgroup && \
 USER appuser
 
 EXPOSE 5499
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
 
 # Use bash entrypoint to run migrations before starting server
 ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
