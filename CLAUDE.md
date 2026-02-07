@@ -61,10 +61,10 @@ docker-compose exec frontend npm run test:coverage
 ### 3. Follow the Planned Architecture
 
 **Always consult these documents before implementation:**
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and component design
-- [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) - Feature roadmap and technical specs
-- [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - High-level project goals
-- [STYLE_GUIDE.md](STYLE_GUIDE.md) - Frontend visual design system and color tokens
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and component design
+- [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) - Feature roadmap and technical specs
+- [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) - High-level project goals
+- [STYLE_GUIDE.md](docs/STYLE_GUIDE.md) - Frontend visual design system and color tokens
 
 **Architecture Principles:**
 - Maintain clear separation between layers (API, Services, Models)
@@ -217,7 +217,7 @@ def db_session():
 - Avoid `any` type - use proper TypeScript types
 - Use ESLint: `docker-compose exec frontend npm run lint`
 - Use Prettier: `docker-compose exec frontend npm run format`
-- **CRITICAL: Follow [STYLE_GUIDE.md](STYLE_GUIDE.md) for all UI components**
+- **CRITICAL: Follow [STYLE_GUIDE.md](docs/STYLE_GUIDE.md) for all UI components**
   - Use semantic color tokens (e.g., `text-text-primary`, `bg-danger-50`, `border-border`)
   - Never use raw Tailwind colors (e.g., `text-red-600`, `bg-gray-50`)
   - All colors are defined in `frontend/tailwind.config.ts`
@@ -302,8 +302,8 @@ git push
 **Starting a new feature:**
 
 1. **Review the plan:**
-   - Check [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for specifications
-   - Review [ARCHITECTURE.md](ARCHITECTURE.md) for patterns
+   - Check [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) for specifications
+   - Review [ARCHITECTURE.md](docs/ARCHITECTURE.md) for patterns
    - Understand the data model requirements
 
 2. **Write tests first (TDD):**

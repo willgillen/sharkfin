@@ -5,7 +5,7 @@
 [![Backend Tests](https://github.com/willgillen/sharkfin/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/willgillen/sharkfin/actions/workflows/backend-tests.yml)
 [![License](https://img.shields.io/badge/license-TBD-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
 [![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen.svg)](https://github.com/willgillen/sharkfin)
 
 ## Overview
@@ -64,7 +64,7 @@ We've completed comprehensive research and planning:
 
 ### Planned Features
 
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the complete feature roadmap including:
+See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) for the complete feature roadmap including:
 - Automated categorization rules
 - Recurring transactions
 - Bill tracking and reminders
@@ -85,11 +85,11 @@ See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the complete feature roadmap 
 
 📚 Comprehensive documentation is available:
 
-- **[Getting Started](GETTING_STARTED.md)** - Setup and development guide
-- **[Development Plan](DEVELOPMENT_PLAN.md)** - Detailed roadmap and architecture
-- **[Feature Research](FEATURE_RESEARCH.md)** - Complete feature analysis
-- **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
-- **[Project Summary](PROJECT_SUMMARY.md)** - High-level project overview
+- **[Getting Started](docs/GETTING_STARTED.md)** - Setup and development guide
+- **[Development Plan](docs/DEVELOPMENT_PLAN.md)** - Detailed roadmap and architecture
+- **[Feature Research](docs/FEATURE_RESEARCH.md)** - Complete feature analysis
+- **[Contributing](docs/CONTRIBUTING.md)** - How to contribute to the project
+- **[Project Summary](docs/PROJECT_SUMMARY.md)** - High-level project overview
 
 ## Quick Start (Coming Soon)
 
@@ -145,7 +145,7 @@ We welcome contributions from the community! Whether you're:
 - 🧪 A tester finding bugs
 - 💡 Someone with feature ideas
 
-Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+Please read our [Contributing Guide](docs/CONTRIBUTING.md) to get started.
 
 ### Good First Issues
 
