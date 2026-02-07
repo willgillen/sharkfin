@@ -62,7 +62,7 @@ services:
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
     ports:
-      - target: 8000
+      - target: 5499
         published: "5499"
         protocol: tcp
     depends_on:
@@ -83,9 +83,9 @@ services:
     container_name: shark-fin-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: http://backend:5499
     ports:
-      - target: 3000
+      - target: 5400
         published: "5400"
         protocol: tcp
     depends_on:
@@ -94,7 +94,7 @@ services:
       - shark-fin
     x-casaos:
       ports:
-        - container: "3000"
+        - container: "5400"
           description:
             en_us: Web UI Port
       volumes:

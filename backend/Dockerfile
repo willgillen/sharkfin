@@ -18,13 +18,13 @@ FROM base AS dev
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 5499
 
 # Use bash entrypoint to run migrations before starting server
 ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
 
 # Run with reload for development
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5499", "--reload"]
 
 # Production stage - optimized for deployment
 FROM base AS production
@@ -39,10 +39,10 @@ RUN addgroup --system --gid 1001 appgroup && \
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 5499
 
 # Use bash entrypoint to run migrations before starting server
 ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
 
 # Run without reload, with multiple workers for production
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5499", "--workers", "4"]

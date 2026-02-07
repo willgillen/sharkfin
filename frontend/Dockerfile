@@ -14,8 +14,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-EXPOSE 3000
-ENV PORT 3000
+EXPOSE 5400
+ENV PORT 5400
 ENV HOSTNAME "0.0.0.0"
 
 CMD ["npm", "run", "dev"]
@@ -46,8 +46,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
-ENV PORT 3000
+EXPOSE 5400
+ENV PORT 5400
 ENV HOSTNAME "0.0.0.0"
 
 CMD ["node", "server.js"]

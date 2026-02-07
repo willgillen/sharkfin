@@ -41,7 +41,7 @@ services:
       ALGORITHM: ${ALGORITHM}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
     ports:
-      - "5499:8000"
+      - "5499:5499"
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
-      - "5400:3000"
+      - "5400:5400"
     depends_on:
       - backend
     volumes:
