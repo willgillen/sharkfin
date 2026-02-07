@@ -15,7 +15,7 @@ import {
 export const rulesAPI = {
   async getAll(enabledOnly: boolean = false): Promise<CategorizationRule[]> {
     const params = enabledOnly ? { enabled_only: true } : {};
-    const { data } = await apiClient.get<CategorizationRule[]>("/api/v1/rules", { params });
+    const { data } = await apiClient.get<CategorizationRule[]>("/v1/rules", { params });
     return data;
   },
 
@@ -25,7 +25,7 @@ export const rulesAPI = {
   },
 
   async create(ruleData: CategorizationRuleCreate): Promise<CategorizationRule> {
-    const { data } = await apiClient.post<CategorizationRule>("/api/v1/rules", ruleData);
+    const { data } = await apiClient.post<CategorizationRule>("/v1/rules", ruleData);
     return data;
   },
 
@@ -44,17 +44,17 @@ export const rulesAPI = {
   },
 
   async applyRules(request: BulkApplyRulesRequest): Promise<BulkApplyRulesResponse> {
-    const { data} = await apiClient.post<BulkApplyRulesResponse>("/api/v1/rules/apply", request);
+    const { data} = await apiClient.post<BulkApplyRulesResponse>("/v1/rules/apply", request);
     return data;
   },
 
   async getSuggestions(request: SuggestRulesRequest = {}): Promise<RuleSuggestion[]> {
-    const { data } = await apiClient.post<RuleSuggestion[]>("/api/v1/rules/suggestions", request);
+    const { data } = await apiClient.post<RuleSuggestion[]>("/v1/rules/suggestions", request);
     return data;
   },
 
   async acceptSuggestion(request: AcceptSuggestionRequest): Promise<CategorizationRule> {
-    const { data } = await apiClient.post<CategorizationRule>("/api/v1/rules/suggestions/accept", request);
+    const { data } = await apiClient.post<CategorizationRule>("/v1/rules/suggestions/accept", request);
     return data;
   },
 };

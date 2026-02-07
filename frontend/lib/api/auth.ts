@@ -7,7 +7,7 @@ export const authAPI = {
     formData.append("username", credentials.username);
     formData.append("password", credentials.password);
 
-    const { data } = await apiClient.post<Token>("/api/v1/auth/login", formData, {
+    const { data } = await apiClient.post<Token>("/v1/auth/login", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
@@ -16,12 +16,12 @@ export const authAPI = {
   },
 
   async register(userData: UserCreate): Promise<User> {
-    const { data } = await apiClient.post<User>("/api/v1/auth/register", userData);
+    const { data } = await apiClient.post<User>("/v1/auth/register", userData);
     return data;
   },
 
   async getCurrentUser(): Promise<User> {
-    const { data } = await apiClient.get<User>("/api/v1/users/me");
+    const { data } = await apiClient.get<User>("/v1/users/me");
     return data;
   },
 

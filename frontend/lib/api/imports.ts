@@ -20,7 +20,7 @@ export const importsAPI = {
     formData.append("file", file);
 
     const { data } = await apiClient.post<CSVPreviewResponse>(
-      "/api/v1/imports/csv/preview",
+      "/v1/imports/csv/preview",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -34,7 +34,7 @@ export const importsAPI = {
     formData.append("file", file);
 
     const { data } = await apiClient.post<OFXPreviewResponse>(
-      "/api/v1/imports/ofx/preview",
+      "/v1/imports/ofx/preview",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -54,7 +54,7 @@ export const importsAPI = {
     formData.append("column_mapping", JSON.stringify(columnMapping));
 
     const { data } = await apiClient.post<DuplicatesResponse>(
-      "/api/v1/imports/csv/detect-duplicates",
+      "/v1/imports/csv/detect-duplicates",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -72,7 +72,7 @@ export const importsAPI = {
     formData.append("account_id", accountId.toString());
 
     const { data } = await apiClient.post<DuplicatesResponse>(
-      "/api/v1/imports/ofx/detect-duplicates",
+      "/v1/imports/ofx/detect-duplicates",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -96,7 +96,7 @@ export const importsAPI = {
     formData.append("payee_name_overrides", JSON.stringify(payeeNameOverrides));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
-      "/api/v1/imports/csv/execute",
+      "/v1/imports/csv/execute",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -118,7 +118,7 @@ export const importsAPI = {
     formData.append("payee_name_overrides", JSON.stringify(payeeNameOverrides));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
-      "/api/v1/imports/ofx/execute",
+      "/v1/imports/ofx/execute",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -129,7 +129,7 @@ export const importsAPI = {
 
   async getHistory(): Promise<ImportHistoryResponse[]> {
     const { data } = await apiClient.get<ImportHistoryResponse[]>(
-      "/api/v1/imports/history"
+      "/v1/imports/history"
     );
     return data;
   },
@@ -140,7 +140,7 @@ export const importsAPI = {
 
   async analyzeForRules(request: AnalyzeImportForRulesRequest): Promise<AnalyzeImportForRulesResponse> {
     const { data } = await apiClient.post<AnalyzeImportForRulesResponse>(
-      "/api/v1/imports/analyze-for-rules",
+      "/v1/imports/analyze-for-rules",
       request
     );
     return data;
@@ -148,7 +148,7 @@ export const importsAPI = {
 
   async analyzePayees(transactions: Array<Record<string, any>>): Promise<any> {
     const { data } = await apiClient.post(
-      "/api/v1/imports/analyze-payees",
+      "/v1/imports/analyze-payees",
       { transactions }
     );
     return data;
@@ -160,7 +160,7 @@ export const importsAPI = {
     formData.append("column_mapping", JSON.stringify(columnMapping));
 
     const { data } = await apiClient.post(
-      "/api/v1/imports/csv/analyze-all-payees",
+      "/v1/imports/csv/analyze-all-payees",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -174,7 +174,7 @@ export const importsAPI = {
     formData.append("file", file);
 
     const { data } = await apiClient.post(
-      "/api/v1/imports/ofx/analyze-all-payees",
+      "/v1/imports/ofx/analyze-all-payees",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -224,7 +224,7 @@ export const importsAPI = {
     formData.append("column_mapping", JSON.stringify(columnMapping));
 
     const { data } = await apiClient.post<IntelligentPayeeAnalysisResponse>(
-      "/api/v1/imports/csv/analyze-payees-intelligent",
+      "/v1/imports/csv/analyze-payees-intelligent",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -240,7 +240,7 @@ export const importsAPI = {
     formData.append("file", file);
 
     const { data } = await apiClient.post<IntelligentPayeeAnalysisResponse>(
-      "/api/v1/imports/ofx/analyze-payees-intelligent",
+      "/v1/imports/ofx/analyze-payees-intelligent",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -260,7 +260,7 @@ export const importsAPI = {
     formData.append("request_data", JSON.stringify(request));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
-      "/api/v1/imports/csv/execute-with-payee-decisions",
+      "/v1/imports/csv/execute-with-payee-decisions",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }
@@ -278,7 +278,7 @@ export const importsAPI = {
     formData.append("request_data", JSON.stringify(request));
 
     const { data } = await apiClient.post<ImportExecuteResponse>(
-      "/api/v1/imports/ofx/execute-with-payee-decisions",
+      "/v1/imports/ofx/execute-with-payee-decisions",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" }

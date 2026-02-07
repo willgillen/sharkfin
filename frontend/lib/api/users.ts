@@ -3,18 +3,18 @@ import { User, UserPreferences, PreferencesMetadata } from "@/types";
 
 export const usersAPI = {
   async getMe(): Promise<User> {
-    const { data } = await apiClient.get<User>("/api/v1/users/me");
+    const { data } = await apiClient.get<User>("/v1/users/me");
     return data;
   },
 
   // Preference endpoints
   async getPreferences(): Promise<UserPreferences> {
-    const { data } = await apiClient.get<UserPreferences>("/api/v1/users/me/preferences");
+    const { data } = await apiClient.get<UserPreferences>("/v1/users/me/preferences");
     return data;
   },
 
   async getPreferencesMetadata(): Promise<PreferencesMetadata> {
-    const { data } = await apiClient.get<PreferencesMetadata>("/api/v1/users/me/preferences/metadata");
+    const { data } = await apiClient.get<PreferencesMetadata>("/v1/users/me/preferences/metadata");
     return data;
   },
 
@@ -24,7 +24,7 @@ export const usersAPI = {
   },
 
   async updatePreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences> {
-    const { data } = await apiClient.patch<UserPreferences>("/api/v1/users/me/preferences", preferences);
+    const { data } = await apiClient.patch<UserPreferences>("/v1/users/me/preferences", preferences);
     return data;
   },
 
@@ -34,7 +34,7 @@ export const usersAPI = {
   },
 
   async resetAllPreferences(): Promise<{ message: string }> {
-    const { data } = await apiClient.delete<{ message: string }>("/api/v1/users/me/preferences");
+    const { data } = await apiClient.delete<{ message: string }>("/v1/users/me/preferences");
     return data;
   },
 

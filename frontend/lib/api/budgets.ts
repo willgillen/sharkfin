@@ -3,7 +3,7 @@ import { Budget, BudgetCreate, BudgetUpdate, BudgetWithProgress } from "@/types"
 
 export const budgetsAPI = {
   async getAll(): Promise<Budget[]> {
-    const { data } = await apiClient.get<Budget[]>("/api/v1/budgets");
+    const { data } = await apiClient.get<Budget[]>("/v1/budgets");
     return data;
   },
 
@@ -18,7 +18,7 @@ export const budgetsAPI = {
   },
 
   async create(budgetData: BudgetCreate): Promise<Budget> {
-    const { data } = await apiClient.post<Budget>("/api/v1/budgets", budgetData);
+    const { data } = await apiClient.post<Budget>("/v1/budgets", budgetData);
     return data;
   },
 

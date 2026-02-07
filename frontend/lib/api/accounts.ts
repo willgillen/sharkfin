@@ -3,7 +3,7 @@ import { Account, AccountCreate, AccountUpdate } from "@/types";
 
 export const accountsAPI = {
   async getAll(): Promise<Account[]> {
-    const { data } = await apiClient.get<Account[]>("/api/v1/accounts");
+    const { data } = await apiClient.get<Account[]>("/v1/accounts");
     return data;
   },
 
@@ -13,7 +13,7 @@ export const accountsAPI = {
   },
 
   async create(accountData: AccountCreate): Promise<Account> {
-    const { data } = await apiClient.post<Account>("/api/v1/accounts", accountData);
+    const { data } = await apiClient.post<Account>("/v1/accounts", accountData);
     return data;
   },
 

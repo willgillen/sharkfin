@@ -15,7 +15,7 @@ export const transactionsAPI = {
     sort_by?: string;
     sort_order?: string;
   }): Promise<Transaction[]> {
-    const { data } = await apiClient.get<Transaction[]>("/api/v1/transactions", { params });
+    const { data } = await apiClient.get<Transaction[]>("/v1/transactions", { params });
     return data;
   },
 
@@ -25,7 +25,7 @@ export const transactionsAPI = {
   },
 
   async create(transactionData: TransactionCreate): Promise<Transaction> {
-    const { data } = await apiClient.post<Transaction>("/api/v1/transactions", transactionData);
+    const { data } = await apiClient.post<Transaction>("/v1/transactions", transactionData);
     return data;
   },
 
@@ -39,7 +39,7 @@ export const transactionsAPI = {
   },
 
   async getPayeeSuggestions(query?: string): Promise<PayeeSuggestion[]> {
-    const { data } = await apiClient.get<PayeeSuggestion[]>("/api/v1/transactions/suggestions/payees", {
+    const { data } = await apiClient.get<PayeeSuggestion[]>("/v1/transactions/suggestions/payees", {
       params: { q: query, limit: 10 },
     });
     return data;
@@ -47,7 +47,7 @@ export const transactionsAPI = {
 
   async getCategorySuggestion(payee: string): Promise<{ category_id: number | null }> {
     const { data } = await apiClient.get<{ category_id: number | null }>(
-      "/api/v1/transactions/suggestions/category",
+      "/v1/transactions/suggestions/category",
       {
         params: { payee },
       }

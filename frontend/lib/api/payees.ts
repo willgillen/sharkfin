@@ -21,7 +21,7 @@ export const payeesAPI = {
     limit?: number;
     q?: string;
   }): Promise<PayeeWithCategory[]> {
-    const { data } = await apiClient.get<PayeeWithCategory[]>("/api/v1/payees", { params });
+    const { data } = await apiClient.get<PayeeWithCategory[]>("/v1/payees", { params });
     return data;
   },
 
@@ -31,7 +31,7 @@ export const payeesAPI = {
   },
 
   async create(payeeData: PayeeCreate): Promise<Payee> {
-    const { data } = await apiClient.post<Payee>("/api/v1/payees", payeeData);
+    const { data } = await apiClient.post<Payee>("/v1/payees", payeeData);
     return data;
   },
 
@@ -45,7 +45,7 @@ export const payeesAPI = {
   },
 
   async autocomplete(query: string, limit: number = 10): Promise<PayeeWithCategory[]> {
-    const { data } = await apiClient.get<PayeeWithCategory[]>("/api/v1/payees/autocomplete", {
+    const { data } = await apiClient.get<PayeeWithCategory[]>("/v1/payees/autocomplete", {
       params: { q: query, limit },
     });
     return data;
