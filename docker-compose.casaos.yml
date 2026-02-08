@@ -53,6 +53,9 @@ services:
       - shark-fin
     x-casaos:
       envs:
+        - container: POSTGRES_PASSWORD
+          description:
+            en_us: Database password (must match postgres service password)
         - container: SECRET_KEY
           description:
             en_us: JWT signing key (CHANGE THIS to a random 32+ character string!)
