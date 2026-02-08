@@ -30,8 +30,6 @@ services:
       - "5400:5400"
     depends_on:
       - backend
-    networks:
-      - shark-fin
 
   backend:
     image: ghcr.io/willgillen/sharkfin/backend:latest
@@ -45,10 +43,6 @@ services:
     # Backend port not exposed - accessed via frontend proxy only
     depends_on:
       - postgres
-    networks:
-      shark-fin:
-        aliases:
-          - backend
 
   postgres:
     image: postgres:15-alpine
@@ -60,14 +54,6 @@ services:
       POSTGRES_DB: shark_fin
     volumes:
       - /DATA/AppData/shark-fin/postgres:/var/lib/postgresql/data
-    networks:
-      shark-fin:
-        aliases:
-          - postgres
-
-networks:
-  shark-fin:
-    driver: bridge
 
 x-casaos:
   architectures:
