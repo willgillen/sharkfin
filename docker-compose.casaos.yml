@@ -46,7 +46,9 @@ services:
     depends_on:
       - postgres
     networks:
-      - shark-fin
+      shark-fin:
+        aliases:
+          - backend
 
   postgres:
     image: postgres:15-alpine
@@ -59,7 +61,9 @@ services:
     volumes:
       - /DATA/AppData/shark-fin/postgres:/var/lib/postgresql/data
     networks:
-      - shark-fin
+      shark-fin:
+        aliases:
+          - postgres
 
 networks:
   shark-fin:
