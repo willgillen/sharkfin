@@ -92,9 +92,15 @@ async function proxyRequest(
 
     return nextResponse;
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Proxy error - Backend URL:', backendUrl);
+    console.error('Proxy error - Error details:', error);
+    console.error('Proxy error - BACKEND_URL env:', process.env.BACKEND_URL);
     return NextResponse.json(
-      { error: 'Backend service unavailable' },
+      {
+        error: 'Backend service unavailable',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        backendUrl: backendUrl
+      },
       { status: 503 }
     );
   }
