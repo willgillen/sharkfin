@@ -2,13 +2,13 @@
 #
 # ⚠️ IMPORTANT: Before installing, you MUST change these values:
 #
-# 1. POSTGRES_PASSWORD (line 54) - Change "CHANGE_ME_DB_PASSWORD" to a secure password
-# 2. DATABASE_URL password (line 32) - Change "CHANGE_ME_DB_PASSWORD" to match line 54
-# 3. SECRET_KEY (line 33) - Change "CHANGE_ME_SECRET_KEY" to a random 32+ character string
+# 1. POSTGRES_PASSWORD (line 59) - Change "CHANGE_ME_DB_PASSWORD" to a secure password
+# 2. DATABASE_URL password (line 41) - Change "CHANGE_ME_DB_PASSWORD" to match line 59
+# 3. SECRET_KEY (line 42) - Change "CHANGE_ME_SECRET_KEY" to a random 32+ character string
 #
 # Installation Steps:
 #   1. Download this file to your computer
-#   2. Edit lines 32, 33, and 54 with your own secure values
+#   2. Edit lines 41, 42, and 59 with your own secure values
 #   3. Save the file
 #   4. Open CasaOS App Store -> Custom Install -> Import
 #   5. Upload the edited file
@@ -25,7 +25,7 @@ services:
     container_name: shark-fin-frontend
     restart: unless-stopped
     environment:
-      BACKEND_URL: http://backend:5499
+      BACKEND_URL: http://shark-fin-backend:5499
     ports:
       - "5400:5400"
     depends_on:
@@ -38,7 +38,7 @@ services:
     container_name: shark-fin-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://sharkfin:CHANGE_ME_DB_PASSWORD@postgres:5432/shark_fin  # ⚠️ CHANGE THIS! (must match postgres password)
+      DATABASE_URL: postgresql://shark-fin-db:5432/shark_fin?user=sharkfin&password=CHANGE_ME_DB_PASSWORD  # ⚠️ CHANGE THIS! (change the password)
       SECRET_KEY: CHANGE_ME_SECRET_KEY  # ⚠️ CHANGE THIS! (use a random 32+ character string)
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
