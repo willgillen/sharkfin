@@ -1,14 +1,19 @@
 # Shark Fin - CasaOS Compatible Docker Compose
 #
-# For use with CasaOS Custom Install feature
+# ⚠️ IMPORTANT: Before installing, you MUST change these values:
 #
-# Installation:
-#   1. Download this file
-#   2. Open CasaOS App Store -> Custom Install -> Import
-#   3. Upload this file and configure environment variables
-#   4. Click Install
+# 1. POSTGRES_PASSWORD (line 22 and 45) - Change "CHANGE_ME_DB_PASSWORD" to a secure password
+# 2. SECRET_KEY (line 46) - Change "CHANGE_ME_SECRET_KEY" to a random 32+ character string
 #
-# IMPORTANT: Change POSTGRES_PASSWORD and SECRET_KEY before installing!
+# Installation Steps:
+#   1. Download this file to your computer
+#   2. Edit lines 22, 45, and 46 with your own secure values
+#   3. Save the file
+#   4. Open CasaOS App Store -> Custom Install -> Import
+#   5. Upload the edited file
+#   6. Click Install
+#
+# After installation, access at: http://your-casaos-ip:5400
 
 name: shark-fin
 
@@ -19,7 +24,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: sharkfin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_secure_password}
+      POSTGRES_PASSWORD: CHANGE_ME_DB_PASSWORD  # ⚠️ CHANGE THIS!
       POSTGRES_DB: shark_fin
     volumes:
       - /DATA/AppData/shark-fin/postgres:/var/lib/postgresql/data
@@ -30,19 +35,14 @@ services:
       retries: 5
     networks:
       - shark-fin
-    x-casaos:
-      envs:
-        - container: POSTGRES_PASSWORD
-          description:
-            en_us: Database password (CHANGE THIS to a secure password!)
 
   backend:
     image: ghcr.io/willgillen/sharkfin/backend:latest
     container_name: shark-fin-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://sharkfin:${POSTGRES_PASSWORD:-changeme_secure_password}@postgres:5432/shark_fin
-      SECRET_KEY: ${SECRET_KEY:-please_change_this_to_a_secure_random_string_min_32_chars}
+      DATABASE_URL: postgresql://sharkfin:CHANGE_ME_DB_PASSWORD@postgres:5432/shark_fin  # ⚠️ CHANGE THIS! (must match postgres password above)
+      SECRET_KEY: CHANGE_ME_SECRET_KEY  # ⚠️ CHANGE THIS! (use a random 32+ character string)
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
     # Backend port not exposed - accessed via frontend proxy only
@@ -51,14 +51,6 @@ services:
         condition: service_healthy
     networks:
       - shark-fin
-    x-casaos:
-      envs:
-        - container: POSTGRES_PASSWORD
-          description:
-            en_us: Database password (must match postgres service password)
-        - container: SECRET_KEY
-          description:
-            en_us: JWT signing key (CHANGE THIS to a random 32+ character string!)
 
   frontend:
     image: ghcr.io/willgillen/sharkfin/frontend:latest
@@ -67,22 +59,11 @@ services:
     environment:
       BACKEND_URL: http://backend:5499
     ports:
-      - target: 5400
-        published: "5400"
-        protocol: tcp
+      - "5400:5400"
     depends_on:
       - backend
     networks:
       - shark-fin
-    x-casaos:
-      ports:
-        - container: "5400"
-          description:
-            en_us: Web UI Port
-      volumes:
-        - container: /app
-          description:
-            en_us: Application files
 
 networks:
   shark-fin:
