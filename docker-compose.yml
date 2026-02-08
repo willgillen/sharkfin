@@ -18,16 +18,6 @@ services:
     networks:
       - shark-fin
 
-  redis:
-    image: redis:7-alpine
-    container_name: shark-fin-redis
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - shark-fin
-
   backend:
     build:
       context: ./backend
@@ -36,7 +26,6 @@ services:
     container_name: shark-fin-backend
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: ${ALGORITHM}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
@@ -44,8 +33,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     volumes:
       - ./backend:/app
     networks:
@@ -72,7 +59,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   frontend_node_modules:
 
 networks:

@@ -8,9 +8,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    # Redis
-    REDIS_URL: str
-
     # Security
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
